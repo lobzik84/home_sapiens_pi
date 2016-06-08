@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package org.lobzik.upravdom.tunnel.client;
+package org.lobzik.home_sapiens.tunnel.client;
 
 import java.util.HashMap;
 import java.util.Map;
