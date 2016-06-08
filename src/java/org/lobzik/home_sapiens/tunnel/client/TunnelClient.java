@@ -20,6 +20,10 @@ public class TunnelClient {
     private static final HashMap dataMap = new HashMap();
             
     public static final int NOT_CONNECTED_STATE = -1;
+    public static final int CONNECTING_STATE = 0;
+    public static final int CONNECTED_STATE = 1;
+    
+    private int state = NOT_CONNECTED_STATE;
     
     private TunnelClient(Map dataMap) { //singleton
         this.dataMap.putAll(dataMap);
@@ -33,14 +37,21 @@ public class TunnelClient {
     
     public void connect() {
         //TODO authenticate on server
+        state = CONNECTING_STATE;
     }
+    
+    public void disconnect() {
+        //TODO authenticate on server
+        state = NOT_CONNECTED_STATE;
+    }
+    
     
     public void stop() {
         
     }
     
     public int getState() {
-        return NOT_CONNECTED_STATE;
+        return state;
     }
             
     
