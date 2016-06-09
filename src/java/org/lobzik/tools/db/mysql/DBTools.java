@@ -1,10 +1,7 @@
 package org.lobzik.tools.db.mysql;
 import java.sql.*;
-import java.sql.Date;
 import java.util.*;
-import java.io.*;
 import javax.naming.*;
-import javax.sql.*;
 
 import org.apache.commons.dbcp2.BasicDataSource;
 
