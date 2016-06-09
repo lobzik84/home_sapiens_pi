@@ -17,7 +17,7 @@ import javax.servlet.http.HttpServletResponse;
  *
  * @author lobzik
  */
-@WebServlet(name = "PiServlet", urlPatterns = {"/dom", "/dom/*"})
+@WebServlet(name = "PiServlet", urlPatterns = {"/hs", "/hs/*"})
 public class PiServlet extends HttpServlet {
 
     /**
