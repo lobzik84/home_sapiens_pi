@@ -5,7 +5,7 @@
  */
 
 
-package org.lobzik.home_sapiens.tunnel.client;
+package org.lobzik.home_sapiens.pi.tunnel.client;
 
 import java.util.HashMap;
 import java.util.Map;
