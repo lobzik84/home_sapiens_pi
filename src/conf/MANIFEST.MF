@@ -1,2 +1,3 @@
 Manifest-Version: 1.0
+Main-Class:  WEB-INF.classes.org.lobzik.home_sapiens.pi.BoxRegistrator
 
