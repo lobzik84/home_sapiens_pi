@@ -5,7 +5,16 @@
  */
 package org.lobzik.home_sapiens.pi.tunnel.client;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.net.URL;
+import java.net.URLConnection;
 import org.apache.log4j.Logger;
+import org.lobzik.home_sapiens.pi.CommonData;
+import org.json.JSONObject;
+import org.lobzik.home_sapiens.pi.AppData;
+import org.lobzik.tools.Tools;
 
 /**
  *
@@ -23,9 +32,22 @@ public class TunnelClient extends Thread {
     private static long connectTries = 0;
     private static Logger log = null;
     private static boolean run = true;
-    private static String  tunnelServerUrl = null;
-    private static String  authToken = null;
-    
+    private static String tunnelServerUrl = null;
+    private static String authToken = null;
+    private static JSONObject boxJson = new JSONObject();
+
+    static {
+        boxJson.put("id", Tools.parseInt(AppData.settings.get("box_id"), 0));
+        boxJson.put("public_key", (String) (AppData.settings.get("public_key")));
+        boxJson.put("version", CommonData.BOX_VERSION);
+        boxJson.put("ssid", (String) (AppData.settings.get("ssid")));
+        boxJson.put("wpa_psk", (String) (AppData.settings.get("wpa_psk")));
+        if (AppData.settings.get("phone_num") != null) {
+            boxJson.put("phone_num", (String) (AppData.settings.get("phone_num")));
+        }
+
+    }
+
     private TunnelClient() { //singleton
     }
 
@@ -38,8 +60,9 @@ public class TunnelClient extends Thread {
 
     public static void connect(String url) {
         //TODO authenticate on server
+        run = true;
         tunnelServerUrl = url;
-        getInstance().start();
+        instance.start();
     }
 
     public synchronized void run() {
@@ -47,10 +70,14 @@ public class TunnelClient extends Thread {
             try {
                 connectTries++;
                 state = CONNECTING_STATE;
-                
+                if (authToken != null && authToken.length() > 0) {//token already present, try to use it
+
+                } else {
+                    authenticateWithRSA();
+                }
             } catch (Exception e) {
                 e.printStackTrace();
-                break;
+                //break;
             }
         }
     }
@@ -75,4 +102,61 @@ public class TunnelClient extends Thread {
         log = logger;
     }
 
+    private boolean authenticateWithRSA() throws Exception {
+        JSONObject reqJson = new JSONObject();
+        reqJson.put("action", "auth_request");
+        reqJson.put("box_data", boxJson);
+
+        URL url = new URL(CommonData.TUNNEL_SERVER_URL);
+        URLConnection conn = url.openConnection();
+        conn.setDoInput(true);
+        conn.setDoOutput(true);
+        OutputStreamWriter out = new OutputStreamWriter(conn.getOutputStream());
+        out.write(reqJson.toString());
+        out.close();
+
+        BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+        String decodedString;
+        StringBuffer sb = new StringBuffer();
+        while ((decodedString = in.readLine()) != null) {
+            sb.append(decodedString);
+        }
+        in.close();
+
+        JSONObject response = new JSONObject(sb.toString());
+        if (!response.has("challenge")) {
+            return false;
+        }
+        String challenge = response.getString("challenge");
+        String challengeResponse = challenge + "RSA"; //TODO calculate on private key
+        reqJson = new JSONObject();
+        reqJson.put("action", "auth_challenge");
+        reqJson.put("challenge_response", challengeResponse);
+        reqJson.put("box_data", boxJson);
+        
+        url = new URL(CommonData.TUNNEL_SERVER_URL);
+        conn = url.openConnection();
+        conn.setDoInput(true);
+        conn.setDoOutput(true);
+        out = new OutputStreamWriter(conn.getOutputStream());
+        out.write(reqJson.toString());
+        out.close();
+
+        in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+         sb = new StringBuffer();
+        while ((decodedString = in.readLine()) != null) {
+            sb.append(decodedString);
+        }
+        in.close();
+
+        response = new JSONObject(sb.toString());
+        
+        if (response.has("device_auth_token")) {
+            authToken = response.getString("device_auth_token");
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
 }
