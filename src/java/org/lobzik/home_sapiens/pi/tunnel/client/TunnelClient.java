@@ -11,7 +11,7 @@ import java.io.OutputStreamWriter;
 import java.net.URL;
 import java.net.URLConnection;
 import org.apache.log4j.Logger;
-import org.lobzik.home_sapiens.pi.CommonData;
+import org.lobzik.home_sapiens.pi.BoxCommonData;
 import org.json.JSONObject;
 import org.lobzik.home_sapiens.pi.AppData;
 import org.lobzik.tools.Tools;
@@ -39,7 +39,7 @@ public class TunnelClient extends Thread {
     static {
         boxJson.put("id", Tools.parseInt(AppData.settings.get("box_id"), 0));
         boxJson.put("public_key", (String) (AppData.settings.get("public_key")));
-        boxJson.put("version", CommonData.BOX_VERSION);
+        boxJson.put("version", BoxCommonData.BOX_VERSION);
         boxJson.put("ssid", (String) (AppData.settings.get("ssid")));
         boxJson.put("wpa_psk", (String) (AppData.settings.get("wpa_psk")));
         if (AppData.settings.get("phone_num") != null) {
@@ -58,10 +58,9 @@ public class TunnelClient extends Thread {
         return instance;
     }
 
-    public static void connect(String url) {
+    public static void connect() {
         //TODO authenticate on server
         run = true;
-        tunnelServerUrl = url;
         instance.start();
     }
 
@@ -112,7 +111,7 @@ public class TunnelClient extends Thread {
         reqJson.put("action", "auth_request");
         reqJson.put("box_data", boxJson);
 
-        URL url = new URL(CommonData.TUNNEL_SERVER_URL);
+        URL url = new URL(BoxCommonData.TUNNEL_SERVER_URL);
         URLConnection conn = url.openConnection();
         conn.setDoInput(true);
         conn.setDoOutput(true);
@@ -139,7 +138,7 @@ public class TunnelClient extends Thread {
         reqJson.put("challenge_response", challengeResponse);
         reqJson.put("box_data", boxJson);
         
-        url = new URL(CommonData.TUNNEL_SERVER_URL);
+        url = new URL(BoxCommonData.TUNNEL_SERVER_URL);
         conn = url.openConnection();
         conn.setDoInput(true);
         conn.setDoOutput(true);
