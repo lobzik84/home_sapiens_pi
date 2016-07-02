@@ -79,6 +79,11 @@ public class TunnelClient extends Thread {
                 e.printStackTrace();
                 //break;
             }
+            if (connectTries > 5) {
+                run = false;
+                break;
+            }
+                
         }
     }
 
