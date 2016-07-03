@@ -28,20 +28,13 @@ public class AppListener implements ServletContextListener {
     @Override
     public void contextInitialized(ServletContextEvent sce) {
 
-        int boxId;
         try {
-            boxId = readIdFile();
-            AppData.settings.put("box_id", boxId);
-            String publicKey = new String(Files.readAllBytes(Paths.get(BoxCommonData.PUBLIC_KEY_FILE)), "UTF-8");
-            AppData.settings.put("public_key", publicKey);
-            Properties hostapdConf = new Properties();
-            hostapdConf.load(new FileInputStream(BoxCommonData.HOSTAPD_CONFIG_FILE));
-            String ssid = hostapdConf.getProperty("ssid");
-            String wpa_psk = hostapdConf.getProperty("wpa_passphrase");
-            AppData.settings.put("ssid", ssid);
-            AppData.settings.put("wpa_psk", wpa_psk);
-            AppData.tunnel.connect();
+            System.setProperty("java.library.path", System.getProperty("java.library.path") + ":/usr/lib/jni");
+            
+            //AppData.tunnel.connect();
             //TODO start modules
+            AppData.internalSensorsModule.start();
+            
 
         } catch (Exception ex) {
             Logger.getLogger(AppListener.class.getName()).log(Level.SEVERE, null, ex);
@@ -52,24 +45,11 @@ public class AppListener implements ServletContextListener {
     @Override
     public void contextDestroyed(ServletContextEvent sce) {
         try {
-            AppData.tunnel.disconnect();
+            //AppData.tunnel.disconnect();
+            AppData.internalSensorsModule.finish();
 
         } catch (Exception ex) {
             Logger.getLogger(AppListener.class.getName()).log(Level.SEVERE, null, ex);
-        }
-    }
-
-    private int readIdFile() throws Exception {
-        if (!(new File(BoxCommonData.BOX_ID_FILE)).exists()) {
-            throw new Exception("No ID file found!! Register device first");
-        }
-        Properties props = new Properties();
-        props.load(new FileInputStream(BoxCommonData.BOX_ID_FILE));
-        int boxId = Tools.parseInt(props.getProperty("box_id"), 0);
-        if (boxId > 0) {
-            return boxId;
-        } else {
-            throw new Exception("Invalid ID file!");
         }
     }
 }

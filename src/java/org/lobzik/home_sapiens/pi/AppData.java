@@ -6,6 +6,7 @@
 package org.lobzik.home_sapiens.pi;
 
 import java.util.HashMap;
+import org.lobzik.home_sapiens.pi.modules.InternalSensorsModule;
 import org.lobzik.home_sapiens.pi.tunnel.client.TunnelClient;
 
 /**
@@ -13,6 +14,8 @@ import org.lobzik.home_sapiens.pi.tunnel.client.TunnelClient;
  * @author lobzik
  */
 public class AppData {
-    public static HashMap<String, Object> settings = new HashMap();
-    public static TunnelClient tunnel = TunnelClient.getInstance();
+
+    public static final HashMap<String, Object> settings = new HashMap();
+    public static final TunnelClient tunnel = TunnelClient.getInstance();
+    public static final InternalSensorsModule internalSensorsModule = InternalSensorsModule.getInstance();
 }

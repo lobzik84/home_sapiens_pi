@@ -32,16 +32,15 @@ public class TunnelClient extends Thread {
     private static long connectTries = 0;
     private static Logger log = null;
     private static boolean run = true;
-    private static String tunnelServerUrl = null;
     private static String authToken = null;
-    private static JSONObject boxJson = new JSONObject();
+    private static final JSONObject boxJson = new JSONObject();
 
     static {
-        boxJson.put("id", Tools.parseInt(AppData.settings.get("box_id"), 0));
-        boxJson.put("public_key", (String) (AppData.settings.get("public_key")));
+        boxJson.put("id", BoxCommonData.BOX_ID);
+        boxJson.put("public_key", BoxCommonData.PUBLIC_KEY);
         boxJson.put("version", BoxCommonData.BOX_VERSION);
-        boxJson.put("ssid", (String) (AppData.settings.get("ssid")));
-        boxJson.put("wpa_psk", (String) (AppData.settings.get("wpa_psk")));
+        boxJson.put("ssid", BoxCommonData.SSID);
+        boxJson.put("wpa_psk", BoxCommonData.WPA_PSK);
         if (AppData.settings.get("phone_num") != null) {
             boxJson.put("phone_num", (String) (AppData.settings.get("phone_num")));
         }

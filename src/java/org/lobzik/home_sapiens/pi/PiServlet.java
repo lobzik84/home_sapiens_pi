@@ -12,6 +12,8 @@ import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import org.lobzik.home_sapiens.entity.Measurement;
+import org.lobzik.home_sapiens.pi.modules.InternalSensorsModule;
 
 /**
  *
@@ -41,7 +43,32 @@ public class PiServlet extends HttpServlet {
             out.println("<title>Servlet PiServlet</title>");            
             out.println("</head>");
             out.println("<body>");
-            out.println("<h1>Servlet PiServlet at " + request.getContextPath() + "</h1>");
+            out.println("<h1>1-wire temps </h1><br>");
+            out.println("<table><tr>");
+            out.println("<td>Internal</td><td>Room</td><td>Left AC</td><td>Right AC</td>");
+            out.println("</tr>");
+            for (int i=0; i <= InternalSensorsModule.HISTORY_SIZE; i++) {
+                out.println("<tr>");
+                out.print("<td><b>");
+                if (i < InternalSensorsModule.internalTemps.size()) 
+                    out.print(InternalSensorsModule.internalTemps.get(i).toString() + " °C");
+                out.println("</td></b>");
+                out.print("<td><b>");
+                if (i < InternalSensorsModule.roomTemps.size()) 
+                    out.print(InternalSensorsModule.roomTemps.get(i).toString() + " °C");
+                out.println("</td></b>");
+                out.print("<td><b>");
+                if (i < InternalSensorsModule.leftACTemps.size()) 
+                    out.print(InternalSensorsModule.leftACTemps.get(i).toString()  + " °C");
+                out.println("</td></b>");
+                out.print("<td><b>");
+                if (i < InternalSensorsModule.rightACTemps.size()) 
+                    out.print(InternalSensorsModule.rightACTemps.get(i).toString() + " °C");
+                out.println("</td></b>");
+                out.println("</tr>");
+            }
+
+            out.println("</table>");
             out.println("</body>");
             out.println("</html>");
         } finally {
