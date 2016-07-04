@@ -12,9 +12,14 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
+import java.sql.Connection;
+import java.util.Date;
+import java.util.HashMap;
 import java.util.LinkedList;
 import org.apache.log4j.Logger;
 import org.lobzik.home_sapiens.entity.Measurement;
+import org.lobzik.home_sapiens.pi.BoxCommonData;
+import org.lobzik.tools.db.mysql.DBTools;
 
 /**
  *
@@ -41,7 +46,8 @@ public class InternalSensorsModule extends Thread {
     public static final LinkedList<Measurement> rightACTemps = new LinkedList();
 
     public static final int HISTORY_SIZE = 50;
-    private static final long POLL_PERIOD = 5000;// * 60 * 1000l;
+    private static final long POLL_PERIOD = 5 * 60 * 1000l;
+    private static Connection conn = null;
 
     private InternalSensorsModule() { //singleton
     }
@@ -57,7 +63,10 @@ public class InternalSensorsModule extends Thread {
         try {
             connectTries++;
             state = CONNECTING_STATE;
+            conn = DBTools.openConnection(BoxCommonData.dataSourceName);
             connect("/dev/ttyACM0");
+            state = CONNECTED_STATE;
+           // conn.close();
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -73,14 +82,15 @@ public class InternalSensorsModule extends Thread {
         }
         run = false;
         instance.state = NOT_CONNECTED_STATE;
+        DBTools.closeConnection(conn);
         /*try {
-            if (commPort != null) {
-                commPort.close();
-            }
-            commPort = null;
-        } catch (Throwable t) {
-            t.printStackTrace();
-        }*/
+         if (commPort != null) {
+         commPort.close();
+         }
+         commPort = null;
+         } catch (Throwable t) {
+         t.printStackTrace();
+         }*/
         //log.info("Disconnected.");
     }
 
@@ -101,9 +111,11 @@ public class InternalSensorsModule extends Thread {
             val = val.trim();
             String address = data.substring(0, data.indexOf("TEMP"));
             address = address.trim();
+            int param_id = 0;
             Measurement m = new Measurement(val);
             switch (address) {
                 case "28:f4:a7:26:04:00:00:35:":
+                    param_id = 1;
                     internalTemps.add(m);
                     while (internalTemps.size() > HISTORY_SIZE) {
                         internalTemps.remove(0);
@@ -111,6 +123,7 @@ public class InternalSensorsModule extends Thread {
 
                     break;
                 case "28:80:a6:26:04:00:00:bc:":
+                    param_id = 2;
                     roomTemps.add(m);
                     while (roomTemps.size() > HISTORY_SIZE) {
                         roomTemps.remove(0);
@@ -118,6 +131,7 @@ public class InternalSensorsModule extends Thread {
 
                     break;
                 case "28:99:d2:26:04:00:00:03:":
+                    param_id = 3;
                     leftACTemps.add(m);
                     while (leftACTemps.size() > HISTORY_SIZE) {
                         leftACTemps.remove(0);
@@ -125,6 +139,7 @@ public class InternalSensorsModule extends Thread {
 
                     break;
                 case "28:a5:b7:26:04:00:00:50:":
+                    param_id = 4;
                     rightACTemps.add(m);
                     while (rightACTemps.size() > HISTORY_SIZE) {
                         rightACTemps.remove(0);
@@ -134,8 +149,13 @@ public class InternalSensorsModule extends Thread {
 
             }
 
+            HashMap dataMap = new HashMap();
+            dataMap.put("parameter_id", param_id);
+            dataMap.put("value_d", m.getDoubleValue());
+            dataMap.put("date", new Date(m.getTime()));
+            DBTools.insertRow("sensors_data", dataMap, conn);
         } catch (Exception e) {
-
+            e.printStackTrace();
         }
     }
 
@@ -151,7 +171,7 @@ public class InternalSensorsModule extends Thread {
                 SerialPort.STOPBITS_1,
                 SerialPort.PARITY_NONE);
 
-        serialWriter = new SerialWriter(serialPort.getOutputStream());
+        serialWriter = new SerialWriter(serialPort.getOutputStream(), serialPort);
         serialWriter.start();
 
         BufferedReader in = new BufferedReader(new InputStreamReader(serialPort.getInputStream()));
@@ -166,19 +186,19 @@ public class InternalSensorsModule extends Thread {
 
         in.close();
         serialWriter.finish();
-        commPort.close();
         portIdentifier = null;
         commPort = null;
-        //System.out.print(sb.toString());
     }
 
     public static class SerialWriter extends Thread {
 
         OutputStream out;
+        SerialPort port;
         private static boolean run = true;
 
-        public SerialWriter(OutputStream out) {
+        public SerialWriter(OutputStream out, SerialPort port) {
             this.out = out;
+            this.port = port;
         }
 
         public synchronized void finish() {
@@ -208,6 +228,11 @@ public class InternalSensorsModule extends Thread {
             }
             try {
                 outWriter.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            try {
+                port.close();
             } catch (Exception e) {
                 e.printStackTrace();
             }

@@ -1,2 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Context antiJARLocking="true" path="/hs"/>
+<Context antiResourceLocking="true" path="/hs">
+  <Resource auth="Container" 
+            defaultTransactionIsolation="READ_COMMITTED" 
+            driverClassName="com.mysql.jdbc.Driver" 
+            factory="org.apache.commons.dbcp2.BasicDataSourceFactory" 
+            maxActive="25" 
+            maxIdle="8" 
+            name="jdbc/hs" 
+            username="hsuser"
+            password="hspass" 
+            type="javax.sql.DataSource" 
+            url="jdbc:mysql://192.168.0.22:3306/hs?useUnicode=true&amp;characterEncoding=utf8" 
+            validationQuery="Select 1"/>
+</Context>

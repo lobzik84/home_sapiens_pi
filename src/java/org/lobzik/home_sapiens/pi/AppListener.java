@@ -34,7 +34,7 @@ public class AppListener implements ServletContextListener {
             
             //AppData.tunnel.connect();
             //TODO start modules
-            AppData.internalSensorsModule.start();
+           AppData.internalSensorsModule.start();
             
 
         } catch (Exception ex) {

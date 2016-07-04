@@ -7,6 +7,10 @@ package org.lobzik.home_sapiens.pi;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.sql.Connection;
+import java.util.HashMap;
+import java.util.List;
+import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
@@ -14,6 +18,8 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import org.lobzik.home_sapiens.entity.Measurement;
 import org.lobzik.home_sapiens.pi.modules.InternalSensorsModule;
+import org.lobzik.tools.db.mysql.DBSelect;
+import org.lobzik.tools.db.mysql.DBTools;
 
 /**
  *
@@ -34,45 +40,36 @@ public class PiServlet extends HttpServlet {
     protected void processRequest(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         response.setContentType("text/html;charset=UTF-8");
-        PrintWriter out = response.getWriter();
-        try {
-            /* TODO output your page here. You may use following sample code. */
-            out.println("<!DOCTYPE html>");
-            out.println("<html>");
-            out.println("<head>");
-            out.println("<title>Servlet PiServlet</title>");            
-            out.println("</head>");
-            out.println("<body>");
-            out.println("<h1>1-wire temps </h1><br>");
-            out.println("<table><tr>");
-            out.println("<td>Internal</td><td>Room</td><td>Left AC</td><td>Right AC</td>");
-            out.println("</tr>");
-            for (int i=0; i <= InternalSensorsModule.HISTORY_SIZE; i++) {
-                out.println("<tr>");
-                out.print("<td><b>");
-                if (i < InternalSensorsModule.internalTemps.size()) 
-                    out.print(InternalSensorsModule.internalTemps.get(i).toString() + " °C");
-                out.println("</td></b>");
-                out.print("<td><b>");
-                if (i < InternalSensorsModule.roomTemps.size()) 
-                    out.print(InternalSensorsModule.roomTemps.get(i).toString() + " °C");
-                out.println("</td></b>");
-                out.print("<td><b>");
-                if (i < InternalSensorsModule.leftACTemps.size()) 
-                    out.print(InternalSensorsModule.leftACTemps.get(i).toString()  + " °C");
-                out.println("</td></b>");
-                out.print("<td><b>");
-                if (i < InternalSensorsModule.rightACTemps.size()) 
-                    out.print(InternalSensorsModule.rightACTemps.get(i).toString() + " °C");
-                out.println("</td></b>");
-                out.println("</tr>");
-            }
 
-            out.println("</table>");
-            out.println("</body>");
-            out.println("</html>");
-        } finally {
-            out.close();
+        Connection conn = null;
+        try {
+            String sSQL = "select max(param1) param1, max(param2) param2, max(param3) param3, max(param4) param4, ssd.fdate \n"
+                    + "from\n"
+                    + "(select \n"
+                    + "(case when sd.parameter_id = 1 then sd.value_d else null end) as param1,\n"
+                    + "(case when sd.parameter_id = 2 then sd.value_d else null end) as param2,\n"
+                    + "(case when sd.parameter_id = 3 then sd.value_d else null end) as param3,\n"
+                    + "(case when sd.parameter_id = 4 then sd.value_d else null end) as param4,\n"
+                    + "DATE_FORMAT(sd.date,'%Y-%m-%d %H:%i:%s') as fdate\n"
+                    + "FROM sensors_data sd\n"
+                    + "WHERE TO_DAYS(NOW()) - TO_DAYS(sd.date) <= 1\n"
+                    + ") ssd\n"
+                    + "group by ssd.fdate\n"
+                    + "order by ssd.fdate desc";
+            conn = DBTools.openConnection(BoxCommonData.dataSourceName);
+            List<HashMap> resList = DBSelect.getRows(sSQL, conn);
+            HashMap<String, Object> jspData = new HashMap();
+            jspData.put("resList", resList);
+            RequestDispatcher disp = request.getSession().getServletContext().getRequestDispatcher("/temperatures.jsp");
+		    request.setAttribute("JspData", jspData);
+		    disp.include(request, response);
+            
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        finally {
+            DBTools.closeConnection(conn);
         }
     }
 
