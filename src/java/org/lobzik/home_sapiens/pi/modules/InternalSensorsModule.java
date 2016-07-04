@@ -32,18 +32,17 @@ public class InternalSensorsModule extends Thread {
     private static long connectTries = 0;
     private static Logger log = null;
     private static boolean run = true;
-
+    private static CommPort commPort = null;
     private static SerialWriter serialWriter = null;
-    
+
     public static final LinkedList<Measurement> internalTemps = new LinkedList();
     public static final LinkedList<Measurement> roomTemps = new LinkedList();
     public static final LinkedList<Measurement> leftACTemps = new LinkedList();
     public static final LinkedList<Measurement> rightACTemps = new LinkedList();
-    
-    
+
     public static final int HISTORY_SIZE = 50;
-    private static final long POLL_PERIOD = 5 * 60 * 1000l;
-    
+    private static final long POLL_PERIOD = 5000;// * 60 * 1000l;
+
     private InternalSensorsModule() { //singleton
     }
 
@@ -55,36 +54,33 @@ public class InternalSensorsModule extends Thread {
     }
 
     public synchronized void run() {
-        while (run) {
-            try {
-                connectTries++;
-                state = CONNECTING_STATE;
-                connect("/dev/ttyACM0");
+        try {
+            connectTries++;
+            state = CONNECTING_STATE;
+            connect("/dev/ttyACM0");
 
-            } catch (Exception e) {
-                e.printStackTrace();
-                //break;
-            }
-            if (connectTries > 5) {
-                run = false;
-                break;
-            }
-
+        } catch (Exception e) {
+            e.printStackTrace();
+            //break;
         }
     }
 
-    public synchronized void finish() {
+    public static void finish() {
         //log.info("Disconnecting...");
         if (serialWriter != null) {
             serialWriter.finish();
+
         }
         run = false;
-        state = NOT_CONNECTED_STATE;
-
-        synchronized (this) {
-            notifyAll();
-
-        }
+        instance.state = NOT_CONNECTED_STATE;
+        /*try {
+            if (commPort != null) {
+                commPort.close();
+            }
+            commPort = null;
+        } catch (Throwable t) {
+            t.printStackTrace();
+        }*/
         //log.info("Disconnected.");
     }
 
@@ -95,85 +91,85 @@ public class InternalSensorsModule extends Thread {
     public void setLogger(Logger logger) {
         log = logger;
     }
+
     private void parse1WireReply(String data) {
         try {
-            if (!data.contains("TEMP")) return;
-            String val = data.substring(data.lastIndexOf(":")+1, data.length());
+            if (!data.contains("TEMP")) {
+                return;
+            }
+            String val = data.substring(data.lastIndexOf(":") + 1, data.length());
             val = val.trim();
             String address = data.substring(0, data.indexOf("TEMP"));
             address = address.trim();
             Measurement m = new Measurement(val);
             switch (address) {
-                case "28:f4:a7:26:04:00:00:35:": 
-                     internalTemps.add(m);
+                case "28:f4:a7:26:04:00:00:35:":
+                    internalTemps.add(m);
                     while (internalTemps.size() > HISTORY_SIZE) {
                         internalTemps.remove(0);
                     }
-                         
+
                     break;
-                case "28:80:a6:26:04:00:00:bc:": 
-                     roomTemps.add(m);
+                case "28:80:a6:26:04:00:00:bc:":
+                    roomTemps.add(m);
                     while (roomTemps.size() > HISTORY_SIZE) {
                         roomTemps.remove(0);
                     }
-                         
+
                     break;
-                case "28:99:d2:26:04:00:00:03:": 
-                     leftACTemps.add(m);
+                case "28:99:d2:26:04:00:00:03:":
+                    leftACTemps.add(m);
                     while (leftACTemps.size() > HISTORY_SIZE) {
                         leftACTemps.remove(0);
                     }
-                         
+
                     break;
-                case "28:a5:b7:26:04:00:00:50:": 
-                     rightACTemps.add(m);
+                case "28:a5:b7:26:04:00:00:50:":
+                    rightACTemps.add(m);
                     while (rightACTemps.size() > HISTORY_SIZE) {
                         rightACTemps.remove(0);
                     }
-                         
+
                     break;
-                    
+
             }
-            
-        } catch (Exception e) 
-        {
-            
+
+        } catch (Exception e) {
+
         }
     }
+
     private void connect(String portName) throws Exception {
         CommPortIdentifier portIdentifier = CommPortIdentifier.getPortIdentifier(portName);
-        if (portIdentifier.isCurrentlyOwned()) {
-            System.out.println("Error: Port is currently in use");
-        } else {
-            int timeout = 2000;
-            CommPort commPort = portIdentifier.open(this.getClass().getName(), timeout);
 
-            if (commPort instanceof SerialPort) {
-                SerialPort serialPort = (SerialPort) commPort;
-                serialPort.setSerialPortParams(9600,
-                        SerialPort.DATABITS_8,
-                        SerialPort.STOPBITS_1,
-                        SerialPort.PARITY_NONE);
+        int timeout = 2000;
+        commPort = portIdentifier.open(this.getClass().getName(), timeout);
 
-                serialWriter = new SerialWriter(serialPort.getOutputStream());
-                serialWriter.start();
+        SerialPort serialPort = (SerialPort) commPort;
+        serialPort.setSerialPortParams(9600,
+                SerialPort.DATABITS_8,
+                SerialPort.STOPBITS_1,
+                SerialPort.PARITY_NONE);
 
-                BufferedReader in = new BufferedReader(new InputStreamReader(serialPort.getInputStream()));
-                
-                String decodedString;
-                //StringBuffer sb = new StringBuffer();
-                while ((decodedString = in.readLine()) != null && run) {
-                    //sb.append(decodedString);
-                    System.out.println(decodedString);
-                    parse1WireReply(decodedString);
-                }
-                in.close();
-                //System.out.print(sb.toString());
+        serialWriter = new SerialWriter(serialPort.getOutputStream());
+        serialWriter.start();
 
-            } else {
-                System.out.println("Error: Only serial ports are handled by this example.");
-            }
+        BufferedReader in = new BufferedReader(new InputStreamReader(serialPort.getInputStream()));
+
+        String decodedString;
+        //StringBuffer sb = new StringBuffer();
+        while ((decodedString = in.readLine()) != null && run) {
+            //sb.append(decodedString);
+            System.out.println(decodedString);
+            parse1WireReply(decodedString);
         }
+
+        in.close();
+        serialWriter.finish();
+        commPort.close();
+        portIdentifier = null;
+        commPort = null;
+        //System.out.print(sb.toString());
     }
 
     public static class SerialWriter extends Thread {
@@ -185,14 +181,14 @@ public class InternalSensorsModule extends Thread {
             this.out = out;
         }
 
-        public void finish() {
+        public synchronized void finish() {
             run = false;
             synchronized (this) {
                 notify();
             }
         }
 
-        public void run() {
+        public synchronized void run() {
             OutputStreamWriter outWriter = new OutputStreamWriter(this.out);
             while (run) {
                 try {
