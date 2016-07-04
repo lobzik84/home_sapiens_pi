@@ -15,6 +15,7 @@ import java.util.logging.Logger;
 import javax.servlet.ServletContextEvent;
 import javax.servlet.ServletContextListener;
 import javax.servlet.annotation.WebListener;
+import org.lobzik.home_sapiens.pi.modules.InternalSensorsModule;
 import org.lobzik.tools.Tools;
 
 /**
@@ -29,7 +30,7 @@ public class AppListener implements ServletContextListener {
     public void contextInitialized(ServletContextEvent sce) {
 
         try {
-            System.setProperty("java.library.path", System.getProperty("java.library.path") + ":/usr/lib/jni");
+           // System.setProperty("gnu.io.rxtx.LibraryLoader", "true");
             
             //AppData.tunnel.connect();
             //TODO start modules
@@ -46,7 +47,8 @@ public class AppListener implements ServletContextListener {
     public void contextDestroyed(ServletContextEvent sce) {
         try {
             //AppData.tunnel.disconnect();
-            AppData.internalSensorsModule.finish();
+            AppData.internalSensorsModule.finish(); //only static methods works!!
+            
 
         } catch (Exception ex) {
             Logger.getLogger(AppListener.class.getName()).log(Level.SEVERE, null, ex);
