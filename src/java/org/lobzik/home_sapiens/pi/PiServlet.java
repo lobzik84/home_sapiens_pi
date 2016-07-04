@@ -43,32 +43,31 @@ public class PiServlet extends HttpServlet {
 
         Connection conn = null;
         try {
-            String sSQL = "select max(param1) param1, max(param2) param2, max(param3) param3, max(param4) param4, ssd.fdate \n"
+            String sSQL = "select max(param1) param1, max(param2) param2, max(param3) param3, max(param4) param4, max(ssd.fdate), udate\n"
                     + "from\n"
                     + "(select \n"
                     + "(case when sd.parameter_id = 1 then sd.value_d else null end) as param1,\n"
                     + "(case when sd.parameter_id = 2 then sd.value_d else null end) as param2,\n"
                     + "(case when sd.parameter_id = 3 then sd.value_d else null end) as param3,\n"
                     + "(case when sd.parameter_id = 4 then sd.value_d else null end) as param4,\n"
-                    + "DATE_FORMAT(sd.date,'%Y-%m-%d %H:%i:%s') as fdate\n"
-                    + "FROM sensors_data sd\n"
-                    + "WHERE TO_DAYS(NOW()) - TO_DAYS(sd.date) <= 1\n"
+                    + "date_format(sd.date,'%Y-%m-%d %H:%i:%s') as fdate,\n"
+                    + "floor(unix_timestamp(sd.date)/5) as udate\n"
+                    + "from sensors_data sd\n"
+                    + "where unix_timestamp(now()) - unix_timestamp(sd.date) <= 24 * 3600\n"
                     + ") ssd\n"
-                    + "group by ssd.fdate\n"
-                    + "order by ssd.fdate desc";
+                    + "group by ssd.udate\n"
+                    + "order by ssd.udate desc";
             conn = DBTools.openConnection(BoxCommonData.dataSourceName);
             List<HashMap> resList = DBSelect.getRows(sSQL, conn);
             HashMap<String, Object> jspData = new HashMap();
             jspData.put("resList", resList);
             RequestDispatcher disp = request.getSession().getServletContext().getRequestDispatcher("/temperatures.jsp");
-		    request.setAttribute("JspData", jspData);
-		    disp.include(request, response);
-            
+            request.setAttribute("JspData", jspData);
+            disp.include(request, response);
 
         } catch (Exception e) {
             e.printStackTrace();
-        }
-        finally {
+        } finally {
             DBTools.closeConnection(conn);
         }
     }
