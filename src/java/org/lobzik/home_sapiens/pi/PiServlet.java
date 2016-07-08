@@ -43,7 +43,7 @@ public class PiServlet extends HttpServlet {
 
         Connection conn = null;
         try {
-            String sSQL = "select max(param1) param1, max(param2) param2, max(param3) param3, max(param4) param4, max(ssd.fdate), udate\n"
+            String sSQL = "select max(param1) param1, max(param2) param2, max(param3) param3, max(param4) param4, max(ssd.fdate) as fdate, udate\n"
                     + "from\n"
                     + "(select \n"
                     + "(case when sd.parameter_id = 1 then sd.value_d else null end) as param1,\n"
