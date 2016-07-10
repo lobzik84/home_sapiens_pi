@@ -6,7 +6,6 @@
 package org.lobzik.home_sapiens.pi;
 
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.sql.Connection;
 import java.util.HashMap;
 import java.util.List;
@@ -16,8 +15,6 @@ import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import org.lobzik.home_sapiens.entity.Measurement;
-import org.lobzik.home_sapiens.pi.modules.InternalSensorsModule;
 import org.lobzik.tools.db.mysql.DBSelect;
 import org.lobzik.tools.db.mysql.DBTools;
 

@@ -5,18 +5,11 @@
  */
 package org.lobzik.home_sapiens.pi;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.servlet.ServletContextEvent;
 import javax.servlet.ServletContextListener;
 import javax.servlet.annotation.WebListener;
-import org.lobzik.home_sapiens.pi.modules.InternalSensorsModule;
-import org.lobzik.tools.Tools;
 
 /**
  * Web application lifecycle listener.

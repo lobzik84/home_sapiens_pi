@@ -40,11 +40,6 @@ public class InternalSensorsModule extends Thread {
     private static CommPort commPort = null;
     private static SerialWriter serialWriter = null;
 
-    public static final LinkedList<Measurement> internalTemps = new LinkedList();
-    public static final LinkedList<Measurement> roomTemps = new LinkedList();
-    public static final LinkedList<Measurement> leftACTemps = new LinkedList();
-    public static final LinkedList<Measurement> rightACTemps = new LinkedList();
-
     public static final int HISTORY_SIZE = 50;
     private static final long POLL_PERIOD = 5 * 60 * 1000l;
     private static Connection conn = null;
@@ -116,39 +111,18 @@ public class InternalSensorsModule extends Thread {
             switch (address) {
                 case "28:f4:a7:26:04:00:00:35:":
                     param_id = 1;
-                    internalTemps.add(m);
-                    while (internalTemps.size() > HISTORY_SIZE) {
-                        internalTemps.remove(0);
-                    }
-
                     break;
                 case "28:80:a6:26:04:00:00:bc:":
                     param_id = 2;
-                    roomTemps.add(m);
-                    while (roomTemps.size() > HISTORY_SIZE) {
-                        roomTemps.remove(0);
-                    }
-
                     break;
                 case "28:99:d2:26:04:00:00:03:":
                     param_id = 3;
-                    leftACTemps.add(m);
-                    while (leftACTemps.size() > HISTORY_SIZE) {
-                        leftACTemps.remove(0);
-                    }
-
                     break;
                 case "28:a5:b7:26:04:00:00:50:":
                     param_id = 4;
-                    rightACTemps.add(m);
-                    while (rightACTemps.size() > HISTORY_SIZE) {
-                        rightACTemps.remove(0);
-                    }
-
                     break;
 
             }
-
             HashMap dataMap = new HashMap();
             dataMap.put("parameter_id", param_id);
             dataMap.put("value_d", m.getDoubleValue());
@@ -177,9 +151,7 @@ public class InternalSensorsModule extends Thread {
         BufferedReader in = new BufferedReader(new InputStreamReader(serialPort.getInputStream()));
 
         String decodedString;
-        //StringBuffer sb = new StringBuffer();
         while ((decodedString = in.readLine()) != null && run) {
-            //sb.append(decodedString);
             System.out.println(decodedString);
             parse1WireReply(decodedString);
         }
