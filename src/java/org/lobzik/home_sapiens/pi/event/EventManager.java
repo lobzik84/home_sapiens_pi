@@ -5,12 +5,90 @@
  */
 package org.lobzik.home_sapiens.pi.event;
 
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import org.lobzik.home_sapiens.pi.modules.Module;
+
 /**
  *
  * @author lobzik
  */
-
-
-public class EventManager {
+public class EventManager extends Thread {
 //todo: run thread?, recieve events, register listeners, call listeners    
+
+    private static final Map<Event.Type, List> subscribers = new HashMap();
+    private static final List<Event> eventList = new LinkedList();
+    private static boolean run = true;
+    private static EventManager instance = null;
+
+    private EventManager() {
+
+    }
+
+//TODO subscription by event name?
+    public static EventManager getInstance() {
+        if (instance == null) {
+            instance = new EventManager(); //lazy init
+
+        }
+        return instance;
+    }
+
+    public void run() {
+        setName(this.getClass().getSimpleName() + "-Thread");
+        while (run) {
+            try {
+
+                for (Event e : eventList) {
+                    if (subscribers.get(e.type) != null) {
+                        List<Module> subscribersList = subscribers.get(e.type);
+                        //System.out.println("Event type " + e.type + ", notifying " + subscribersList.size() + " subscribers");
+                        for (Module m : subscribersList) {
+                            m.handleEvent(e);
+                            //System.out.println("Notifying " + m.getModuleName());
+
+                        }
+                    }
+                    eventList.remove(e);
+                }
+
+                try {
+                    synchronized (this) {
+                        wait();
+                    }
+                } catch (InterruptedException ie) {
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+    }
+
+    public void newEvent(Event event) {
+        eventList.add(event);
+        synchronized (this) {
+            notify();
+        }
+    }
+
+    public void finish() {
+        run = false;
+        synchronized (this) {
+            notify();
+        }
+    }
+
+    public static void subscribeForEventType(Module module, Event.Type type) {
+
+        if (subscribers.get(type) == null) {
+            List<Module> modulesList = new LinkedList();
+            subscribers.put(type, modulesList);
+        }
+
+        subscribers.get(type).add(module);
+    }
+
 }

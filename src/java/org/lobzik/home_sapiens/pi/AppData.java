@@ -6,8 +6,7 @@
 package org.lobzik.home_sapiens.pi;
 
 import java.util.HashMap;
-import org.lobzik.home_sapiens.pi.modules.InternalSensorsModule;
-import org.lobzik.home_sapiens.pi.tunnel.client.TunnelClient;
+import org.lobzik.home_sapiens.pi.event.EventManager;
 
 /**
  *
@@ -16,6 +15,6 @@ import org.lobzik.home_sapiens.pi.tunnel.client.TunnelClient;
 public class AppData {
 
     public static final HashMap<String, Object> settings = new HashMap();
-    public static final TunnelClient tunnel = TunnelClient.getInstance();
-    public static final InternalSensorsModule internalSensorsModule = InternalSensorsModule.getInstance();
+
+    public static final EventManager eventManager = EventManager.getInstance();
 }

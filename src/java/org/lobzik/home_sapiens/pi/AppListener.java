@@ -10,6 +10,8 @@ import java.util.logging.Logger;
 import javax.servlet.ServletContextEvent;
 import javax.servlet.ServletContextListener;
 import javax.servlet.annotation.WebListener;
+import org.lobzik.home_sapiens.pi.modules.DBDataWriterModule;
+import org.lobzik.home_sapiens.pi.modules.InternalSensorsModule;
 
 /**
  * Web application lifecycle listener.
@@ -23,12 +25,14 @@ public class AppListener implements ServletContextListener {
     public void contextInitialized(ServletContextEvent sce) {
 
         try {
+            System.out.println("Starting hs app. Modules start!");
            // System.setProperty("gnu.io.rxtx.LibraryLoader", "true");
-            
+
             //AppData.tunnel.connect();
             //TODO start modules
-           AppData.internalSensorsModule.start();
-            
+            AppData.eventManager.start();
+            DBDataWriterModule.getInstance().start();
+            InternalSensorsModule.getInstance().start();
 
         } catch (Exception ex) {
             Logger.getLogger(AppListener.class.getName()).log(Level.SEVERE, null, ex);
@@ -39,9 +43,11 @@ public class AppListener implements ServletContextListener {
     @Override
     public void contextDestroyed(ServletContextEvent sce) {
         try {
+            System.out.println("Context Destroyed called. Stopping application modules!");
             //AppData.tunnel.disconnect();
-            AppData.internalSensorsModule.finish(); //only static methods works!!
-            
+            InternalSensorsModule.finish(); //only static methods works!!
+            DBDataWriterModule.getInstance().finish();
+            AppData.eventManager.finish();
 
         } catch (Exception ex) {
             Logger.getLogger(AppListener.class.getName()).log(Level.SEVERE, null, ex);

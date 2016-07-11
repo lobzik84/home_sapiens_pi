@@ -18,20 +18,25 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import org.apache.log4j.Logger;
 import org.lobzik.home_sapiens.entity.Measurement;
+import org.lobzik.home_sapiens.pi.AppData;
 import org.lobzik.home_sapiens.pi.BoxCommonData;
+import org.lobzik.home_sapiens.pi.event.Event;
+import org.lobzik.home_sapiens.pi.event.EventManager;
 import org.lobzik.tools.db.mysql.DBTools;
 
 /**
  *
  * @author lobzik
  */
-public class InternalSensorsModule extends Thread {
+public class InternalSensorsModule extends Thread implements Module {
 
     private static InternalSensorsModule instance = null;
 
     public static final int NOT_CONNECTED_STATE = -1;
     public static final int CONNECTING_STATE = 0;
     public static final int CONNECTED_STATE = 1;
+
+    public final String MODULE_NAME = this.getClass().getSimpleName();
 
     private int state = NOT_CONNECTED_STATE;
     private static long connectTries = 0;
@@ -41,8 +46,17 @@ public class InternalSensorsModule extends Thread {
     private static SerialWriter serialWriter = null;
 
     public static final int HISTORY_SIZE = 50;
-    private static final long POLL_PERIOD = 5 * 60 * 1000l;
-    private static Connection conn = null;
+    private static final long POLL_PERIOD = 5000;//5 * 60 * 1000l;
+
+    @Override
+    public String getModuleName() {
+        return MODULE_NAME;
+    }
+
+    @Override
+    public void handleEvent(Event e) {
+
+    }
 
     private InternalSensorsModule() { //singleton
     }
@@ -54,14 +68,15 @@ public class InternalSensorsModule extends Thread {
         return instance;
     }
 
+    @Override
     public synchronized void run() {
+        setName(this.getClass().getSimpleName() + "-Thread");
         try {
             connectTries++;
             state = CONNECTING_STATE;
-            conn = DBTools.openConnection(BoxCommonData.dataSourceName);
-            connect("/dev/ttyACM0");
+            connect("/dev/ttyUSB0");
             state = CONNECTED_STATE;
-           // conn.close();
+            // conn.close();
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -77,7 +92,6 @@ public class InternalSensorsModule extends Thread {
         }
         run = false;
         instance.state = NOT_CONNECTED_STATE;
-        DBTools.closeConnection(conn);
         /*try {
          if (commPort != null) {
          commPort.close();
@@ -87,10 +101,6 @@ public class InternalSensorsModule extends Thread {
          t.printStackTrace();
          }*/
         //log.info("Disconnected.");
-    }
-
-    public int getTunnelState() {
-        return state;
     }
 
     public void setLogger(Logger logger) {
@@ -106,28 +116,32 @@ public class InternalSensorsModule extends Thread {
             val = val.trim();
             String address = data.substring(0, data.indexOf("TEMP"));
             address = address.trim();
-            int param_id = 0;
+            int paramId = 0;
             Measurement m = new Measurement(val);
             switch (address) {
                 case "28:f4:a7:26:04:00:00:35:":
-                    param_id = 1;
+                    paramId = 1;
                     break;
                 case "28:80:a6:26:04:00:00:bc:":
-                    param_id = 2;
+                    paramId = 2;
                     break;
                 case "28:99:d2:26:04:00:00:03:":
-                    param_id = 3;
+                    paramId = 3;
                     break;
                 case "28:a5:b7:26:04:00:00:50:":
-                    param_id = 4;
+                    paramId = 4;
                     break;
 
             }
-            HashMap dataMap = new HashMap();
-            dataMap.put("parameter_id", param_id);
-            dataMap.put("value_d", m.getDoubleValue());
-            dataMap.put("date", new Date(m.getTime()));
-            DBTools.insertRow("sensors_data", dataMap, conn);
+            if (paramId > 0) {
+                HashMap eventData = new HashMap();
+                eventData.put("parameter_id", paramId);
+                eventData.put("measurement_new", m);
+
+                Event e = new Event("1-wire updated", eventData, Event.Type.PARAMETER_UPDATED);
+
+                AppData.eventManager.newEvent(e);
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -155,7 +169,6 @@ public class InternalSensorsModule extends Thread {
             System.out.println(decodedString);
             parse1WireReply(decodedString);
         }
-
         in.close();
         serialWriter.finish();
         portIdentifier = null;
@@ -169,11 +182,12 @@ public class InternalSensorsModule extends Thread {
         private static boolean run = true;
 
         public SerialWriter(OutputStream out, SerialPort port) {
+            setName(this.getClass().getSimpleName() + "-Thread");
             this.out = out;
             this.port = port;
         }
 
-        public synchronized void finish() {
+        public void finish() {
             run = false;
             synchronized (this) {
                 notify();
