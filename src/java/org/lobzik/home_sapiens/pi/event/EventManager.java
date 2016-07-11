@@ -36,6 +36,7 @@ public class EventManager extends Thread {
         return instance;
     }
 
+    @Override
     public void run() {
         setName(this.getClass().getSimpleName() + "-Thread");
         while (run) {

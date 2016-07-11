@@ -32,14 +32,9 @@ public class InternalSensorsModule extends Thread implements Module {
 
     private static InternalSensorsModule instance = null;
 
-    public static final int NOT_CONNECTED_STATE = -1;
-    public static final int CONNECTING_STATE = 0;
-    public static final int CONNECTED_STATE = 1;
 
     public final String MODULE_NAME = this.getClass().getSimpleName();
 
-    private int state = NOT_CONNECTED_STATE;
-    private static long connectTries = 0;
     private static Logger log = null;
     private static boolean run = true;
     private static CommPort commPort = null;
@@ -72,12 +67,7 @@ public class InternalSensorsModule extends Thread implements Module {
     public synchronized void run() {
         setName(this.getClass().getSimpleName() + "-Thread");
         try {
-            connectTries++;
-            state = CONNECTING_STATE;
-            connect("/dev/ttyUSB0");
-            state = CONNECTED_STATE;
-            // conn.close();
-
+            connect(BoxCommonData.SERIAL_PORT);
         } catch (Exception e) {
             e.printStackTrace();
             //break;
@@ -85,22 +75,11 @@ public class InternalSensorsModule extends Thread implements Module {
     }
 
     public static void finish() {
-        //log.info("Disconnecting...");
         if (serialWriter != null) {
             serialWriter.finish();
 
         }
         run = false;
-        instance.state = NOT_CONNECTED_STATE;
-        /*try {
-         if (commPort != null) {
-         commPort.close();
-         }
-         commPort = null;
-         } catch (Throwable t) {
-         t.printStackTrace();
-         }*/
-        //log.info("Disconnected.");
     }
 
     public void setLogger(Logger logger) {

@@ -63,7 +63,9 @@ public class TunnelClient extends Thread {
         instance.start();
     }
 
+    @Override
     public synchronized void run() {
+        setName(this.getClass().getSimpleName() + "-Thread");
         while (run) {
             try {
                 connectTries++;
