@@ -16,7 +16,6 @@ import org.lobzik.home_sapiens.pi.modules.Module;
  * @author lobzik
  */
 public class EventManager extends Thread {
-//todo: run thread?, recieve events, register listeners, call listeners    
 
     private static final Map<Event.Type, List> subscribers = new HashMap();
     private static final List<Event> eventList = new LinkedList();
