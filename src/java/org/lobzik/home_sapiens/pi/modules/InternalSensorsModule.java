@@ -12,17 +12,14 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
-import java.sql.Connection;
-import java.util.Date;
 import java.util.HashMap;
-import java.util.LinkedList;
+import org.apache.log4j.Appender;
 import org.apache.log4j.Logger;
 import org.lobzik.home_sapiens.entity.Measurement;
 import org.lobzik.home_sapiens.pi.AppData;
 import org.lobzik.home_sapiens.pi.BoxCommonData;
+import org.lobzik.home_sapiens.pi.ConnJDBCAppender;
 import org.lobzik.home_sapiens.pi.event.Event;
-import org.lobzik.home_sapiens.pi.event.EventManager;
-import org.lobzik.tools.db.mysql.DBTools;
 
 /**
  *
@@ -59,6 +56,9 @@ public class InternalSensorsModule extends Thread implements Module {
     public static InternalSensorsModule getInstance() {
         if (instance == null) {
             instance = new InternalSensorsModule(); //lazy init
+            log = Logger.getLogger(instance.MODULE_NAME);
+            Appender appender = ConnJDBCAppender.getAppenderInstance(AppData.dataSource, instance.MODULE_NAME);
+            log.addAppender(appender);
         }
         return instance;
     }
@@ -66,15 +66,18 @@ public class InternalSensorsModule extends Thread implements Module {
     @Override
     public synchronized void run() {
         setName(this.getClass().getSimpleName() + "-Thread");
+        log.info("Starting " + getName());
         try {
             connect(BoxCommonData.SERIAL_PORT);
         } catch (Exception e) {
+            log.error(e.getMessage());
             e.printStackTrace();
             //break;
         }
     }
 
     public static void finish() {
+        log.info("Stopping " + serialWriter.getName());
         if (serialWriter != null) {
             serialWriter.finish();
 
@@ -82,9 +85,6 @@ public class InternalSensorsModule extends Thread implements Module {
         run = false;
     }
 
-    public void setLogger(Logger logger) {
-        log = logger;
-    }
 
     private void parse1WireReply(String data) {
         try {
@@ -122,6 +122,7 @@ public class InternalSensorsModule extends Thread implements Module {
                 AppData.eventManager.newEvent(e);
             }
         } catch (Exception e) {
+            log.error(e.getMessage());
             e.printStackTrace();
         }
     }
@@ -133,7 +134,7 @@ public class InternalSensorsModule extends Thread implements Module {
         commPort = portIdentifier.open(this.getClass().getName(), timeout);
 
         SerialPort serialPort = (SerialPort) commPort;
-        serialPort.setSerialPortParams(9600,
+        serialPort.setSerialPortParams(57600,
                 SerialPort.DATABITS_8,
                 SerialPort.STOPBITS_1,
                 SerialPort.PARITY_NONE);

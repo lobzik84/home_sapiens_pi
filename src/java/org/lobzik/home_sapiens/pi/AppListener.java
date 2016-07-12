@@ -5,11 +5,20 @@
  */
 package org.lobzik.home_sapiens.pi;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import javax.naming.Context;
+import javax.naming.InitialContext;
 import javax.servlet.ServletContextEvent;
 import javax.servlet.ServletContextListener;
 import javax.servlet.annotation.WebListener;
+import org.apache.log4j.Appender;
+import org.apache.log4j.AsyncAppender;
+import org.apache.log4j.BasicConfigurator;
+import org.apache.log4j.ConsoleAppender;
+import org.apache.log4j.FileAppender;
+import org.apache.log4j.Logger;
+import org.apache.log4j.PatternLayout;
+import org.apache.log4j.jdbc.JDBCAppender;
+import org.apache.tomcat.dbcp.dbcp.BasicDataSource;
 import org.lobzik.home_sapiens.pi.modules.DBDataWriterModule;
 import org.lobzik.home_sapiens.pi.modules.InternalSensorsModule;
 
@@ -21,11 +30,18 @@ import org.lobzik.home_sapiens.pi.modules.InternalSensorsModule;
 @WebListener()
 public class AppListener implements ServletContextListener {
 
+    private static Logger log = Logger.getRootLogger();
+
     @Override
     public void contextInitialized(ServletContextEvent sce) {
 
         try {
-            System.out.println("Starting hs app. Modules start!");
+            PatternLayout layout = new PatternLayout("%d{yyyy.MM.dd HH:mm:ss} %c{1} %-5p: %m%n");
+            ConsoleAppender consoleAppender = new ConsoleAppender(layout);
+            BasicConfigurator.configure(consoleAppender);
+            log.info("Root Log init ok");
+            log.info("Starting hs app. Modules start!");
+
            // System.setProperty("gnu.io.rxtx.LibraryLoader", "true");
 
             //AppData.tunnel.connect();
@@ -34,8 +50,8 @@ public class AppListener implements ServletContextListener {
             DBDataWriterModule.getInstance().start();
             InternalSensorsModule.getInstance().start();
 
-        } catch (Exception ex) {
-            Logger.getLogger(AppListener.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (Throwable ex) {
+            ex.printStackTrace();
         }
 
     }
@@ -43,14 +59,15 @@ public class AppListener implements ServletContextListener {
     @Override
     public void contextDestroyed(ServletContextEvent sce) {
         try {
-            System.out.println("Context Destroyed called. Stopping application modules!");
+            log.info("Context Destroyed called. Stopping application modules!");
             //AppData.tunnel.disconnect();
             InternalSensorsModule.finish(); //only static methods works!!
             DBDataWriterModule.getInstance().finish();
             AppData.eventManager.finish();
+            BasicConfigurator.resetConfiguration();
 
-        } catch (Exception ex) {
-            Logger.getLogger(AppListener.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (Throwable ex) {
+            ex.printStackTrace();
         }
     }
 }
