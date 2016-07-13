@@ -41,7 +41,8 @@ public class EventManager extends Thread {
         while (run) {
             try {
 
-                for (Event e : eventList) {
+                while (eventList.size() > 0) {
+                    Event e = eventList.remove(0);
                     if (subscribers.get(e.type) != null) {
                         List<Module> subscribersList = subscribers.get(e.type);
                         //System.out.println("Event type " + e.type + ", notifying " + subscribersList.size() + " subscribers");
@@ -51,9 +52,10 @@ public class EventManager extends Thread {
 
                         }
                     }
-                    eventList.remove(e);
+                    //eventList.remove(e);
+                    
                 }
-
+                
                 try {
                     synchronized (this) {
                         wait();

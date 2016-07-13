@@ -51,17 +51,21 @@ public class DBDataWriterModule implements Module {
     }
 
     @Override
-    public void handleEvent(Event e) {
+    public synchronized void handleEvent(Event e) {
         if (e.type != Event.Type.PARAMETER_UPDATED) {
             return; // JIC
         }
         HashMap dataMap = new HashMap();
         dataMap.put("parameter_id", e.data.get("parameter_id"));
-        Measurement m = (Measurement)e.data.get("measurement_new");
+        Measurement m = (Measurement) e.data.get("measurement_new");
         dataMap.put("value_d", m.getDoubleValue());
         dataMap.put("date", new Date(m.getTime()));
-        System.out.println("About to insert "  + dataMap.toString());
-        // DBTools.insertRow("sensors_data", dataMap, conn);
+        System.out.println("About to insert " + dataMap.toString());
+        try {
+            DBTools.insertRow("sensors_data", dataMap, conn);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
     }
 
     public static void finish() {

@@ -38,7 +38,7 @@ public class InternalSensorsModule extends Thread implements Module {
     private static SerialWriter serialWriter = null;
 
     public static final int HISTORY_SIZE = 50;
-    private static final long POLL_PERIOD = 5000;//5 * 60 * 1000l;
+    private static final long POLL_PERIOD = 5 * 60 * 1000l;
 
     @Override
     public String getModuleName() {
@@ -66,7 +66,7 @@ public class InternalSensorsModule extends Thread implements Module {
     @Override
     public synchronized void run() {
         setName(this.getClass().getSimpleName() + "-Thread");
-        log.info("Starting " + getName());
+        log.info("Starting " + getName() + " on " + BoxCommonData.SERIAL_PORT);
         try {
             connect(BoxCommonData.SERIAL_PORT);
         } catch (Exception e) {
