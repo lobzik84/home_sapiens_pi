@@ -20,6 +20,7 @@ import org.lobzik.home_sapiens.pi.AppData;
 import org.lobzik.home_sapiens.pi.BoxCommonData;
 import org.lobzik.home_sapiens.pi.ConnJDBCAppender;
 import org.lobzik.home_sapiens.pi.event.Event;
+import org.lobzik.home_sapiens.pi.event.EventManager;
 
 /**
  *
@@ -38,7 +39,7 @@ public class InternalSensorsModule extends Thread implements Module {
     private static SerialWriter serialWriter = null;
 
     public static final int HISTORY_SIZE = 50;
-    private static final long POLL_PERIOD = 5 * 60 * 1000l;
+    private static final long POLL_PERIOD = 5000l;
 
     @Override
     public String getModuleName() {
@@ -47,7 +48,9 @@ public class InternalSensorsModule extends Thread implements Module {
 
     @Override
     public void handleEvent(Event e) {
-
+        if (e.type == Event.Type.TIMER_EVENT && e.name.equals("internal_sensors_poll")) {
+            serialWriter.poll();
+        }
     }
 
     private InternalSensorsModule() { //singleton
@@ -67,6 +70,7 @@ public class InternalSensorsModule extends Thread implements Module {
     public synchronized void run() {
         setName(this.getClass().getSimpleName() + "-Thread");
         log.info("Starting " + getName() + " on " + BoxCommonData.SERIAL_PORT);
+        EventManager.subscribeForEventType(this, Event.Type.TIMER_EVENT);
         try {
             connect(BoxCommonData.SERIAL_PORT);
         } catch (Exception e) {
@@ -95,27 +99,13 @@ public class InternalSensorsModule extends Thread implements Module {
             val = val.trim();
             String address = data.substring(0, data.indexOf("TEMP"));
             address = address.trim();
-            int paramId = 0;
+            int paramId = AppData.parametersStorage.resolveAlias(address);
             Measurement m = new Measurement(val);
-            switch (address) {
-                case "28:f4:a7:26:04:00:00:35:":
-                    paramId = 1;
-                    break;
-                case "28:80:a6:26:04:00:00:bc:":
-                    paramId = 2;
-                    break;
-                case "28:99:d2:26:04:00:00:03:":
-                    paramId = 3;
-                    break;
-                case "28:a5:b7:26:04:00:00:50:":
-                    paramId = 4;
-                    break;
 
-            }
             if (paramId > 0) {
+                AppData.parametersStorage.set(paramId, m);
                 HashMap eventData = new HashMap();
-                eventData.put("parameter_id", paramId);
-                eventData.put("measurement_new", m);
+                eventData.put("parameter", AppData.parametersStorage.getParameter(paramId));
 
                 Event e = new Event("1-wire updated", eventData, Event.Type.PARAMETER_UPDATED);
 
@@ -146,7 +136,7 @@ public class InternalSensorsModule extends Thread implements Module {
 
         String decodedString;
         while ((decodedString = in.readLine()) != null && run) {
-            System.out.println(decodedString);
+            log.debug("UART: " + decodedString);
             parse1WireReply(decodedString);
         }
         in.close();
@@ -173,6 +163,12 @@ public class InternalSensorsModule extends Thread implements Module {
                 notify();
             }
         }
+        
+        public void poll() {
+            synchronized (this) {
+                notify();
+            }
+        }
 
         public synchronized void run() {
             OutputStreamWriter outWriter = new OutputStreamWriter(this.out);
@@ -183,6 +179,7 @@ public class InternalSensorsModule extends Thread implements Module {
                     try {
                         synchronized (this) {
                             wait(POLL_PERIOD);
+                            //wait();
                         }
                     } catch (InterruptedException ie) {
                     }

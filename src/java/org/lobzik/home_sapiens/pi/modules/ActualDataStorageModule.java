@@ -5,10 +5,14 @@
  */
 package org.lobzik.home_sapiens.pi.modules;
 
-import java.sql.Connection;
-import org.lobzik.home_sapiens.pi.BoxCommonData;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import org.lobzik.home_sapiens.entity.Measurement;
+import org.lobzik.home_sapiens.entity.Parameter;
+import org.lobzik.home_sapiens.pi.AppData;
 import org.lobzik.home_sapiens.pi.event.Event;
-import org.lobzik.tools.db.mysql.DBTools;
+import org.lobzik.home_sapiens.pi.event.EventManager;
 
 /**
  *
@@ -18,8 +22,9 @@ public class ActualDataStorageModule implements Module {
 
     public final String MODULE_NAME = this.getClass().getSimpleName();
     private static ActualDataStorageModule instance = null;
-    private static Connection conn = null;
-
+    private static final int CACHE_SIZE = 100; 
+    //private static final HashMap<Integer, List> parametersCache = new HashMap();
+            
     private ActualDataStorageModule() { //singleton
     }
 
@@ -37,19 +42,27 @@ public class ActualDataStorageModule implements Module {
 
     @Override
     public void start() {
-        try {
-            conn = DBTools.openConnection(BoxCommonData.dataSourceName);
-
-        } catch (Exception e) {
-            e.printStackTrace();
+        for (Integer paramId: AppData.parametersStorage.getParameterIds()) {
+            List<Parameter> paramHistory = new LinkedList();
+            AppData.parametersCache.put(paramId, paramHistory);
+            EventManager.subscribeForEventType(this, Event.Type.PARAMETER_UPDATED);
         }
     }
 
     @Override
-    public void handleEvent(Event e) {
+    public synchronized void handleEvent(Event e) {
+        if (e.type == Event.Type.PARAMETER_UPDATED) {
+            Parameter parameter = (Parameter)e.data.get("parameter");
+            List<Parameter> history = AppData.parametersCache.get(parameter.getId());
+            history.add(parameter);
+            while (history.size() > CACHE_SIZE) history.remove(0);
+            AppData.parametersCache.put(parameter.getId(), history);
+        }
     }
 
+
+
     public static void finish() {
-        DBTools.closeConnection(conn);
+
     }
 }

@@ -5,22 +5,17 @@
  */
 package org.lobzik.home_sapiens.pi;
 
-import javax.naming.Context;
-import javax.naming.InitialContext;
 import javax.servlet.ServletContextEvent;
 import javax.servlet.ServletContextListener;
 import javax.servlet.annotation.WebListener;
-import org.apache.log4j.Appender;
-import org.apache.log4j.AsyncAppender;
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.ConsoleAppender;
-import org.apache.log4j.FileAppender;
 import org.apache.log4j.Logger;
 import org.apache.log4j.PatternLayout;
-import org.apache.log4j.jdbc.JDBCAppender;
-import org.apache.tomcat.dbcp.dbcp.BasicDataSource;
+import org.lobzik.home_sapiens.pi.modules.ActualDataStorageModule;
 import org.lobzik.home_sapiens.pi.modules.DBDataWriterModule;
 import org.lobzik.home_sapiens.pi.modules.InternalSensorsModule;
+import org.lobzik.home_sapiens.pi.modules.TimerModule;
 
 /**
  * Web application lifecycle listener.
@@ -46,9 +41,13 @@ public class AppListener implements ServletContextListener {
 
             //AppData.tunnel.connect();
             //TODO start modules
-            AppData.eventManager.start();
+
             DBDataWriterModule.getInstance().start();
+            ActualDataStorageModule.getInstance().start();
+            
             InternalSensorsModule.getInstance().start();
+            TimerModule.getInstance().start();
+            
 
         } catch (Throwable ex) {
             ex.printStackTrace();
@@ -61,8 +60,9 @@ public class AppListener implements ServletContextListener {
         try {
             log.info("Context Destroyed called. Stopping application modules!");
             //AppData.tunnel.disconnect();
+            TimerModule.finish();
             InternalSensorsModule.finish(); //only static methods works!!
-            DBDataWriterModule.getInstance().finish();
+            DBDataWriterModule.finish();
             AppData.eventManager.finish();
             BasicConfigurator.resetConfiguration();
 
