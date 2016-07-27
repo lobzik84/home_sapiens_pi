@@ -88,8 +88,8 @@ public class EventManager extends Thread {
             List<Module> modulesList = new LinkedList();
             subscribers.put(type, modulesList);
         }
-
-        subscribers.get(type).add(module);
+        if (!subscribers.get(type).contains(module))
+            subscribers.get(type).add(module); //subscribe only once
     }
 
 }
