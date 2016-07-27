@@ -103,10 +103,9 @@ public class InternalSensorsModule extends Thread implements Module {
             Measurement m = new Measurement(val);
 
             if (paramId > 0) {
-                AppData.parametersStorage.set(paramId, m);
                 HashMap eventData = new HashMap();
                 eventData.put("parameter", AppData.parametersStorage.getParameter(paramId));
-
+                eventData.put("measurement", m);
                 Event e = new Event("1-wire updated", eventData, Event.Type.PARAMETER_UPDATED);
 
                 AppData.eventManager.newEvent(e);
@@ -178,8 +177,8 @@ public class InternalSensorsModule extends Thread implements Module {
                     outWriter.flush();
                     try {
                         synchronized (this) {
-                            wait(POLL_PERIOD);
-                            //wait();
+                            //wait(POLL_PERIOD);
+                            wait();
                         }
                     } catch (InterruptedException ie) {
                     }

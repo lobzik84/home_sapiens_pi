@@ -51,9 +51,7 @@ public class EventManager extends Thread {
                             //System.out.println("Notifying " + m.getModuleName());
 
                         }
-                    }
-                    //eventList.remove(e);
-                    
+                    }               
                 }
                 
                 try {
@@ -70,6 +68,7 @@ public class EventManager extends Thread {
     }
 
     public void newEvent(Event event) {
+        //System.out.println("New event! " + event.data);
         eventList.add(event);
         synchronized (this) {
             notify();

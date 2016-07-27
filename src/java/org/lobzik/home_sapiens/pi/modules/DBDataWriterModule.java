@@ -55,9 +55,9 @@ public class DBDataWriterModule implements Module {
         try {
             conn = DBTools.openConnection(BoxCommonData.dataSourceName);
             //ready to accept events, subscribing
-            
+
             EventManager.subscribeForEventType(this, Event.Type.TIMER_EVENT);
-            
+
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -66,31 +66,30 @@ public class DBDataWriterModule implements Module {
     @Override
     public synchronized void handleEvent(Event e) {
         if (e.type == Event.Type.TIMER_EVENT && e.name.equals("write_db_data")) {
-            for (Integer paramId : AppData.parametersCache.keySet()) {
+            for (Integer paramId : AppData.parametersStorage.getParameterIds()) {
                 try {
-                    HashMap dataMap = new HashMap();
-                    dataMap.put("parameter_id", paramId);
-                    List<Parameter> history = AppData.parametersCache.get(paramId);
-                    long lastMeasurement = 0l;
-                    int occurencies = 0;
-                    double sum = 0d;
-                    for (Parameter p : history) {
-                        if (p.get().getTime() > lastWriteTime) {
-                            occurencies++;
-                            if (p.get().getTime() > lastMeasurement) {
-                                lastMeasurement = p.get().getTime();
-                            }
-                            sum += p.get().getDoubleValue();
-                        }
-                    }
-                    if (occurencies > 0) {
-                        dataMap.put("value_d", sum / occurencies);
-                        dataMap.put("date", new Date(lastMeasurement));
-                        //System.out.println("About to insert " + dataMap.toString());
-                        log.debug("Found " + occurencies + " occurencies of parameter id=" + paramId + ", writing " + dataMap.toString());
+                    Parameter p = AppData.parametersStorage.getParameter(paramId);
+                    //if (p.type()== Parameter.type.ANALOG)
+                    Measurement avg = AppData.measurementsCache.getAvgMeasurementFrom(p, lastWriteTime);
+                    Measurement min = AppData.measurementsCache.getMinMeasurementFrom(p, lastWriteTime);
+                    Measurement max = AppData.measurementsCache.getMaxMeasurementFrom(p, lastWriteTime);
+                    if (avg != null && min != null && max != null) {
+                        HashMap dataMap = new HashMap();
+                        dataMap.put("parameter_id", paramId);
+
+                        //Measurement avg = new Measurement(sum/occurencies);
+                        dataMap.put("value_d", avg.getDoubleValue());
+                        dataMap.put("value_min", min.getDoubleValue());
+                        dataMap.put("date_min", new Date(min.getTime()));
+                        dataMap.put("value_max", max.getDoubleValue());
+                        dataMap.put("date_max", new Date(max.getTime()));
+                        dataMap.put("value_avg", avg.getDoubleValue());
+                        dataMap.put("date", new Date(avg.getTime()));
+
+                        log.debug("Writing " + dataMap.toString());
                         // DBTools.insertRow("sensors_data", dataMap, conn);
-                        
                     }
+
                 } catch (Exception ex) {
                     log.error(ex.getMessage());
                 }

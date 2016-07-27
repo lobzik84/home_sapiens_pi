@@ -23,18 +23,18 @@ public class AppData {
     public static final BasicDataSource dataSource;
     public static final EventManager eventManager = EventManager.getInstance(); //launches BEFORE AppListener called
     public static final ParametersStorage parametersStorage; //launches BEFORE AppListener called
-    public static final Map<Integer, List> parametersCache = new HashMap();
+    public static final MeasurementsCache measurementsCache;
 
     static {
         BasicDataSource ds = null;
         ParametersStorage ps = null;
+        MeasurementsCache mc = null;
         try {
             Context initCtx = new InitialContext();
             Context envCtx = (Context) initCtx.lookup("java:comp/env");
             ds = (BasicDataSource) envCtx.lookup(BoxCommonData.dataSourceName);
             
-            ps = ParametersStorage.getInstance();
-            eventManager.start();
+            ps = ParametersStorage.getInstance();    
             
         } catch (Exception e) {
             System.err.println("Fatal error during initialization!");
@@ -43,5 +43,13 @@ public class AppData {
         }
         dataSource = ds;
         parametersStorage = ps;
+        
+        measurementsCache = MeasurementsCache.getInstance();;
+        
+        eventManager.start();
+    }
+    
+    public static void init() {
+        
     }
 }

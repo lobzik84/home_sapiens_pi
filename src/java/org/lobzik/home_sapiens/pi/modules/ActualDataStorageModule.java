@@ -22,8 +22,7 @@ public class ActualDataStorageModule implements Module {
 
     public final String MODULE_NAME = this.getClass().getSimpleName();
     private static ActualDataStorageModule instance = null;
-    private static final int CACHE_SIZE = 100; 
-    //private static final HashMap<Integer, List> parametersCache = new HashMap();
+
             
     private ActualDataStorageModule() { //singleton
     }
@@ -42,21 +41,17 @@ public class ActualDataStorageModule implements Module {
 
     @Override
     public void start() {
-        for (Integer paramId: AppData.parametersStorage.getParameterIds()) {
-            List<Parameter> paramHistory = new LinkedList();
-            AppData.parametersCache.put(paramId, paramHistory);
-            EventManager.subscribeForEventType(this, Event.Type.PARAMETER_UPDATED);
-        }
+        
+
+        EventManager.subscribeForEventType(this, Event.Type.PARAMETER_UPDATED);
     }
 
     @Override
     public synchronized void handleEvent(Event e) {
         if (e.type == Event.Type.PARAMETER_UPDATED) {
             Parameter parameter = (Parameter)e.data.get("parameter");
-            List<Parameter> history = AppData.parametersCache.get(parameter.getId());
-            history.add(parameter);
-            while (history.size() > CACHE_SIZE) history.remove(0);
-            AppData.parametersCache.put(parameter.getId(), history);
+            Measurement measurement = (Measurement)e.data.get("measurement");
+            AppData.measurementsCache.add(parameter, measurement);
         }
     }
 

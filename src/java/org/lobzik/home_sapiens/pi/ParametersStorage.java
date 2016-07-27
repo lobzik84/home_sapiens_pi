@@ -43,7 +43,7 @@ public class ParametersStorage {
     private void configure(List<HashMap> dbParamsList) {
         for (HashMap h : dbParamsList) {
             int id = Tools.parseInt(h.get("id"), 0);
-            Parameter p = new Parameter(id, (String) h.get("name"), (String) h.get("alias"), null, (String) h.get("description"), (String) h.get("format_pattern"), (String) h.get("unit"));
+            Parameter p = new Parameter(id, (String) h.get("name"), (String) h.get("alias"), (String) h.get("description"), (String) h.get("format_pattern"), (String) h.get("unit"));
             storage.put(id, p);
         }
     }
@@ -75,78 +75,6 @@ public class ParametersStorage {
         }
     }
 
-    public void set(int id, Measurement measurementP) {
-        Parameter p = storage.get(id);
-        if (p == null) {
-            return;
-        }
-        p.set(measurementP);
-    }
-
-    public void setData(int id, Object data) {
-        Parameter p = storage.get(id);
-        if (p == null) {
-            return;
-        }
-        p.setData(data);
-
-    }
-
-    public void set(String name,  Measurement measurementP) {
-        set(resolve(name), measurementP);
-    }
-
-    public Measurement get(int id) {
-        Parameter p = storage.get(id);
-        if (p == null) {
-            return null;
-        } else {
-            return p.get();
-        }
-    }
-
-    public Measurement get(String name) {
-        return get(resolve(name));
-    }
-/*
-    public String getF(int id) {
-        Parameter p = storage.get(id);
-        if (p == null) {
-            return null;
-        } else {
-            return p.getF();
-        }
-    }
-    public String getF(String name) {
-        return getF(resolve(name));
-    }
-
-    public String getFU(int id) {
-        Parameter p = storage.get(id);
-        if (p == null) {
-            return null;
-        } else {
-            return p.getFU();
-        }
-    }
-
-    public String getFU(String name) {
-        return getFU(resolve(name));
-    }
-
-    public Date getUpdateTime(int id) {
-        Parameter p = storage.get(id);
-        if (p == null) {
-            return null;
-        } else {
-            return p.getUpdateTime();
-        }
-    }
-
-    public Date getUpdateTime(String name) {
-        return getUpdateTime(resolve(name));
-    }
-*/
     public String getDescription(int id) {
         Parameter p = storage.get(id);
         if (p == null) {

@@ -27,7 +27,7 @@ public class TimerModule implements Module {
 
     public final String MODULE_NAME = this.getClass().getSimpleName();
     private static TimerModule instance = null;
-    private static HashMap<Integer, Timer> timers = new HashMap<Integer, Timer>();
+    private static final HashMap<Integer, Timer> timers = new HashMap();
     private final static String datePattern = "yyyy.MM.dd HH:mm:ss";
 
     private TimerModule() { //singleton
@@ -71,12 +71,11 @@ public class TimerModule implements Module {
         }
     }
 
-
     private void startTimer(HashMap timerMap) throws Exception {
-        Date startDate = (Date) timerMap.get("START_DATE");
-        int period = Tools.parseInt(timerMap.get("PERIOD"), 0);
-        int id = Tools.parseInt(timerMap.get("ID"), 0);
-        int enabled = Tools.parseInt(timerMap.get("ENABLED"), 0);
+        Date startDate = (Date) timerMap.get("start_date");
+        int period = Tools.parseInt(timerMap.get("period"), 0);
+        int id = Tools.parseInt(timerMap.get("id"), 0);
+        int enabled = Tools.parseInt(timerMap.get("enabled"), 0);
         if (enabled == 0) {
             return;
         }
@@ -95,7 +94,7 @@ public class TimerModule implements Module {
             }
         }
 
-        String name = (String) timerMap.get("NAME");
+        String name = (String) timerMap.get("name");
         Timer timer = new Timer(name + "-Timer", true);
         SignalTask signalTask = new SignalTask(name, null);
         if (period > 0) {
@@ -107,16 +106,16 @@ public class TimerModule implements Module {
     }
 
     private List<HashMap> getDBTimers(Connection conn) throws Exception {
-        String sSQL = " SELECT * FROM TIMER ";
+        String sSQL = " select * from timer ";
         SimpleDateFormat sdf = new SimpleDateFormat(datePattern);
         List<HashMap> result = DBSelect.getRows(sSQL, conn);
         for (HashMap timer : result) {
-            if (timer.get("START_DATE") != null) {
-                timer.put("START_DATE_STR", sdf.format(timer.get("START_DATE")));
+            if (timer.get("start_date") != null) {
+                timer.put("start_date_str", sdf.format(timer.get("start_date")));
             } else {
-                timer.put("START_DATE_STR", "Сразу");
+                timer.put("start_date_str", "Сразу");
             }
-            int period = Tools.parseInt(timer.get("PERIOD"), -1);
+            int period = Tools.parseInt(timer.get("period"), -1);
             int periodUnits = 1;
             if (period % 60 == 0) {
                 periodUnits = 60;
@@ -127,8 +126,8 @@ public class TimerModule implements Module {
 
                 }
             }
-            timer.put("PERIOD_U", period);
-            timer.put("PERIOD_UNITS", periodUnits);
+            timer.put("period_u", period);
+            timer.put("period_units", periodUnits);
         }
         return result;
     }

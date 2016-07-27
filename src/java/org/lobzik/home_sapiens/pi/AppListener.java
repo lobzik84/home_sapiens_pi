@@ -29,7 +29,7 @@ public class AppListener implements ServletContextListener {
 
     @Override
     public void contextInitialized(ServletContextEvent sce) {
-
+        AppData.init();
         try {
             PatternLayout layout = new PatternLayout("%d{yyyy.MM.dd HH:mm:ss} %c{1} %-5p: %m%n");
             ConsoleAppender consoleAppender = new ConsoleAppender(layout);
