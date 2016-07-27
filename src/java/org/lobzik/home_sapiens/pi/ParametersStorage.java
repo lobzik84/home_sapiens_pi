@@ -43,7 +43,8 @@ public class ParametersStorage {
     private void configure(List<HashMap> dbParamsList) {
         for (HashMap h : dbParamsList) {
             int id = Tools.parseInt(h.get("id"), 0);
-            Parameter p = new Parameter(id, (String) h.get("name"), (String) h.get("alias"), (String) h.get("description"), (String) h.get("format_pattern"), (String) h.get("unit"));
+            Parameter.Type type = Parameter.Type.valueOf((String)h.get("type"));
+            Parameter p = new Parameter(id, (String) h.get("name"), (String) h.get("alias"), (String) h.get("description"), (String) h.get("format_pattern"), (String) h.get("unit"), type);
             storage.put(id, p);
         }
     }
