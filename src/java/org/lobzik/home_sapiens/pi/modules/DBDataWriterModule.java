@@ -69,25 +69,33 @@ public class DBDataWriterModule implements Module {
             for (Integer paramId : AppData.parametersStorage.getParameterIds()) {
                 try {
                     Parameter p = AppData.parametersStorage.getParameter(paramId);
-                    //if (p.type()== Parameter.type.ANALOG)
-                    Measurement avg = AppData.measurementsCache.getAvgMeasurementFrom(p, lastWriteTime);
-                    Measurement min = AppData.measurementsCache.getMinMeasurementFrom(p, lastWriteTime);
-                    Measurement max = AppData.measurementsCache.getMaxMeasurementFrom(p, lastWriteTime);
-                    if (avg != null && min != null && max != null) {
-                        HashMap dataMap = new HashMap();
-                        dataMap.put("parameter_id", paramId);
+                    switch (p.getType()) {
+                        case ANALOG:
+                            Measurement avg = AppData.measurementsCache.getAvgMeasurementFrom(p, lastWriteTime);
+                            Measurement min = AppData.measurementsCache.getMinMeasurementFrom(p, lastWriteTime);
+                            Measurement max = AppData.measurementsCache.getMaxMeasurementFrom(p, lastWriteTime);
+                            if (avg != null && min != null && max != null) {
+                                HashMap dataMap = new HashMap();
+                                dataMap.put("parameter_id", paramId);
 
-                        //Measurement avg = new Measurement(sum/occurencies);
-                        dataMap.put("value_d", avg.getDoubleValue());
-                        dataMap.put("value_min", min.getDoubleValue());
-                        dataMap.put("date_min", new Date(min.getTime()));
-                        dataMap.put("value_max", max.getDoubleValue());
-                        dataMap.put("date_max", new Date(max.getTime()));
-                        dataMap.put("value_avg", avg.getDoubleValue());
-                        dataMap.put("date", new Date(avg.getTime()));
+                                dataMap.put("value_d", avg.getDoubleValue());
+                                dataMap.put("value_min", min.getDoubleValue());
+                                dataMap.put("date_min", new Date(min.getTime()));
+                                dataMap.put("value_max", max.getDoubleValue());
+                                dataMap.put("date_max", new Date(max.getTime()));
+                                dataMap.put("value_avg", avg.getDoubleValue());
+                                dataMap.put("date", new Date(avg.getTime()));
 
-                        log.debug("Writing " + dataMap.toString());
-                        // DBTools.insertRow("sensors_data", dataMap, conn);
+                                log.debug("Writing " + dataMap.toString());
+                                //DBTools.insertRow("sensors_data", dataMap, conn);
+                            }
+                            break;
+
+                        case BOOLEAN:
+                            break;
+
+                        case COUNTER:
+                            break;
                     }
 
                 } catch (Exception ex) {
