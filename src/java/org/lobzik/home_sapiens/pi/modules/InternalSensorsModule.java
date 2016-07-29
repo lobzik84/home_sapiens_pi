@@ -30,7 +30,6 @@ public class InternalSensorsModule extends Thread implements Module {
 
     private static InternalSensorsModule instance = null;
 
-
     public final String MODULE_NAME = this.getClass().getSimpleName();
 
     private static Logger log = null;
@@ -39,7 +38,6 @@ public class InternalSensorsModule extends Thread implements Module {
     private static SerialWriter serialWriter = null;
 
     public static final int HISTORY_SIZE = 50;
-    private static final long POLL_PERIOD = 5000l;
 
     @Override
     public String getModuleName() {
@@ -76,7 +74,6 @@ public class InternalSensorsModule extends Thread implements Module {
         } catch (Exception e) {
             log.error(e.getMessage());
             e.printStackTrace();
-            //break;
         }
     }
 
@@ -89,27 +86,43 @@ public class InternalSensorsModule extends Thread implements Module {
         run = false;
     }
 
-
-    private void parse1WireReply(String data) {
+    private void parseUartReply(String data) {
         try {
-            if (!data.contains("TEMP")) {
-                return;
-            }
-            String val = data.substring(data.lastIndexOf(":") + 1, data.length());
-            val = val.trim();
-            String address = data.substring(0, data.indexOf("TEMP"));
-            address = address.trim();
-            int paramId = AppData.parametersStorage.resolveAlias(address);
-            Measurement m = new Measurement(val);
+            if (data.contains("DS18B20")) {
+                String val = data.substring(data.lastIndexOf(":") + 1, data.length());
+                val = val.trim();
+                String address = data.substring(0, data.indexOf("DS18B20"));
+                address = address.trim();
+                int paramId = AppData.parametersStorage.resolveAlias(address);
+                Measurement m = new Measurement(val);
 
-            if (paramId > 0) {
-                HashMap eventData = new HashMap();
-                eventData.put("parameter", AppData.parametersStorage.getParameter(paramId));
-                eventData.put("measurement", m);
-                Event e = new Event("1-wire updated", eventData, Event.Type.PARAMETER_UPDATED);
+                if (paramId > 0) {
+                    HashMap eventData = new HashMap();
+                    eventData.put("parameter", AppData.parametersStorage.getParameter(paramId));
+                    eventData.put("measurement", m);
+                    Event e = new Event("1-wire updated", eventData, Event.Type.PARAMETER_UPDATED);
 
-                AppData.eventManager.newEvent(e);
+                    AppData.eventManager.newEvent(e);
+                }
             }
+            else if (data.contains(":")) {
+                String val = data.substring(data.lastIndexOf(":") + 1, data.length());
+                val = val.trim();
+                String paramName = data.substring(0, data.indexOf(":"));
+                paramName = paramName.trim();
+                int paramId = AppData.parametersStorage.resolveAlias(paramName);
+                Measurement m = new Measurement(val);
+                
+                if (paramId > 0) {
+                    HashMap eventData = new HashMap();
+                    eventData.put("parameter", AppData.parametersStorage.getParameter(paramId));
+                    eventData.put("measurement", m);
+                    Event e = new Event("internal sensors updated", eventData, Event.Type.PARAMETER_UPDATED);
+
+                    AppData.eventManager.newEvent(e);
+                }
+            }
+
         } catch (Exception e) {
             log.error(e.getMessage());
             e.printStackTrace();
@@ -136,7 +149,7 @@ public class InternalSensorsModule extends Thread implements Module {
         String decodedString;
         while ((decodedString = in.readLine()) != null && run) {
             log.debug("UART: " + decodedString);
-            parse1WireReply(decodedString);
+            parseUartReply(decodedString);
         }
         in.close();
         serialWriter.finish();
@@ -162,7 +175,7 @@ public class InternalSensorsModule extends Thread implements Module {
                 notify();
             }
         }
-        
+
         public void poll() {
             synchronized (this) {
                 notify();
@@ -173,11 +186,10 @@ public class InternalSensorsModule extends Thread implements Module {
             OutputStreamWriter outWriter = new OutputStreamWriter(this.out);
             while (run) {
                 try {
-                    outWriter.write("gt\r\n");
+                    outWriter.write("GS\r\n");
                     outWriter.flush();
                     try {
                         synchronized (this) {
-                            //wait(POLL_PERIOD);
                             wait();
                         }
                     } catch (InterruptedException ie) {

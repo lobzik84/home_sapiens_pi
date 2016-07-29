@@ -28,7 +28,6 @@ public class AppData {
     static {
         BasicDataSource ds = null;
         ParametersStorage ps = null;
-        MeasurementsCache mc = null;
         try {
             Context initCtx = new InitialContext();
             Context envCtx = (Context) initCtx.lookup("java:comp/env");

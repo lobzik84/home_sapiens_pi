@@ -46,6 +46,18 @@ public class MeasurementsCache {
         }
         cache.put(p, history);
     }
+    
+    public Measurement getAvgMeasurement(Parameter p) {
+        return getAvgMeasurementFrom(p, 0l);
+    }    
+    
+    public Measurement getMinMeasurement(Parameter p) {
+        return getMinMeasurementFrom(p, 0l);
+    }    
+    
+    public Measurement getMaxMeasurement(Parameter p) {
+        return getMaxMeasurementFrom(p, 0l);
+    }
 
     public Measurement getAvgMeasurementFrom(Parameter p, long millis) {
         List<Measurement> history = cache.get(p);
