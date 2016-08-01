@@ -49,9 +49,14 @@ public class ActualDataStorageModule implements Module {
     @Override
     public synchronized void handleEvent(Event e) {
         if (e.type == Event.Type.PARAMETER_UPDATED) {
-            Parameter parameter = (Parameter)e.data.get("parameter");
             Measurement measurement = (Measurement)e.data.get("measurement");
-            AppData.measurementsCache.add(parameter, measurement);
+            Parameter p = measurement.getParameter();
+            Measurement prevMeasurement =  AppData.measurementsCache.getLastMeasurement(p);
+            AppData.measurementsCache.add(measurement);
+            if (prevMeasurement == null ||  prevMeasurement.toStringValue() == null || !prevMeasurement.toStringValue().equals(measurement.toStringValue())) {
+                Event newE = new Event(e.name, e.data, Event.Type.PARAMETER_CHANGED);
+                AppData.eventManager.newEvent(newE);
+            }
         }
     }
 

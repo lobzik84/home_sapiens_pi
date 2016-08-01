@@ -16,11 +16,13 @@ import java.util.HashMap;
 import org.apache.log4j.Appender;
 import org.apache.log4j.Logger;
 import org.lobzik.home_sapiens.entity.Measurement;
+import org.lobzik.home_sapiens.entity.Parameter;
 import org.lobzik.home_sapiens.pi.AppData;
 import org.lobzik.home_sapiens.pi.BoxCommonData;
 import org.lobzik.home_sapiens.pi.ConnJDBCAppender;
 import org.lobzik.home_sapiens.pi.event.Event;
 import org.lobzik.home_sapiens.pi.event.EventManager;
+import org.lobzik.tools.Tools;
 
 /**
  *
@@ -94,11 +96,13 @@ public class InternalSensorsModule extends Thread implements Module {
                 String address = data.substring(0, data.indexOf("DS18B20"));
                 address = address.trim();
                 int paramId = AppData.parametersStorage.resolveAlias(address);
-                Measurement m = new Measurement(val);
+
 
                 if (paramId > 0) {
                     HashMap eventData = new HashMap();
-                    eventData.put("parameter", AppData.parametersStorage.getParameter(paramId));
+                    Parameter p = AppData.parametersStorage.getParameter(paramId);
+                    Measurement m = new Measurement(p, Tools.parseDouble(val, null));
+                    eventData.put("parameter", p);
                     eventData.put("measurement", m);
                     Event e = new Event("1-wire updated", eventData, Event.Type.PARAMETER_UPDATED);
 
@@ -111,11 +115,32 @@ public class InternalSensorsModule extends Thread implements Module {
                 String paramName = data.substring(0, data.indexOf(":"));
                 paramName = paramName.trim();
                 int paramId = AppData.parametersStorage.resolveAlias(paramName);
-                Measurement m = new Measurement(val);
                 
                 if (paramId > 0) {
                     HashMap eventData = new HashMap();
-                    eventData.put("parameter", AppData.parametersStorage.getParameter(paramId));
+                    Parameter p = AppData.parametersStorage.getParameter(paramId);
+                    Measurement m;
+                    switch (p.getType()) {
+                        case BOOLEAN:
+                            m = new Measurement(p, Tools.parseBoolean(val, null));        
+                            break;
+                            
+                        case DOUBLE:
+                            m = new Measurement(p, Tools.parseDouble(val, null));                            
+                            break;
+                            
+                        case INTEGER:
+                            m = new Measurement(p, Tools.parseInt(val, null));              
+                            break;
+                            
+                        default:
+                            m = new Measurement(p, val);
+                            break;
+                       
+                                    
+                    }
+                    
+                    eventData.put("parameter", p);
                     eventData.put("measurement", m);
                     Event e = new Event("internal sensors updated", eventData, Event.Type.PARAMETER_UPDATED);
 

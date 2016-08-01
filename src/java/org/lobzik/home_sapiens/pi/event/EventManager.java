@@ -69,6 +69,7 @@ public class EventManager extends Thread {
 
     public void newEvent(Event event) {
         //System.out.println("New event! " + event.data);
+        if (event == null) return;
         eventList.add(event);
         synchronized (this) {
             notify();

@@ -8,7 +8,6 @@ package org.lobzik.home_sapiens.pi.modules;
 import java.sql.Connection;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.List;
 import org.apache.log4j.Appender;
 import org.apache.log4j.Logger;
 import org.lobzik.home_sapiens.entity.Measurement;
@@ -57,6 +56,7 @@ public class DBDataWriterModule implements Module {
             //ready to accept events, subscribing
 
             EventManager.subscribeForEventType(this, Event.Type.TIMER_EVENT);
+            EventManager.subscribeForEventType(this, Event.Type.PARAMETER_CHANGED);
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -70,7 +70,7 @@ public class DBDataWriterModule implements Module {
                 try {
                     Parameter p = AppData.parametersStorage.getParameter(paramId);
                     switch (p.getType()) {
-                        case ANALOG:
+                        case DOUBLE:
                             Measurement avg = AppData.measurementsCache.getAvgMeasurementFrom(p, lastWriteTime);
                             Measurement min = AppData.measurementsCache.getMinMeasurementFrom(p, lastWriteTime);
                             Measurement max = AppData.measurementsCache.getMaxMeasurementFrom(p, lastWriteTime);
@@ -87,14 +87,25 @@ public class DBDataWriterModule implements Module {
                                 dataMap.put("date", new Date(avg.getTime()));
 
                                 log.debug("Writing " + dataMap.toString());
-                                //DBTools.insertRow("sensors_data", dataMap, conn);
+                                DBTools.insertRow("sensors_data", dataMap, conn);
                             }
                             break;
 
                         case BOOLEAN:
+                            Integer transferCounts = AppData.measurementsCache.getTransferTrueCountFrom(p, lastWriteTime);
+                            if (transferCounts != null && transferCounts > 0) {
+                                HashMap dataMap = new HashMap();
+                                dataMap.put("parameter_id", paramId);
+
+                                dataMap.put("transfer_count", transferCounts);
+                                dataMap.put("date", new Date());
+
+                                log.debug("Writing " + dataMap.toString());
+                                DBTools.insertRow("sensors_data", dataMap, conn);
+                            }
                             break;
 
-                        case COUNTER:
+                        case INTEGER:
                             break;
                     }
 
@@ -103,6 +114,23 @@ public class DBDataWriterModule implements Module {
                 }
             }
             lastWriteTime = System.currentTimeMillis();
+        } else if (e.type == Event.Type.PARAMETER_CHANGED) {
+            Measurement m = (Measurement) e.data.get("measurement");
+            Parameter p = m.getParameter();
+            if (p.getType() == Parameter.Type.BOOLEAN && m.getBooleanValue() != null) {
+                HashMap dataMap = new HashMap();
+                dataMap.put("parameter_id", p.getId());
+
+                dataMap.put("value_b", m.getBooleanValue()?1:0);
+                dataMap.put("date", new Date());
+
+                log.debug("Writing " + dataMap.toString());
+                try {
+                    DBTools.insertRow("sensors_data", dataMap, conn);
+                } catch (Exception ex) {
+                    log.error(ex.getMessage());
+                }
+            }
         }
 
     }

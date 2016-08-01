@@ -24,7 +24,7 @@ MeasurementsCache mc = AppData.measurementsCache;
 for (Integer pId: ps.getParameterIds()) {
     Parameter p = ps.getParameter(pId);
 %>
-        <%=p.getName()%>: <%=mc.getAvgMeasurement(p)%> <%=p.getUnit()%><br>
+        <%=p.getName()%>: <%=mc.getLastMeasurement(p).toStringValue()%> <%=p.getUnit()%><br>
 <%}%>
 
     </body>
