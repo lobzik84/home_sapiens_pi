@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import org.lobzik.home_sapiens.pi.modules.Module;
 
 /**
@@ -40,7 +41,7 @@ public class EventManager extends Thread {
         setName(this.getClass().getSimpleName() + "-Thread");
         while (run) {
             try {
-
+                eventList.removeIf(Objects::isNull); // or NPE is possible
                 while (eventList.size() > 0) {
                     Event e = eventList.remove(0);
                     if (subscribers.get(e.type) != null) {
