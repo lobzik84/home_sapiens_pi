@@ -49,7 +49,7 @@ public class InternalSensorsModule extends Thread implements Module {
     @Override
     public void handleEvent(Event e) {
         if (e.type == Event.Type.TIMER_EVENT && e.name.equals("internal_sensors_poll")) {
-            serialWriter.poll();
+           if (serialWriter != null) serialWriter.poll();
         }
     }
 
