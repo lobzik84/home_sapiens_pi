@@ -23,6 +23,7 @@ MeasurementsCache mc = AppData.measurementsCache;
 
 for (Integer pId: ps.getParameterIds()) {
     Parameter p = ps.getParameter(pId);
+    if (mc.getLastMeasurement(p) == null) continue;
 %>
         <%=p.getName()%>: <%=mc.getLastMeasurement(p).toStringValue()%> <%=p.getUnit()%><br>
 <%}%>
