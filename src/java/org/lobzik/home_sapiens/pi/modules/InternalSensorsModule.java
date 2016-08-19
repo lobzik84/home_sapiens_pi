@@ -60,8 +60,8 @@ public class InternalSensorsModule extends Thread implements Module {
         if (instance == null) {
             instance = new InternalSensorsModule(); //lazy init
             log = Logger.getLogger(instance.MODULE_NAME);
-            Appender appender = ConnJDBCAppender.getAppenderInstance(AppData.dataSource, instance.MODULE_NAME);
-            log.addAppender(appender);
+            //Appender appender = ConnJDBCAppender.getAppenderInstance(AppData.dataSource, instance.MODULE_NAME);
+            //log.addAppender(appender);
         }
         return instance;
     }
