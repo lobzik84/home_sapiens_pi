@@ -41,6 +41,12 @@ public class InternalSensorsModule extends Thread implements Module {
 
     public static final int HISTORY_SIZE = 50;
 
+    private static final int BAUD_RATE = 57600;
+    private static final int DATABITS = SerialPort.DATABITS_8;
+    private static final int STOPBITS = SerialPort.STOPBITS_1;
+    private static final int PARITY = SerialPort.PARITY_NONE;
+    private static final int PORT_TIMEOUT = 2000;
+
     @Override
     public String getModuleName() {
         return MODULE_NAME;
@@ -48,8 +54,25 @@ public class InternalSensorsModule extends Thread implements Module {
 
     @Override
     public void handleEvent(Event e) {
-        if (e.type == Event.Type.TIMER_EVENT && e.name.equals("internal_sensors_poll")) {
-           if (serialWriter != null) serialWriter.poll();
+
+        switch (e.getType()) {
+            case TIMER_EVENT:
+                if (e.name.equals("internal_sensors_poll")) {
+                    if (serialWriter != null) {
+                        serialWriter.poll();
+                    }
+                }
+                break;
+
+            case USER_ACTION:
+                if (e.name.equals("internal_uart_command")) {
+                    log.debug("Sending command " + (String) e.data.get("uart_command"));
+                    if (serialWriter != null) {
+                        serialWriter.doCommand((String) e.data.get("uart_command"));
+                    }
+                }
+                break;
+
         }
     }
 
@@ -60,8 +83,8 @@ public class InternalSensorsModule extends Thread implements Module {
         if (instance == null) {
             instance = new InternalSensorsModule(); //lazy init
             log = Logger.getLogger(instance.MODULE_NAME);
-            //Appender appender = ConnJDBCAppender.getAppenderInstance(AppData.dataSource, instance.MODULE_NAME);
-            //log.addAppender(appender);
+            Appender appender = ConnJDBCAppender.getAppenderInstance(AppData.dataSource, instance.MODULE_NAME);
+            log.addAppender(appender);
         }
         return instance;
     }
@@ -71,6 +94,7 @@ public class InternalSensorsModule extends Thread implements Module {
         setName(this.getClass().getSimpleName() + "-Thread");
         log.info("Starting " + getName() + " on " + BoxCommonData.SERIAL_PORT);
         EventManager.subscribeForEventType(this, Event.Type.TIMER_EVENT);
+        EventManager.subscribeForEventType(this, Event.Type.USER_ACTION);
         try {
             connect(BoxCommonData.SERIAL_PORT);
         } catch (Exception e) {
@@ -97,7 +121,6 @@ public class InternalSensorsModule extends Thread implements Module {
                 address = address.trim();
                 int paramId = AppData.parametersStorage.resolveAlias(address);
 
-
                 if (paramId > 0) {
                     HashMap eventData = new HashMap();
                     Parameter p = AppData.parametersStorage.getParameter(paramId);
@@ -108,38 +131,36 @@ public class InternalSensorsModule extends Thread implements Module {
 
                     AppData.eventManager.newEvent(e);
                 }
-            }
-            else if (data.contains(":")) {
+            } else if (data.contains(":")) {
                 String val = data.substring(data.lastIndexOf(":") + 1, data.length());
                 val = val.trim();
                 String paramName = data.substring(0, data.indexOf(":"));
                 paramName = paramName.trim();
                 int paramId = AppData.parametersStorage.resolveAlias(paramName);
-                
+
                 if (paramId > 0) {
                     HashMap eventData = new HashMap();
                     Parameter p = AppData.parametersStorage.getParameter(paramId);
                     Measurement m;
                     switch (p.getType()) {
                         case BOOLEAN:
-                            m = new Measurement(p, Tools.parseBoolean(val, null));        
+                            m = new Measurement(p, Tools.parseBoolean(val, null));
                             break;
-                            
+
                         case DOUBLE:
-                            m = new Measurement(p, Tools.parseDouble(val, null));                            
+                            m = new Measurement(p, Tools.parseDouble(val, null));
                             break;
-                            
+
                         case INTEGER:
-                            m = new Measurement(p, Tools.parseInt(val, null));              
+                            m = new Measurement(p, Tools.parseInt(val, null));
                             break;
-                            
+
                         default:
                             m = new Measurement(p, val);
                             break;
-                       
-                                    
+
                     }
-                    
+
                     eventData.put("parameter", p);
                     eventData.put("measurement", m);
                     Event e = new Event("internal sensors updated", eventData, Event.Type.PARAMETER_UPDATED);
@@ -157,14 +178,10 @@ public class InternalSensorsModule extends Thread implements Module {
     private void connect(String portName) throws Exception {
         CommPortIdentifier portIdentifier = CommPortIdentifier.getPortIdentifier(portName);
 
-        int timeout = 2000;
-        commPort = portIdentifier.open(this.getClass().getName(), timeout);
+        commPort = portIdentifier.open(this.getClass().getName(), PORT_TIMEOUT);
 
         SerialPort serialPort = (SerialPort) commPort;
-        serialPort.setSerialPortParams(57600,
-                SerialPort.DATABITS_8,
-                SerialPort.STOPBITS_1,
-                SerialPort.PARITY_NONE);
+        serialPort.setSerialPortParams(BAUD_RATE, DATABITS, STOPBITS, PARITY);
 
         serialWriter = new SerialWriter(serialPort.getOutputStream(), serialPort);
         serialWriter.start();
@@ -178,7 +195,6 @@ public class InternalSensorsModule extends Thread implements Module {
         }
         in.close();
         serialWriter.finish();
-        portIdentifier = null;
         commPort = null;
     }
 
@@ -187,6 +203,7 @@ public class InternalSensorsModule extends Thread implements Module {
         OutputStream out;
         SerialPort port;
         private static boolean run = true;
+        private static String command = null;
 
         public SerialWriter(OutputStream out, SerialPort port) {
             setName(this.getClass().getSimpleName() + "-Thread");
@@ -207,11 +224,27 @@ public class InternalSensorsModule extends Thread implements Module {
             }
         }
 
-        public synchronized void run() {
+        public void doCommand(String command) {
+            if (command == null || command.length() == 0) {
+                return;
+            }
+            SerialWriter.command = command;
+            synchronized (this) {
+                notify();
+            }
+        }
+
+        @Override
+        public void run() {
             OutputStreamWriter outWriter = new OutputStreamWriter(this.out);
             while (run) {
                 try {
-                    outWriter.write("GS\r\n");
+                    if (command != null && command.length() > 0) {
+                        outWriter.write(command + "\r\n");
+                        command = null;
+                    } else {
+                        outWriter.write("GS\r\n");
+                    }
                     outWriter.flush();
                     try {
                         synchronized (this) {

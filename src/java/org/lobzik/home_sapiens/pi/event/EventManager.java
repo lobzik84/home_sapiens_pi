@@ -9,7 +9,8 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import org.lobzik.home_sapiens.pi.modules.Module;
 
 /**
@@ -19,7 +20,7 @@ import org.lobzik.home_sapiens.pi.modules.Module;
 public class EventManager extends Thread {
 
     private static final Map<Event.Type, List> subscribers = new HashMap();
-    private static final List<Event> eventList = new LinkedList();
+    private static final Queue<Event> eventList = new ConcurrentLinkedQueue();
     private static boolean run = true;
     private static EventManager instance = null;
 
@@ -41,9 +42,8 @@ public class EventManager extends Thread {
         setName(this.getClass().getSimpleName() + "-Thread");
         while (run) {
             try {
-                eventList.removeIf(Objects::isNull); // or NPE is possible
                 while (eventList.size() > 0) {
-                    Event e = eventList.remove(0);
+                    Event e = eventList.poll();
                     if (subscribers.get(e.type) != null) {
                         List<Module> subscribersList = subscribers.get(e.type);
                         //System.out.println("Event type " + e.type + ", notifying " + subscribersList.size() + " subscribers");
