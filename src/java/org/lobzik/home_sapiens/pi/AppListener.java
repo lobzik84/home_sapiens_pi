@@ -13,6 +13,7 @@ import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.Logger;
 import org.apache.log4j.PatternLayout;
 import org.lobzik.home_sapiens.pi.modules.ActualDataStorageModule;
+import org.lobzik.home_sapiens.pi.modules.DBCleanerModule;
 import org.lobzik.home_sapiens.pi.modules.DBDataWriterModule;
 import org.lobzik.home_sapiens.pi.modules.InternalSensorsModule;
 import org.lobzik.home_sapiens.pi.modules.TimerModule;
@@ -47,6 +48,7 @@ public class AppListener implements ServletContextListener {
             
             InternalSensorsModule.getInstance().start();
             TimerModule.getInstance().start();
+            DBCleanerModule.getInstance().start();
             
 
         } catch (Throwable ex) {
@@ -63,6 +65,9 @@ public class AppListener implements ServletContextListener {
             TimerModule.finish();
             InternalSensorsModule.finish(); //only static methods works!!
             DBDataWriterModule.finish();
+            DBCleanerModule.finish();
+            
+            
             AppData.eventManager.finish();
             BasicConfigurator.resetConfiguration();
 
