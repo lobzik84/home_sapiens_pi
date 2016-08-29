@@ -5,10 +5,18 @@
  */
 package org.lobzik.home_sapiens.pi.modules;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.sql.Connection;
-import org.lobzik.home_sapiens.pi.BoxCommonData;
+import org.apache.log4j.Appender;
+import org.apache.log4j.Logger;
+import org.lobzik.home_sapiens.pi.AppData;
+import org.lobzik.home_sapiens.pi.ConnJDBCAppender;
 import org.lobzik.home_sapiens.pi.event.Event;
-import org.lobzik.tools.db.mysql.DBTools;
+import org.lobzik.home_sapiens.pi.event.EventManager;
 
 /**
  *
@@ -19,6 +27,8 @@ public class SpeakerModule implements Module {
     public final String MODULE_NAME = this.getClass().getSimpleName();
     private static SpeakerModule instance = null;
     private static Connection conn = null;
+    private Process process = null;
+    private static Logger log = null;
 
     private SpeakerModule() { //singleton
     }
@@ -26,6 +36,9 @@ public class SpeakerModule implements Module {
     public static SpeakerModule getInstance() {
         if (instance == null) {
             instance = new SpeakerModule(); //lazy init
+            log = Logger.getLogger(instance.MODULE_NAME);
+            Appender appender = ConnJDBCAppender.getAppenderInstance(AppData.dataSource, instance.MODULE_NAME);
+            log.addAppender(appender);
         }
         return instance;
     }
@@ -38,18 +51,80 @@ public class SpeakerModule implements Module {
     @Override
     public void start() {
         try {
-            conn = DBTools.openConnection(BoxCommonData.dataSourceName);
-
+            EventManager.subscribeForEventType(this, Event.Type.TIMER_EVENT);
+            EventManager.subscribeForEventType(this, Event.Type.USER_ACTION);
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
+    private void play(String file) {
+        try {
+            String[] env = {"aaa=bbb", "ccc=ddd"};
+            String cmd = "aplay";
+            String[] args = {cmd, file};
+            File workdir = new File("/home/lobzik");
+            Runtime runtime = Runtime.getRuntime();
+            long before = System.currentTimeMillis();
+            process = runtime.exec(args, env, workdir);
+            StreamGobbler errorGobbler = new StreamGobbler(process.getErrorStream());
+            StreamGobbler outputGobbler = new StreamGobbler(process.getInputStream());
+            errorGobbler.start();
+            outputGobbler.start();
+            process.waitFor();
+            int exitValue = process.exitValue();
+            //log.debug(StreamGobbler.getAllOutput());
+            StreamGobbler.clearOutput();
+            if (exitValue != 0) {
+                log.error("Error executing, exit status: " + exitValue);
+            }
+        } catch (Exception e) {
+            log.error("Error " + e.getMessage());
+        }
+
+    }
+
     @Override
     public void handleEvent(Event e) {
+        if (e.type == Event.Type.TIMER_EVENT && e.name.equals("speaker_test")) {
+
+            play("/usr/share/sounds/alsa/Front_Center.wav");
+        }
     }
 
     public static void finish() {
-        DBTools.closeConnection(conn);
+
+    }
+
+    public static class StreamGobbler extends Thread {
+
+        InputStream is;
+        private static StringBuilder output = new StringBuilder();
+
+        public StreamGobbler(InputStream is) {
+            this.is = is;
+        }
+
+        @Override
+        public void run() {
+            try {
+                InputStreamReader isr = new InputStreamReader(is);
+                BufferedReader br = new BufferedReader(isr);
+                String line = null;
+                while ((line = br.readLine()) != null) {
+                    output.append(line).append("\n");
+                }
+            } catch (IOException ioe) {
+                ioe.printStackTrace();
+            }
+        }
+
+        public static String getAllOutput() {
+            return output.toString();
+        }
+
+        public static void clearOutput() {
+            output = new StringBuilder();
+        }
     }
 }
