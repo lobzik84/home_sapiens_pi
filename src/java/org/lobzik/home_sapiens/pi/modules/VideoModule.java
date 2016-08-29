@@ -18,8 +18,9 @@ public class VideoModule implements Module {
 
     public final String MODULE_NAME = this.getClass().getSimpleName();
     private static VideoModule instance = null;
-    private static Connection conn = null;
-
+    private static final int[] ZM_MONITOR_IDS = {1, 2};
+    private static final String[] IMAGE_FILES = {"Monitor1.jpg" , "Monitor2.jpg"};
+    
     private VideoModule() { //singleton
     }
 
@@ -38,8 +39,7 @@ public class VideoModule implements Module {
     @Override
     public void start() {
         try {
-            conn = DBTools.openConnection(BoxCommonData.dataSourceName);
-
+    
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -50,6 +50,6 @@ public class VideoModule implements Module {
     }
 
     public static void finish() {
-        DBTools.closeConnection(conn);
+    
     }
 }
