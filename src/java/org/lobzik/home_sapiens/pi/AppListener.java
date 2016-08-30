@@ -19,6 +19,7 @@ import org.lobzik.home_sapiens.pi.modules.DBDataWriterModule;
 import org.lobzik.home_sapiens.pi.modules.InternalSensorsModule;
 import org.lobzik.home_sapiens.pi.modules.SpeakerModule;
 import org.lobzik.home_sapiens.pi.modules.TimerModule;
+import org.lobzik.home_sapiens.pi.modules.VideoModule;
 
 /**
  * Web application lifecycle listener.
@@ -45,6 +46,7 @@ public class AppListener implements ServletContextListener {
             //AppData.tunnel.connect();
             //TODO start modules
             AppData.setSoundWorkDir(new File(sce.getServletContext().getRealPath("sounds")));
+            AppData.setCaptureWorkDir(new File(sce.getServletContext().getRealPath("capture")));
             
             DBDataWriterModule.getInstance().start();
             ActualDataStorageModule.getInstance().start();
@@ -53,7 +55,7 @@ public class AppListener implements ServletContextListener {
             TimerModule.getInstance().start();
             DBCleanerModule.getInstance().start();
             SpeakerModule.getInstance().start();
-            
+            VideoModule.getInstance().start();
 
         } catch (Throwable ex) {
             ex.printStackTrace();
@@ -71,7 +73,7 @@ public class AppListener implements ServletContextListener {
             DBDataWriterModule.finish();
             DBCleanerModule.finish();
             SpeakerModule.finish();
-                    
+            VideoModule.finish();
             
             AppData.eventManager.finish();
             BasicConfigurator.resetConfiguration();

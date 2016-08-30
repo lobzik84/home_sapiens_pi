@@ -27,6 +27,7 @@ public class AppData {
     public static final MeasurementsCache measurementsCache;
 
     private static File soundWorkDir = null;
+    private static File captureWorkDir = null;
     
     static {
         BasicDataSource ds = null;
@@ -67,5 +68,19 @@ public class AppData {
      */
     public static void setSoundWorkDir(File aSoundWorkDir) {
         if (soundWorkDir == null) soundWorkDir = aSoundWorkDir;
+    }
+
+    /**
+     * @return the captureWorkDir
+     */
+    public static File getCaptureWorkDir() {
+        return captureWorkDir;
+    }
+
+    /**
+     * @param aCaptureWorkDir the captureWorkDir to set
+     */
+    public static void setCaptureWorkDir(File aCaptureWorkDir) {
+        if (captureWorkDir == null) captureWorkDir = aCaptureWorkDir;
     }
 }

@@ -4,6 +4,7 @@
     Author     : lobzik
 --%>
 
+<%@page import="org.lobzik.home_sapiens.pi.modules.VideoModule"%>
 <%@page import="org.lobzik.home_sapiens.pi.event.Event"%>
 <%@page contentType="text/html" pageEncoding="UTF-8"%>
 <%@ page import="java.util.*"%>
@@ -64,5 +65,17 @@ for (Integer pId: ps.getParameterIds()) {
 <form action="" method="post">
     <input type="text" name="sound" value="Front_Center.wav" /><input type="submit" value="OK" name="submit" />
 </form>
+
+<br>
+<br>
+
+<%
+for (String capture: VideoModule.IMAGE_FILES) {
+%>
+<img src="<%=request.getContextPath()%>/capture/<%=capture%>" /> <br>
+<%
+}
+%>
+
     </body>
 </html>

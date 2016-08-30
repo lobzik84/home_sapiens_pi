@@ -62,7 +62,7 @@ public class SpeakerModule implements Module {
         try {
             String[] env = {"aaa=bbb", "ccc=ddd"};
 
-            String[] args = {PREFIX, COMMAND, file};
+            String[] args = {PREFIX, COMMAND, AppData.getSoundWorkDir().getAbsolutePath() + File.separator + file};
             File workdir = AppData.getSoundWorkDir();
             Runtime runtime = Runtime.getRuntime();
             long before = System.currentTimeMillis();
@@ -89,7 +89,7 @@ public class SpeakerModule implements Module {
     @Override
     public void handleEvent(Event e) {
         if (e.type == Event.Type.USER_ACTION && e.name.equals("play_sound")) {
-            play(AppData.getSoundWorkDir().getAbsolutePath() + File.separator + (String)e.data.get("sound_file"));
+            play((String)e.data.get("sound_file"));
         }
     }
 
