@@ -5,6 +5,7 @@
  */
 package org.lobzik.home_sapiens.pi;
 
+import java.io.File;
 import javax.servlet.ServletContextEvent;
 import javax.servlet.ServletContextListener;
 import javax.servlet.annotation.WebListener;
@@ -43,7 +44,8 @@ public class AppListener implements ServletContextListener {
 
             //AppData.tunnel.connect();
             //TODO start modules
-
+            AppData.setSoundWorkDir(new File(sce.getServletContext().getRealPath("sounds")));
+            
             DBDataWriterModule.getInstance().start();
             ActualDataStorageModule.getInstance().start();
             

@@ -5,6 +5,7 @@
  */
 package org.lobzik.home_sapiens.pi;
 
+import java.io.File;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,6 +26,8 @@ public class AppData {
     public static final ParametersStorage parametersStorage; //launches BEFORE AppListener called
     public static final MeasurementsCache measurementsCache;
 
+    private static File soundWorkDir = null;
+    
     static {
         BasicDataSource ds = null;
         ParametersStorage ps = null;
@@ -50,5 +53,19 @@ public class AppData {
     
     public static void init() {
         
+    }
+
+    /**
+     * @return the soundWorkDir
+     */
+    public static File getSoundWorkDir() {
+        return soundWorkDir;
+    }
+
+    /**
+     * @param aSoundWorkDir the soundWorkDir to set
+     */
+    public static void setSoundWorkDir(File aSoundWorkDir) {
+        if (soundWorkDir == null) soundWorkDir = aSoundWorkDir;
     }
 }

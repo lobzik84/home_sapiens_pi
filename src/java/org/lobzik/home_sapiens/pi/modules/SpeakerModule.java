@@ -26,10 +26,11 @@ public class SpeakerModule implements Module {
 
     public final String MODULE_NAME = this.getClass().getSimpleName();
     private static SpeakerModule instance = null;
-    private static Connection conn = null;
     private Process process = null;
     private static Logger log = null;
-
+    private static final String PREFIX = "/usr/bin/sudo";
+    private static final String COMMAND = "/usr/bin/aplay";
+    
     private SpeakerModule() { //singleton
     }
 
@@ -51,7 +52,6 @@ public class SpeakerModule implements Module {
     @Override
     public void start() {
         try {
-            EventManager.subscribeForEventType(this, Event.Type.TIMER_EVENT);
             EventManager.subscribeForEventType(this, Event.Type.USER_ACTION);
         } catch (Exception e) {
             e.printStackTrace();
@@ -61,12 +61,14 @@ public class SpeakerModule implements Module {
     private void play(String file) {
         try {
             String[] env = {"aaa=bbb", "ccc=ddd"};
-            String cmd = "aplay";
-            String[] args = {cmd, file};
-            File workdir = new File("/home/lobzik");
+
+            String[] args = {PREFIX, COMMAND, file};
+            File workdir = AppData.getSoundWorkDir();
             Runtime runtime = Runtime.getRuntime();
             long before = System.currentTimeMillis();
+            log.debug("Playing " + file + " at " + workdir);
             process = runtime.exec(args, env, workdir);
+            
             StreamGobbler errorGobbler = new StreamGobbler(process.getErrorStream());
             StreamGobbler outputGobbler = new StreamGobbler(process.getInputStream());
             errorGobbler.start();
@@ -86,9 +88,8 @@ public class SpeakerModule implements Module {
 
     @Override
     public void handleEvent(Event e) {
-        if (e.type == Event.Type.TIMER_EVENT && e.name.equals("speaker_test")) {
-
-            play("/usr/share/sounds/alsa/Front_Center.wav");
+        if (e.type == Event.Type.USER_ACTION && e.name.equals("play_sound")) {
+            play(AppData.getSoundWorkDir().getAbsolutePath() + File.separator + (String)e.data.get("sound_file"));
         }
     }
 

@@ -23,10 +23,17 @@
 if (request.getMethod().equalsIgnoreCase("POST")) {
     String command = request.getParameter("command");
     String event = request.getParameter("event");
+    String sound = request.getParameter("sound");
     if (command != null && command.length() > 0) {
         HashMap data = new HashMap();
         data.put("uart_command", command);
         Event e  = new Event ("internal_uart_command", data, Event.Type.USER_ACTION);
+        AppData.eventManager.newEvent(e);
+    }
+    if (sound != null && sound.length() > 0) {
+        HashMap data = new HashMap();
+        data.put("sound_file", sound);
+        Event e  = new Event ("play_sound", data, Event.Type.USER_ACTION);
         AppData.eventManager.newEvent(e);
     }
     else if (event != null && event.length() > 0) {
@@ -52,6 +59,10 @@ for (Integer pId: ps.getParameterIds()) {
 <b>Generate timer event: </b>
 <form action="" method="post">
     <input type="text" name="event" value="db_clearing" /><input type="submit" value="OK" name="submit" />
+</form><br> <br>
+<b>Play sound: </b>
+<form action="" method="post">
+    <input type="text" name="sound" value="Front_Center.wav" /><input type="submit" value="OK" name="submit" />
 </form>
     </body>
 </html>
