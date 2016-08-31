@@ -113,7 +113,7 @@ public class DBCleanerModule extends Thread implements Module {
                                     + "max(sd.value_max) as value_max\n"
                                     + " FROM sensors_data sd\n"
                                     + "where sd.grouped = 0 and sd.parameter_id = " + p.getId() + " \n"
-                                    + "and datediff(curdate(), sd.date) >= " + DAYS_TO_STORE_RAW_SENSORS_DATA + " \n"
+                                    + "and datediff(curdate(), sd.date) > " + DAYS_TO_STORE_RAW_SENSORS_DATA + " \n"
                                     + "group by  concat(year(sd.date), \"-\", month(sd.date), \"-\", day(sd.date), \" \", hour(sd.date), \":00:00\")) gsd\n"
                                     + "inner join sensors_data sd1 on  concat(year(sd1.date), \"-\", month(sd1.date), \"-\", day(sd1.date), \" \", hour(sd1.date), \":00:00\") = gsd.date and sd1.parameter_id=gsd.parameter_id and sd1.value_min=gsd.value_min\n"
                                     + "inner join sensors_data sd2 on  concat(year(sd2.date), \"-\", month(sd2.date), \"-\", day(sd2.date), \" \", hour(sd2.date), \":00:00\") = gsd.date and sd2.parameter_id=gsd.parameter_id and sd2.value_max=gsd.value_max\n"
@@ -141,7 +141,7 @@ public class DBCleanerModule extends Thread implements Module {
                                     + "1 as grouped\n"
                                     + "from sensors_data sd\n"
                                     + "where sd.grouped = 0 and sd.parameter_id = " + p.getId() + " \n"
-                                    + "and datediff(curdate(), sd.date) >= " + DAYS_TO_STORE_RAW_SENSORS_DATA + " \n"
+                                    + "and datediff(curdate(), sd.date) > " + DAYS_TO_STORE_RAW_SENSORS_DATA + " \n"
                                     + "group by  concat(year(sd.date), \"-\", month(sd.date), \"-\", day(sd.date), \" \", hour(sd.date), \":00:00\")\n"
                                     + ")";
                             DBSelect.executeStatement(sSQL, null, conn);
