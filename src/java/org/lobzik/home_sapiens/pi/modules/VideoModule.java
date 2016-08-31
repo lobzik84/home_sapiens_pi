@@ -10,15 +10,12 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.sql.Connection;
 import org.apache.log4j.Appender;
 import org.apache.log4j.Logger;
 import org.lobzik.home_sapiens.pi.AppData;
-import org.lobzik.home_sapiens.pi.BoxCommonData;
 import org.lobzik.home_sapiens.pi.ConnJDBCAppender;
 import org.lobzik.home_sapiens.pi.event.Event;
 import org.lobzik.home_sapiens.pi.event.EventManager;
-import org.lobzik.tools.db.mysql.DBTools;
 
 /**
  *
