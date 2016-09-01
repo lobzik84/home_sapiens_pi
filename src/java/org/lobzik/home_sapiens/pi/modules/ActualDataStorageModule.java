@@ -5,9 +5,6 @@
  */
 package org.lobzik.home_sapiens.pi.modules;
 
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
 import org.lobzik.home_sapiens.entity.Measurement;
 import org.lobzik.home_sapiens.entity.Parameter;
 import org.lobzik.home_sapiens.pi.AppData;

@@ -104,7 +104,7 @@ public class InternalSensorsModule extends Thread implements Module {
     }
 
     public static void finish() {
-        log.info("Stopping " + serialWriter.getName());
+        log.info("Stopping SerialWriter");
         if (serialWriter != null) {
             serialWriter.finish();
 
