@@ -18,6 +18,7 @@ import org.lobzik.home_sapiens.pi.modules.DBCleanerModule;
 import org.lobzik.home_sapiens.pi.modules.DBDataWriterModule;
 import org.lobzik.home_sapiens.pi.modules.InternalSensorsModule;
 import org.lobzik.home_sapiens.pi.modules.SpeakerModule;
+import org.lobzik.home_sapiens.pi.modules.SystemModule;
 import org.lobzik.home_sapiens.pi.modules.TimerModule;
 import org.lobzik.home_sapiens.pi.modules.VideoModule;
 
@@ -56,6 +57,7 @@ public class AppListener implements ServletContextListener {
             DBCleanerModule.getInstance().start();
             SpeakerModule.getInstance().start();
             VideoModule.getInstance().start();
+            SystemModule.getInstance().start();
 
         } catch (Throwable ex) {
             ex.printStackTrace();
@@ -74,6 +76,7 @@ public class AppListener implements ServletContextListener {
             DBCleanerModule.finish();
             SpeakerModule.finish();
             VideoModule.finish();
+            SystemModule.finish();
             
             AppData.eventManager.finish();
             BasicConfigurator.resetConfiguration();
