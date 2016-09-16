@@ -25,7 +25,7 @@ public class AppData {
     public static final EventManager eventManager = EventManager.getInstance(); //launches BEFORE AppListener called
     public static final ParametersStorage parametersStorage; //launches BEFORE AppListener called
     public static final MeasurementsCache measurementsCache;
-    public static final HashMap<String, Integer> userSessions = new HashMap();//TODO need storage class with time limits
+    public static final UsersSessionsStorage sessions = new UsersSessionsStorage();//TODO need storage class with time limits
     private static File soundWorkDir = null;
     private static File captureWorkDir = null;
     

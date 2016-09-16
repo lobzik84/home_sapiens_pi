@@ -8,18 +8,15 @@ package org.lobzik.home_sapiens.pi;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.PrintWriter;
 import java.math.BigInteger;
 import java.sql.Connection;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Random;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
 import org.json.JSONObject;
 import org.lobzik.home_sapiens.entity.Measurement;
 import org.lobzik.home_sapiens.entity.Parameter;
@@ -78,7 +75,7 @@ public class JsonServlet extends HttpServlet {
                 request.setAttribute("json", json);
                 String session_key = null;
                 if (json.has("session_key")) session_key = json.getString("session_key");
-                int userId = Tools.parseInt(AppData.userSessions.get(session_key), 0);
+                int userId = Tools.parseInt(AppData.sessions.get(session_key).get("UserId"), 0);
                 String action = json.getString("action");
                 switch (action) {
                     case "register":
@@ -181,9 +178,8 @@ public class JsonServlet extends HttpServlet {
             }
             newUser.put("status", 1);
             int newUserId = DBTools.insertRow("users", newUser, conn);
-            BigInteger b = new BigInteger(32, new Random());
-            String session_key = b.toString(16);
-            AppData.userSessions.put(session_key, newUserId);
+            String session_key = AppData.sessions.createSession();
+            AppData.sessions.get(session_key).put("UserId", newUserId);
             json = new JSONObject();
             json.put("result", "success");
             json.put("new_user_id", newUserId);
