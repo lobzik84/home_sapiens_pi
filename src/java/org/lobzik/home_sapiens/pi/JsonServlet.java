@@ -9,9 +9,11 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
+import java.math.BigInteger;
 import java.sql.Connection;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Random;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
@@ -32,6 +34,11 @@ import org.lobzik.tools.db.mysql.DBTools;
 @WebServlet(name = "JsonServlet", urlPatterns = {"/json", "/json/*"})
 public class JsonServlet extends HttpServlet {
     
+    	private static final BigInteger g = new BigInteger("2");
+	private static final BigInteger N = new BigInteger("115b8b692e0e045692cf280b436735c77a5a9e8a9e7ed56c965f87db5b2a2ece3", 16);
+	private static final BigInteger k = new BigInteger("c46d46600d87fef149bd79b81119842f3c20241fda67d06ef412d8f6d9479c58", 16);
+	private static final String salt_alphabet = "1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+	private static final String fake_salt_key = "mri9gjn0990)M09V^&DF&*GR^%^WTioh89t;";
 
     /**
      * Processes requests for both HTTP <code>GET</code> and <code>POST</code>
@@ -46,8 +53,9 @@ public class JsonServlet extends HttpServlet {
         response.setContentType("text/html;charset=UTF-8");
         response.setHeader("Access-Control-Allow-Origin", "*");			
 	response.setHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, PUT");
-        HttpSession session = request.getSession();
-        int userId = Tools.parseInt(session.getAttribute("UserId"), 0);
+      	//response.setHeader("Access-Control-Allow-Credentials", "true");  
+
+
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         InputStream is = request.getInputStream();
         long readed = 0;
@@ -68,6 +76,9 @@ public class JsonServlet extends HttpServlet {
             if (requestString.startsWith("{")) {
                 JSONObject json = new JSONObject(requestString); //user actions.
                 request.setAttribute("json", json);
+                String session_key = null;
+                if (json.has("session_key")) session_key = json.getString("session_key");
+                int userId = Tools.parseInt(AppData.userSessions.get(session_key), 0);
                 String action = json.getString("action");
                 switch (action) {
                     case "register":
@@ -76,7 +87,7 @@ public class JsonServlet extends HttpServlet {
                         break;
 
                     case "kf_upload":
-                        updateKeyFile(request, response);
+                        updateKeyFile(userId, request, response);
                         break;
 
                     case "kf_download":
@@ -162,7 +173,7 @@ public class JsonServlet extends HttpServlet {
         try (Connection conn = DBTools.openConnection(BoxCommonData.dataSourceName)) {
             List<HashMap> resList = DBSelect.getRows(sSQL, conn);
             if (resList.size() > 0) {
-                throw new Exception("User registered already, please login");
+               // throw new Exception("User registered already, please login");
             }
             HashMap newUser = new HashMap();
             for (String key : json.keySet()) {
@@ -170,10 +181,15 @@ public class JsonServlet extends HttpServlet {
             }
             newUser.put("status", 1);
             int newUserId = DBTools.insertRow("users", newUser, conn);
+            BigInteger b = new BigInteger(32, new Random());
+            String session_key = b.toString(16);
+            AppData.userSessions.put(session_key, newUserId);
             json = new JSONObject();
             json.put("result", "success");
             json.put("new_user_id", newUserId);
-            json.put("box_id", BoxCommonData.BOX_ID);            
+            json.put("box_public_key", BoxCommonData.PUBLIC_KEY);
+            json.put("box_id", BoxCommonData.BOX_ID);
+            json.put("session_key", session_key);                 
             response.getWriter().print(json.toString());
             
         }
@@ -184,8 +200,18 @@ public class JsonServlet extends HttpServlet {
         //on server side - check signature and insert to users_db
     }
 
-    private void updateKeyFile(HttpServletRequest request, HttpServletResponse response) throws Exception {
-
+    private void updateKeyFile(int userId, HttpServletRequest request, HttpServletResponse response) throws Exception {
+        if (userId <= 0) throw new Exception("Trying to upload unauthorized keyfile!");
+        try (Connection conn = DBTools.openConnection(BoxCommonData.dataSourceName)) {
+            HashMap dataMap = new HashMap();
+            JSONObject json = (JSONObject) request.getAttribute("json");
+            dataMap.put("id", userId);
+            dataMap.put("keyfile", json.getString("kfCipher"));
+            DBTools.updateRow("users", dataMap, conn);
+            json = new JSONObject();
+            json.put("result", "success");       
+            response.getWriter().print(json.toString());
+        }
     }
 
     private void downloadKeyFile(HttpServletRequest request, HttpServletResponse response) throws Exception {
