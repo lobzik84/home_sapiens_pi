@@ -53,7 +53,7 @@ public class AppListener implements ServletContextListener {
             ActualDataStorageModule.getInstance().start();
             
             InternalSensorsModule.getInstance().start();
-            TimerModule.getInstance().start();
+            //TimerModule.getInstance().start();
             DBCleanerModule.getInstance().start();
             SpeakerModule.getInstance().start();
             VideoModule.getInstance().start();
