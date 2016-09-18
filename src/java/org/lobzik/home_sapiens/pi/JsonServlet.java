@@ -9,9 +9,12 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigInteger;
+import java.security.MessageDigest;
 import java.sql.Connection;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Random;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
@@ -30,12 +33,12 @@ import org.lobzik.tools.db.mysql.DBTools;
  */
 @WebServlet(name = "JsonServlet", urlPatterns = {"/json", "/json/*"})
 public class JsonServlet extends HttpServlet {
-    
-    	private static final BigInteger g = new BigInteger("2");
-	private static final BigInteger N = new BigInteger("115b8b692e0e045692cf280b436735c77a5a9e8a9e7ed56c965f87db5b2a2ece3", 16);
-	private static final BigInteger k = new BigInteger("c46d46600d87fef149bd79b81119842f3c20241fda67d06ef412d8f6d9479c58", 16);
-	private static final String salt_alphabet = "1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-	private static final String fake_salt_key = "mri9gjn0990)M09V^&DF&*GR^%^WTioh89t;";
+
+    private static final BigInteger G = new BigInteger("2");
+    private static final BigInteger N = new BigInteger("115b8b692e0e045692cf280b436735c77a5a9e8a9e7ed56c965f87db5b2a2ece3", 16);
+    private static final BigInteger K = new BigInteger("c46d46600d87fef149bd79b81119842f3c20241fda67d06ef412d8f6d9479c58", 16);
+    private static final String SALT_ALPHABET = "1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    private static final String FAKE_SALT_KEY = "mri9gjn0990)M09V^&DF&*GR^%^WTioh89t;";
 
     /**
      * Processes requests for both HTTP <code>GET</code> and <code>POST</code>
@@ -48,10 +51,9 @@ public class JsonServlet extends HttpServlet {
      */
     protected void processRequest(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         response.setContentType("text/html;charset=UTF-8");
-        response.setHeader("Access-Control-Allow-Origin", "*");			
-	response.setHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, PUT");
-      	//response.setHeader("Access-Control-Allow-Credentials", "true");  
-
+        response.setHeader("Access-Control-Allow-Origin", "*");
+        response.setHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, PUT");
+        //response.setHeader("Access-Control-Allow-Credentials", "true");  
 
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         InputStream is = request.getInputStream();
@@ -73,9 +75,11 @@ public class JsonServlet extends HttpServlet {
             if (requestString.startsWith("{")) {
                 JSONObject json = new JSONObject(requestString); //user actions.
                 request.setAttribute("json", json);
-                String session_key = null;
-                if (json.has("session_key")) session_key = json.getString("session_key");
-                int userId = Tools.parseInt(AppData.sessions.get(session_key).get("UserId"), 0);
+                String session_key = "";
+                if (json.has("session_key")) {
+                    session_key = json.getString("session_key");
+                }
+                int userId = Tools.parseInt(AppData.sessions.get(session_key).get("UserId"), 0); //TODO бред! если нету сессии, она создаётся с пустым ключом, чушь
                 String action = json.getString("action");
                 switch (action) {
                     case "register":
@@ -83,12 +87,8 @@ public class JsonServlet extends HttpServlet {
                         uploadUserToServer(request, response);
                         break;
 
-                    case "kf_upload":
-                        updateKeyFile(userId, request, response);
-                        break;
-
-                    case "kf_download":
-                        downloadKeyFile(request, response);
+                    case "handshake_srp":
+                        handshakeUserSRP(request, response);
                         break;
 
                     case "login_srp":
@@ -99,26 +99,45 @@ public class JsonServlet extends HttpServlet {
                         loginUserRSA(request, response);
                         break;
 
+                    case "kf_upload":
+                        if (userId > 0) {
+                            updateKeyFile(userId, request, response);
+                        } else {
+                            doRequestLogin(request, response);
+                        }
+                        break;
+
+                    case "kf_download":
+                        if (userId > 0) {
+                            downloadKeyFile(userId, request, response);
+                        } else {
+                            doRequestLogin(request, response);
+                        }
+                        break;
+
                     case "command":
                         if (userId > 0) {
                             doUserCommand(request, response);
                             replyWithParameters(request, response);
 
+                        } else {
+                            doRequestLogin(request, response);
                         }
                         break;
 
                     default:
-                        //if (userId > 0)
-                        replyWithParameters(request, response);
-
+                        if (userId > 0) {
+                            replyWithParameters(request, response);
+                        } else {
+                            doRequestLogin(request, response);
+                        }
                 }
-            } else //if (userId > 0)
-            {
-                replyWithParameters(request, response); //??  
+            } else {
+                response.getWriter().print("accepted json only");
             }
         } catch (Throwable e) {
             e.printStackTrace();
-            response.getWriter().print("{\"result\":\"error\",\"message\":\"" + e.getMessage() +"\"}");
+            response.getWriter().print("{\"result\":\"error\",\"message\":\"" + e.getMessage() + "\"}");
         }
 
     }
@@ -170,7 +189,7 @@ public class JsonServlet extends HttpServlet {
         try (Connection conn = DBTools.openConnection(BoxCommonData.dataSourceName)) {
             List<HashMap> resList = DBSelect.getRows(sSQL, conn);
             if (resList.size() > 0) {
-               // throw new Exception("User registered already, please login");
+                //throw new Exception("User registered already, please login");
             }
             HashMap newUser = new HashMap();
             for (String key : json.keySet()) {
@@ -185,19 +204,21 @@ public class JsonServlet extends HttpServlet {
             json.put("new_user_id", newUserId);
             json.put("box_public_key", BoxCommonData.PUBLIC_KEY);
             json.put("box_id", BoxCommonData.BOX_ID);
-            json.put("session_key", session_key);                 
+            json.put("session_key", session_key);
             response.getWriter().print(json.toString());
-            
+
         }
     }
 
     private void uploadUserToServer(HttpServletRequest request, HttpServletResponse response) throws Exception {
-        //create userdata with box_id, sign it with RSA and upload to server
+        //create userdata with box_id, sign it with RSA and upload to server - send object to tunnelcient and notify
         //on server side - check signature and insert to users_db
     }
 
     private void updateKeyFile(int userId, HttpServletRequest request, HttpServletResponse response) throws Exception {
-        if (userId <= 0) throw new Exception("Trying to upload unauthorized keyfile!");
+        if (userId <= 0) {
+            throw new Exception("Trying to upload unauthorized keyfile!");
+        }
         try (Connection conn = DBTools.openConnection(BoxCommonData.dataSourceName)) {
             HashMap dataMap = new HashMap();
             JSONObject json = (JSONObject) request.getAttribute("json");
@@ -205,21 +226,168 @@ public class JsonServlet extends HttpServlet {
             dataMap.put("keyfile", json.getString("kfCipher"));
             DBTools.updateRow("users", dataMap, conn);
             json = new JSONObject();
-            json.put("result", "success");       
+            json.put("result", "success");
             response.getWriter().print(json.toString());
         }
     }
 
-    private void downloadKeyFile(HttpServletRequest request, HttpServletResponse response) throws Exception {
-
+    private void downloadKeyFile(int userId, HttpServletRequest request, HttpServletResponse response) throws Exception {
+        String sSQL = "select id, keyfile from users where status = 1 and id = " + userId;
+        try (Connection conn = DBTools.openConnection(BoxCommonData.dataSourceName)) {
+            List<HashMap> resList = DBSelect.getRows(sSQL, conn);
+            if (resList.isEmpty()) {
+                throw new Exception("User id=" + userId + " not found");
+            }
+            HashMap userMap = resList.get(0);
+            JSONObject json = new JSONObject();
+            json.put("result", "success");
+            json.put("kfCipher", (String) userMap.get("keyfile"));
+            response.getWriter().print(json.toString());
+        }
     }
 
     private void loginUserRSA(HttpServletRequest request, HttpServletResponse response) throws Exception {
+        JSONObject json = (JSONObject) request.getAttribute("json");
+        UsersSession session = null;
+        if (json.has("session_key")) {
+            String session_key = json.getString("session_key");
+            session = AppData.sessions.get(session_key);
+        }
+        if (session == null) {
+            return;
+        }
+        String challenge = (String) session.get("challenge");
+        int userId = Tools.parseInt(json.get("user_id"), 0);
+        String digest = json.getString("digest");
+        String sSQL = "select id, public_key from users where status = 1 and userId=" + userId;
+        try (Connection conn = DBTools.openConnection(BoxCommonData.dataSourceName)) {
+            List<HashMap> resList = DBSelect.getRows(sSQL, conn);
+            String publicKey = (String) resList.get(0).get("public_key");
+            //TODO validate digest on user's public key
+            json = new JSONObject();
+            boolean valid = true;
+            if (valid) {
+                session.put("UserId", userId);
+                json.put("user_id", userId);
+                json.put("result", "success");
+                System.out.println("RSA LOGIN OK! UserId=" + userId);
+            } else {
+                System.out.println("RSA Login error");
+                json.put("result", "error");
+                json.put("message", "Login using RSA digest failed");
+            }
+            response.getWriter().print(json.toString());
+        }
+    }
 
+    private void handshakeUserSRP(HttpServletRequest request, HttpServletResponse response) throws Exception {
+        String sSQL = "select id, salt, verifier from users where status = 1 and login=?;";
+        JSONObject json = (JSONObject) request.getAttribute("json");
+        if (!json.has("login") || !json.has("srp_A")) {
+            return;
+        }
+        try (Connection conn = DBTools.openConnection(BoxCommonData.dataSourceName)) {
+            String login = json.getString("login");
+            List params = new LinkedList();
+            params.add(login);
+            List<HashMap> resList = DBSelect.getRows(sSQL, params, conn);
+            String salt;
+            BigInteger v;
+            if (resList.size() > 0) {
+                salt = (String) resList.get(0).get("salt");
+                v = new BigInteger((String) resList.get(0).get("verifier"));
+            } else {
+                salt = ""; //если нету такого юзера в БД, нельзя это показать пытающемуся зайти. Так что на основе введённого логина генерируем "поддельную" соль и отдаём.
+                BigInteger fakeSaltNum = sha256(login + FAKE_SALT_KEY);
+                v = sha256(FAKE_SALT_KEY + login + FAKE_SALT_KEY);//new BigInteger(64, new Random());
+                for (int i = 0; i < 16; i++) {
+                    salt += SALT_ALPHABET.charAt(fakeSaltNum.mod(new BigInteger("" + SALT_ALPHABET.length())).intValue());
+                    fakeSaltNum = fakeSaltNum.divide(new BigInteger("" + SALT_ALPHABET.length()));
+                }
+            }
+            BigInteger A = new BigInteger(json.getString("srp_A"), 16);
+            BigInteger b = null;
+            BigInteger B = null;
+            BigInteger u = null;
+            while (true) {
+                b = new BigInteger(32, new Random());
+                B = (K.multiply(v)).add(G.modPow(b, N));
+                u = sha256(A.toString(16) + B.toString(16));
+
+                if ((B.remainder(N).intValue() != 0) && (u.remainder(N).intValue() != 0)) {
+                    break;
+                }
+            }
+            BigInteger S = ((v.modPow(u, N)).multiply(A)).modPow(b, N);
+            BigInteger M = sha256(A.toString(16) + B.toString(16) + S.toString(16));
+            json = new JSONObject();
+            if (A.remainder(N).intValue() == 0) {
+                json.put("result", "error");
+                json.put("message", "Invalid ephemeral key");
+            } else {
+                String session_key = AppData.sessions.createSession();
+                UsersSession session = AppData.sessions.get(session_key);
+                session.put("srp_S", S.toString(16));
+                session.put("srp_M", M.toString(16));
+                session.put("srp_A", A.toString(16));
+                session.put("srp_login", login);
+                json.put("result", "success");
+                json.put("srp_B", B.toString(16));
+                json.put("salt", salt);
+                json.put("box_id", BoxCommonData.BOX_ID);
+                json.put("session_key", session_key);
+
+            }
+
+            response.getWriter().print(json.toString());
+
+        }
     }
 
     private void loginUserSRP(HttpServletRequest request, HttpServletResponse response) throws Exception {
+        JSONObject json = (JSONObject) request.getAttribute("json");
+        UsersSession session = null;
+        if (json.has("session_key")) {
+            String session_key = json.getString("session_key");
+            session = AppData.sessions.get(session_key);
+        }
+        if (session == null) {
+            return;
+        }
+        String Astr = (String) session.remove("srp_A");
+        String Mstr = (String) session.remove("srp_M");
+        String Sstr = (String) session.remove("srp_S");
+        String username = (String) session.remove("srp_login");
 
+        BigInteger A = new BigInteger(Astr, 16);
+        BigInteger M = new BigInteger(Mstr, 16);
+        BigInteger S = new BigInteger(Sstr, 16);
+
+        String M_client = json.getString("srp_M");
+        json = new JSONObject();
+        if (M_client.equals(Mstr)) {
+
+            String sSQL = "select id, salt, verifier from users where status = 1 and login=?;";
+            List params = new LinkedList();
+            params.add(username);
+            try (Connection conn = DBTools.openConnection(BoxCommonData.dataSourceName)) {
+                List<HashMap> resList = DBSelect.getRows(sSQL, params, conn);
+                if (resList.size() > 0) {
+                    M = sha256(A.toString(16) + M.toString(16) + S.toString(16));
+                    int userId = Tools.parseInt(resList.get(0).get("id"), 0);
+                    session.put("UserId", userId);
+                    json.put("user_id", userId);
+                    json.put("result", "success");
+                    json.put("srp_M", M.toString(16));
+                    System.out.println("SRP LOGIN OK! UserId=" + userId);
+                }
+            }
+        } else {
+            System.out.println("SRP Login error");
+            json.put("result", "error");
+            json.put("message", "Invalid login or password");
+        }
+        response.getWriter().print(json.toString());
     }
 
     private void doUserCommand(HttpServletRequest request, HttpServletResponse response) throws Exception {
@@ -249,4 +417,34 @@ public class JsonServlet extends HttpServlet {
         response.getWriter().write(reply.toString());
     }
 
+    private void doRequestLogin(HttpServletRequest request, HttpServletResponse response) throws Exception {
+        String sSQL = "select id from users where status = 1;";
+        JSONObject json = new JSONObject();
+        json.put("box_id", BoxCommonData.BOX_ID);
+        try (Connection conn = DBTools.openConnection(BoxCommonData.dataSourceName)) {
+            List<HashMap> resList = DBSelect.getRows(sSQL, conn);
+            if (resList.size() > 0) {
+                String session_key = AppData.sessions.createSession();
+                UsersSession session = AppData.sessions.get(session_key);
+                String challenge = new BigInteger(32, new Random()).toString(16);
+                session.put("challenge", challenge);
+                json.put("result", "do_login");
+                json.put("challenge", challenge);
+                json.put("session_key", session_key);
+                json.put("box_id", BoxCommonData.BOX_ID);
+                json.put("message", "user exists, please login");
+            } else {
+                json.put("result", "do_register");
+                json.put("message", "no users, please register");
+            }
+            response.getWriter().print(json.toString());
+        }
+    }
+
+    private BigInteger sha256(String s) throws Exception {
+        MessageDigest sha = MessageDigest.getInstance("SHA-256");
+        byte[] bytes = s.getBytes();
+        sha.update(bytes, 0, bytes.length);
+        return new BigInteger(1, sha.digest());
+    }
 }

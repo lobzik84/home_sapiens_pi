@@ -13,15 +13,15 @@ import java.util.Random;
  *
  * @author lobzik
  */
-public class UsersSessionsStorage extends HashMap<String, UsersSession> {
-
+public class UsersSessionsStorage  {
+    private static final HashMap<String, UsersSession> storage = new HashMap();
     private static final long SESSION_TTL = 30 * 60 * 1000L;
 
     public void cleanUpOldSessions() {
-        for (String key : keySet()) {
-            UsersSession session = super.get(key);
+        for (String key : storage.keySet()) {
+            UsersSession session = storage.get(key);
             if (System.currentTimeMillis() > session.getRefreshTime() + SESSION_TTL) {
-                remove(key);
+                storage.remove(key);
                 session = null;
             }
         }
@@ -32,17 +32,18 @@ public class UsersSessionsStorage extends HashMap<String, UsersSession> {
         BigInteger b = new BigInteger(32, new Random());
         String session_key = b.toString(16);
         UsersSession session = new UsersSession();
-        super.put(session_key, session);
+        storage.put(session_key, session);
         return session_key;
     }
 
     public UsersSession get(String session_key) {
-        UsersSession session = super.get(session_key);
+        UsersSession session = storage.get(session_key);
         if (session != null) {
             session.updateRefreshTime();
         } else {
+            cleanUpOldSessions();
             session = new UsersSession();
-            put(session_key, session);
+            storage.put(session_key, session);
 
         }
         return session;
