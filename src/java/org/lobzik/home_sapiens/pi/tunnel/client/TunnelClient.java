@@ -86,6 +86,10 @@ public class TunnelClient extends Thread {
                 
         }
     }
+    
+    public void sendToServer(String data) {
+        
+    }
 
     public synchronized void disconnect() {
         log.info("Disconnecting...");

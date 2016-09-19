@@ -51,6 +51,6 @@ public class JSONInterface {
         JSONObject reply = new JSONObject();
         reply.put("parameters", paramsJson);
         return reply;
-
+        //TODO encrypt on users key and sign
     }
 }

@@ -7,23 +7,30 @@ package org.lobzik.home_sapiens.pi;
 
 import java.math.BigInteger;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Random;
+import java.util.Set;
 
 /**
  *
  * @author lobzik
  */
-public class UsersSessionsStorage  {
+public class UsersSessionsStorage {
+
     private static final HashMap<String, UsersSession> storage = new HashMap();
     private static final long SESSION_TTL = 30 * 60 * 1000L;
 
     public void cleanUpOldSessions() {
+        Set<String> expired = new HashSet();
         for (String key : storage.keySet()) {
             UsersSession session = storage.get(key);
             if (System.currentTimeMillis() > session.getRefreshTime() + SESSION_TTL) {
-                storage.remove(key);
+                expired.add(key);
                 session = null;
             }
+        }
+        for (String key : expired) {
+            storage.remove(key);
         }
     }
 
@@ -40,12 +47,13 @@ public class UsersSessionsStorage  {
         UsersSession session = storage.get(session_key);
         if (session != null) {
             session.updateRefreshTime();
-        } else {
+        }
+        /*else {
             cleanUpOldSessions();
             session = new UsersSession();
             storage.put(session_key, session);
 
-        }
+        }*/
         return session;
     }
 

@@ -9,22 +9,24 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigInteger;
+import java.security.KeyFactory;
 import java.security.MessageDigest;
+import java.security.PublicKey;
+import java.security.Signature;
+import java.security.spec.RSAPublicKeySpec;
 import java.sql.Connection;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import org.json.JSONObject;
-import org.lobzik.home_sapiens.entity.Measurement;
-import org.lobzik.home_sapiens.entity.Parameter;
-import org.lobzik.home_sapiens.pi.event.Event;
-import org.lobzik.home_sapiens.pi.event.EventManager;
+import org.lobzik.home_sapiens.pi.tunnel.client.TunnelClient;
 import org.lobzik.tools.Tools;
 import org.lobzik.tools.db.mysql.DBSelect;
 import org.lobzik.tools.db.mysql.DBTools;
@@ -35,7 +37,7 @@ import org.lobzik.tools.db.mysql.DBTools;
  */
 @WebServlet(name = "JsonServlet", urlPatterns = {"/json", "/json/*"})
 public class JSONServlet extends HttpServlet {
-    
+
     private static final BigInteger G = new BigInteger("2");
     private static final BigInteger N = new BigInteger("115b8b692e0e045692cf280b436735c77a5a9e8a9e7ed56c965f87db5b2a2ece3", 16);
     private static final BigInteger K = new BigInteger("c46d46600d87fef149bd79b81119842f3c20241fda67d06ef412d8f6d9479c58", 16);
@@ -72,43 +74,50 @@ public class JSONServlet extends HttpServlet {
         }
         baos.close();
         String requestString = baos.toString("UTF-8");
-        
+
         try {
             if (requestString.startsWith("{")) {
-                JSONObject json = new JSONObject(requestString); //user actions.
+                JSONObject json = new JSONObject(requestString);
                 request.setAttribute("json", json);
-                String session_key = "";
+                int userId = 0;
                 if (json.has("session_key")) {
-                    session_key = json.getString("session_key");
+                    String session_key = json.getString("session_key");
+                    UsersSession session = AppData.sessions.get(session_key);
+                    if (session != null) {
+                        userId = Tools.parseInt(session.get("UserId"), 0);
+                    }
                 }
-                int userId = Tools.parseInt(AppData.sessions.get(session_key).get("UserId"), 0); //TODO бред! если нету сессии, она создаётся с пустым ключом, чушь
                 String action = json.getString("action");
                 switch (action) {
+                    case "check":
+                        doRequestLogin(request, response);
+                        break;
+
                     case "register":
                         registerUser(request, response);
                         break;
-                    
+
                     case "handshake_srp":
                         handshakeUserSRP(request, response);
                         break;
-                    
+
                     case "login_srp":
                         loginUserSRP(request, response);
                         break;
-                    
+
                     case "login_rsa":
                         loginUserRSA(request, response);
                         break;
-                    
+
                     case "kf_upload":
                         if (userId > 0) {
                             updateKeyFile(userId, request, response);
-                            uploadUserToServer(request, response);
+                            uploadUserToServer(userId);
                         } else {
                             doRequestLogin(request, response);
                         }
                         break;
-                    
+
                     case "kf_download":
                         if (userId > 0) {
                             downloadKeyFile(userId, request, response);
@@ -116,17 +125,17 @@ public class JSONServlet extends HttpServlet {
                             doRequestLogin(request, response);
                         }
                         break;
-                    
+
                     case "command":
                         if (userId > 0) {
                             doUserCommand(request, response);
                             replyWithParameters(request, response);
-                            
+
                         } else {
                             doRequestLogin(request, response);
                         }
                         break;
-                    
+
                     default:
                         if (userId > 0) {
                             replyWithParameters(request, response);
@@ -141,7 +150,7 @@ public class JSONServlet extends HttpServlet {
             e.printStackTrace();
             response.getWriter().print("{\"result\":\"error\",\"message\":\"" + e.getMessage() + "\"}");
         }
-        
+
     }
 
     // <editor-fold defaultstate="collapsed" desc="HttpServlet methods. Click on the + sign on the left to edit the code.">
@@ -187,7 +196,7 @@ public class JSONServlet extends HttpServlet {
         //check if it's the only user/
         String sSQL = "select id from users where status = 1;";
         JSONObject json = (JSONObject) request.getAttribute("json");
-        
+
         try (Connection conn = DBTools.openConnection(BoxCommonData.dataSourceName)) {
             List<HashMap> resList = DBSelect.getRows(sSQL, conn);
             if (resList.size() > 0) {
@@ -208,15 +217,32 @@ public class JSONServlet extends HttpServlet {
             json.put("box_id", BoxCommonData.BOX_ID);
             json.put("session_key", session_key);
             response.getWriter().print(json.toString());
-            
+
         }
     }
-    
-    private void uploadUserToServer(HttpServletRequest request, HttpServletResponse response) throws Exception {
+
+    private void uploadUserToServer(int userId) throws Exception {
         //create userdata with box_id, sign it with RSA and upload to server - send object to tunnelcient and notify
         //on server side - check signature and insert to users_db
+        String sSQL = "select * from users where status = 1 and id = " + userId;
+        try (Connection conn = DBTools.openConnection(BoxCommonData.dataSourceName)) {
+            List<HashMap> resList = DBSelect.getRows(sSQL, conn);
+            if (resList.isEmpty()) {
+                throw new Exception("User id=" + userId + " not found");
+            }
+            HashMap userMap = resList.get(0);
+            JSONObject json = new JSONObject();
+            json.put("box_id", BoxCommonData.BOX_ID);
+            json.put("action", "user_data_upload");
+            for (String key : (Set<String>) userMap.keySet()) {
+                json.put(key, userMap.get(key));
+            }
+            //TODO sign with RSA
+            TunnelClient.getInstance().sendToServer(json.toString());
+
+        }
     }
-    
+
     private void updateKeyFile(int userId, HttpServletRequest request, HttpServletResponse response) throws Exception {
         if (userId <= 0) {
             throw new Exception("Trying to upload unauthorized keyfile!");
@@ -232,7 +258,7 @@ public class JSONServlet extends HttpServlet {
             response.getWriter().print(json.toString());
         }
     }
-    
+
     private void downloadKeyFile(int userId, HttpServletRequest request, HttpServletResponse response) throws Exception {
         String sSQL = "select id, keyfile from users where status = 1 and id = " + userId;
         try (Connection conn = DBTools.openConnection(BoxCommonData.dataSourceName)) {
@@ -247,7 +273,7 @@ public class JSONServlet extends HttpServlet {
             response.getWriter().print(json.toString());
         }
     }
-    
+
     private void loginUserRSA(HttpServletRequest request, HttpServletResponse response) throws Exception {
         JSONObject json = (JSONObject) request.getAttribute("json");
         UsersSession session = null;
@@ -261,13 +287,20 @@ public class JSONServlet extends HttpServlet {
         String challenge = (String) session.get("challenge");
         int userId = Tools.parseInt(json.get("user_id"), 0);
         String digest = json.getString("digest");
-        String sSQL = "select id, public_key from users where status = 1 and userId=" + userId;
+        String sSQL = "select id, public_key from users where status = 1 and id=" + userId;
         try (Connection conn = DBTools.openConnection(BoxCommonData.dataSourceName)) {
             List<HashMap> resList = DBSelect.getRows(sSQL, conn);
             String publicKey = (String) resList.get(0).get("public_key");
             //TODO validate digest on user's public key
+            BigInteger modulus = new BigInteger(publicKey, 16);
+            RSAPublicKeySpec spec = new RSAPublicKeySpec(modulus, AppData.RSA_GLOBAL_E);
+            KeyFactory factory = KeyFactory.getInstance("RSA");
+            PublicKey pub = factory.generatePublic(spec);
+            Signature verifier = Signature.getInstance("SHA256withRSA");
+            verifier.initVerify(pub);
+            verifier.update(challenge.getBytes("UTF-8")); 
+            boolean valid = verifier.verify(Tools.toByteArray(digest));
             json = new JSONObject();
-            boolean valid = true;
             if (valid) {
                 session.put("UserId", userId);
                 json.put("user_id", userId);
@@ -281,7 +314,7 @@ public class JSONServlet extends HttpServlet {
             response.getWriter().print(json.toString());
         }
     }
-    
+
     private void handshakeUserSRP(HttpServletRequest request, HttpServletResponse response) throws Exception {
         String sSQL = "select id, salt, verifier from users where status = 1 and login=?;";
         JSONObject json = (JSONObject) request.getAttribute("json");
@@ -309,13 +342,13 @@ public class JSONServlet extends HttpServlet {
             }
             BigInteger A = new BigInteger(json.getString("srp_A"), 16);
             BigInteger b = null;
-            BigInteger B = null;
+            BigInteger B = BigInteger.ZERO;
             BigInteger u = null;
             while (true) {
                 b = new BigInteger(32, new Random());
                 B = (K.multiply(v)).add(G.modPow(b, N));
                 u = sha256(A.toString(16) + B.toString(16));
-                
+
                 if ((B.remainder(N).intValue() != 0) && (u.remainder(N).intValue() != 0)) {
                     break;
                 }
@@ -338,14 +371,14 @@ public class JSONServlet extends HttpServlet {
                 json.put("salt", salt);
                 json.put("box_id", BoxCommonData.BOX_ID);
                 json.put("session_key", session_key);
-                
+
             }
-            
+
             response.getWriter().print(json.toString());
-            
+
         }
     }
-    
+
     private void loginUserSRP(HttpServletRequest request, HttpServletResponse response) throws Exception {
         JSONObject json = (JSONObject) request.getAttribute("json");
         UsersSession session = null;
@@ -360,15 +393,15 @@ public class JSONServlet extends HttpServlet {
         String Mstr = (String) session.remove("srp_M");
         String Sstr = (String) session.remove("srp_S");
         String username = (String) session.remove("srp_login");
-        
+
         BigInteger A = new BigInteger(Astr, 16);
         BigInteger M = new BigInteger(Mstr, 16);
         BigInteger S = new BigInteger(Sstr, 16);
-        
+
         String M_client = json.getString("srp_M");
         json = new JSONObject();
         if (M_client.equals(Mstr)) {
-            
+
             String sSQL = "select id, salt, verifier from users where status = 1 and login=?;";
             List params = new LinkedList();
             params.add(username);
@@ -391,18 +424,20 @@ public class JSONServlet extends HttpServlet {
         }
         response.getWriter().print(json.toString());
     }
-    
+
     private void doUserCommand(HttpServletRequest request, HttpServletResponse response) throws Exception {
         JSONObject json = (JSONObject) request.getAttribute("json");
         JSONInterface.doUserCommand(json);
     }
-    
+
     private void replyWithParameters(HttpServletRequest request, HttpServletResponse response) throws Exception {
-        
+        JSONObject json = (JSONObject) request.getAttribute("json");
         JSONObject reply = JSONInterface.getParametersJSON();
+        reply.put("result", "success");
+        reply.put("session_key", json.getString("session_key"));
         response.getWriter().write(reply.toString());
     }
-    
+
     private void doRequestLogin(HttpServletRequest request, HttpServletResponse response) throws Exception {
         String sSQL = "select id from users where status = 1;";
         JSONObject json = new JSONObject();
@@ -426,7 +461,7 @@ public class JSONServlet extends HttpServlet {
             response.getWriter().print(json.toString());
         }
     }
-    
+
     private BigInteger sha256(String s) throws Exception {
         MessageDigest sha = MessageDigest.getInstance("SHA-256");
         byte[] bytes = s.getBytes();
