@@ -330,7 +330,7 @@ public class JSONServlet extends HttpServlet {
             BigInteger v;
             if (resList.size() > 0) {
                 salt = (String) resList.get(0).get("salt");
-                v = new BigInteger((String) resList.get(0).get("verifier"));
+                v = new BigInteger((String) resList.get(0).get("verifier"), 16);
             } else {
                 salt = ""; //если нету такого юзера в БД, нельзя это показать пытающемуся зайти. Так что на основе введённого логина генерируем "поддельную" соль и отдаём.
                 BigInteger fakeSaltNum = sha256(login + FAKE_SALT_KEY);
@@ -412,6 +412,7 @@ public class JSONServlet extends HttpServlet {
                     int userId = Tools.parseInt(resList.get(0).get("id"), 0);
                     session.put("UserId", userId);
                     json.put("user_id", userId);
+                    json.put("box_id", BoxCommonData.BOX_ID);
                     json.put("result", "success");
                     json.put("srp_M", M.toString(16));
                     System.out.println("SRP LOGIN OK! UserId=" + userId);
