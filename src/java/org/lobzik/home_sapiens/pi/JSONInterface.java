@@ -78,7 +78,7 @@ public class JSONInterface {
 
         Signature digest = Signature.getInstance("SHA256withRSA");
         digest.initSign(BoxCommonData.PRIVATE_KEY);
-        digest.update(encrypted);
+        digest.update(data.getBytes());
         byte[] digestRaw = digest.sign();
         String digestHex = DatatypeConverter.printHexBinary(digestRaw);
 
