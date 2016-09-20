@@ -210,10 +210,11 @@ public class JSONServlet extends HttpServlet {
             int newUserId = DBTools.insertRow("users", newUser, conn);
             String session_key = AppData.sessions.createSession();
             AppData.sessions.get(session_key).put("UserId", newUserId);
+            String hexModulus = BoxCommonData.PUBLIC_KEY.getModulus().toString(16);
             json = new JSONObject();
             json.put("result", "success");
             json.put("new_user_id", newUserId);
-            json.put("box_public_key", BoxCommonData.PUBLIC_KEY);
+            json.put("box_public_key", hexModulus);
             json.put("box_id", BoxCommonData.BOX_ID);
             json.put("session_key", session_key);
             response.getWriter().print(json.toString());
