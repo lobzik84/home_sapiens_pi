@@ -1,0 +1,2 @@
+
+mysql -u hsuser -phspass hs < clean_db.sql
