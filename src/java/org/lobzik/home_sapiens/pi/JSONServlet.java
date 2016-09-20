@@ -201,9 +201,14 @@ public class JSONServlet extends HttpServlet {
         try (Connection conn = DBTools.openConnection(BoxCommonData.dataSourceName)) {
             List<HashMap> resList = DBSelect.getRows(sSQL, conn);
             if (resList.size() > 0) {
-                //throw new Exception("User registered already, please login");
+                throw new Exception("User registered already, please login");
             }
             HashMap newUser = new HashMap();
+            String publicKey = json.getString("public_key");
+            BigInteger modulus = new BigInteger(publicKey, 16);
+            RSAPublicKeySpec spec = new RSAPublicKeySpec(modulus, BoxCommonData.RSA_E);
+            KeyFactory factory = KeyFactory.getInstance("RSA");
+            PublicKey usersPublicKey = factory.generatePublic(spec);
             for (String key : json.keySet()) {
                 newUser.put(key, json.get(key));
             }
@@ -211,6 +216,7 @@ public class JSONServlet extends HttpServlet {
             int newUserId = DBTools.insertRow("users", newUser, conn);
             String session_key = AppData.sessions.createSession();
             AppData.sessions.get(session_key).put("UserId", newUserId);
+            AppData.sessions.get(session_key).put("UsersPublicKey", usersPublicKey);
             String hexModulus = BoxCommonData.PUBLIC_KEY.getModulus().toString(16);
             json = new JSONObject();
             json.put("result", "success");

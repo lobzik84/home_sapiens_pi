@@ -50,12 +50,11 @@ public class JSONInterface {
                 continue;
             }
             JSONObject parJson = new JSONObject();
-            parJson.put("par_name", p.getName());
-            parJson.put("par_unit", p.getUnit());
+            parJson.put("par_type", p.getType().toString());
             Measurement m = mc.getLastMeasurement(p);
             parJson.put("last_value", m.toStringValue());
             parJson.put("last_date", m.getTime());
-            paramsJson.put(pId + "", parJson);
+            paramsJson.put(p.getAlias() + "", parJson);
         }
         paramsJson.put("test", "test ok");
         
