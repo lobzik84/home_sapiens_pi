@@ -6,10 +6,7 @@
 package org.lobzik.home_sapiens.pi;
 
 import java.io.File;
-import java.math.BigInteger;
 import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import javax.naming.Context;
 import javax.naming.InitialContext;
 import org.apache.commons.dbcp2.BasicDataSource;
@@ -27,7 +24,6 @@ public class AppData {
     public static final ParametersStorage parametersStorage; //launches BEFORE AppListener called
     public static final MeasurementsCache measurementsCache;
     public static final UsersSessionsStorage sessions = new UsersSessionsStorage();//TODO need storage class with time limits
-    public static final BigInteger RSA_GLOBAL_E = new BigInteger("10001", 16);
     private static File soundWorkDir = null;
     private static File captureWorkDir = null;
     

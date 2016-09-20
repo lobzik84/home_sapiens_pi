@@ -13,6 +13,7 @@ import java.security.KeyFactory;
 import java.security.MessageDigest;
 import java.security.PublicKey;
 import java.security.Signature;
+import java.security.interfaces.RSAPublicKey;
 import java.security.spec.RSAPublicKeySpec;
 import java.sql.Connection;
 import java.util.HashMap;
@@ -292,17 +293,17 @@ public class JSONServlet extends HttpServlet {
         try (Connection conn = DBTools.openConnection(BoxCommonData.dataSourceName)) {
             List<HashMap> resList = DBSelect.getRows(sSQL, conn);
             String publicKey = (String) resList.get(0).get("public_key");
-            //TODO validate digest on user's public key
             BigInteger modulus = new BigInteger(publicKey, 16);
-            RSAPublicKeySpec spec = new RSAPublicKeySpec(modulus, AppData.RSA_GLOBAL_E);
+            RSAPublicKeySpec spec = new RSAPublicKeySpec(modulus, BoxCommonData.RSA_E);
             KeyFactory factory = KeyFactory.getInstance("RSA");
-            PublicKey pub = factory.generatePublic(spec);
+            PublicKey usersPublicKey = factory.generatePublic(spec);
             Signature verifier = Signature.getInstance("SHA256withRSA");
-            verifier.initVerify(pub);
-            verifier.update(challenge.getBytes("UTF-8")); 
+            verifier.initVerify(usersPublicKey);
+            verifier.update(challenge.getBytes("UTF-8"));
             boolean valid = verifier.verify(Tools.toByteArray(digest));
             json = new JSONObject();
             if (valid) {
+                session.put("UsersPublicKey", usersPublicKey);
                 session.put("UserId", userId);
                 json.put("user_id", userId);
                 json.put("result", "success");
@@ -403,7 +404,7 @@ public class JSONServlet extends HttpServlet {
         json = new JSONObject();
         if (M_client.equals(Mstr)) {
 
-            String sSQL = "select id, salt, verifier from users where status = 1 and login=?;";
+            String sSQL = "select id, salt, verifier, public_key from users where status = 1 and login=?;";
             List params = new LinkedList();
             params.add(username);
             try (Connection conn = DBTools.openConnection(BoxCommonData.dataSourceName)) {
@@ -411,6 +412,12 @@ public class JSONServlet extends HttpServlet {
                 if (resList.size() > 0) {
                     M = sha256(A.toString(16) + M.toString(16) + S.toString(16));
                     int userId = Tools.parseInt(resList.get(0).get("id"), 0);
+                    String publicKey = (String) resList.get(0).get("public_key");
+                    BigInteger modulus = new BigInteger(publicKey, 16);
+                    RSAPublicKeySpec spec = new RSAPublicKeySpec(modulus, BoxCommonData.RSA_E);
+                    KeyFactory factory = KeyFactory.getInstance("RSA");
+                    PublicKey usersPublicKey = factory.generatePublic(spec);
+                    session.put("UsersPublicKey", usersPublicKey);
                     session.put("UserId", userId);
                     json.put("user_id", userId);
                     json.put("box_id", BoxCommonData.BOX_ID);
@@ -434,7 +441,15 @@ public class JSONServlet extends HttpServlet {
 
     private void replyWithParameters(HttpServletRequest request, HttpServletResponse response) throws Exception {
         JSONObject json = (JSONObject) request.getAttribute("json");
-        JSONObject reply = JSONInterface.getParametersJSON();
+                UsersSession session = null;
+        if (json.has("session_key")) {
+            String session_key = json.getString("session_key");
+            session = AppData.sessions.get(session_key);
+        }
+        if (session == null) {
+            return;
+        }
+        JSONObject reply = JSONInterface.getEncryptedParametersJSON((RSAPublicKey)session.get("UsersPublicKey"));
         reply.put("result", "success");
         reply.put("session_key", json.getString("session_key"));
         response.getWriter().write(reply.toString());

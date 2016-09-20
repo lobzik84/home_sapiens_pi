@@ -5,7 +5,16 @@
  */
 package org.lobzik.home_sapiens.pi;
 
+import java.security.SecureRandom;
+import java.security.Signature;
+import java.security.interfaces.RSAPublicKey;
 import java.util.HashMap;
+import javax.crypto.Cipher;
+import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
+import javax.xml.bind.DatatypeConverter;
 import org.json.JSONObject;
 import org.lobzik.home_sapiens.entity.Measurement;
 import org.lobzik.home_sapiens.entity.Parameter;
@@ -30,7 +39,7 @@ public class JSONInterface {
         AppData.eventManager.newEvent(event);
     }
 
-    public static JSONObject getParametersJSON() throws Exception {
+    public static JSONObject getEncryptedParametersJSON(RSAPublicKey publicKey) throws Exception {
 
         JSONObject paramsJson = new JSONObject();
         ParametersStorage ps = AppData.parametersStorage;
@@ -48,9 +57,50 @@ public class JSONInterface {
             parJson.put("last_date", m.getTime());
             paramsJson.put(pId + "", parJson);
         }
+        paramsJson.put("test", "test ok");
+        
+        String plain = paramsJson.toString();
+        KeyGenerator kgen = KeyGenerator.getInstance("AES");
+        SecureRandom sr = SecureRandom.getInstance("SHA1PRNG");
+        sr.nextBytes(new byte[8]);
+        sr.setSeed(1232);//add entropy
+        kgen.init(128, sr);
+        SecretKey skey = kgen.generateKey();
+        byte[] rawKey = skey.getEncoded();
+        //byte[] iv = new byte[] { 0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF }; 
+        IvParameterSpec ivSpec = new IvParameterSpec(rawKey);
+
+        SecretKeySpec skeySpec = new SecretKeySpec(rawKey, "AES");
+        Cipher cipher = Cipher.getInstance("AES/CFB/NoPadding");
+        cipher.init(Cipher.ENCRYPT_MODE, skeySpec, ivSpec);
+        byte[] encrypted = cipher.doFinal(plain.getBytes("UTF-8"));
+        String data = DatatypeConverter.printHexBinary(encrypted);
+
+        Signature digest = Signature.getInstance("SHA256withRSA");
+        digest.initSign(BoxCommonData.PRIVATE_KEY);
+        digest.update(encrypted);
+        byte[] digestRaw = digest.sign();
+        String digestHex = DatatypeConverter.printHexBinary(digestRaw);
+
+        Cipher cipherRSA = Cipher.getInstance("RSA");
+        // encrypt the plain text using the public key
+        cipherRSA.init(Cipher.ENCRYPT_MODE, publicKey);
+        String keyString = DatatypeConverter.printHexBinary(rawKey);
+        byte[] keyCipherRaw = cipherRSA.doFinal(keyString.getBytes());
+
+        String keyCipher = DatatypeConverter.printHexBinary(keyCipherRaw);
         JSONObject reply = new JSONObject();
-        reply.put("parameters", paramsJson);
+        reply.put("parameters", data);
+        reply.put("key_cipher", keyCipher);
+        reply.put("digest", digestHex);
         return reply;
         //TODO encrypt on users key and sign
+    }
+
+    public static JSONObject getCaptureJSON() throws Exception {
+        JSONObject reply = new JSONObject();
+        //reply.put("captur", paramsJson);
+        return reply;
+
     }
 }
