@@ -45,7 +45,7 @@ public class JSONInterface {
     }
 
     public static JSONObject getEncryptedParametersJSON(RSAPublicKey publicKey) throws Exception {
-
+        //TODO get scaled image for mobile version
         JSONObject paramsJson = new JSONObject();
         ParametersStorage ps = AppData.parametersStorage;
         MeasurementsCache mc = AppData.measurementsCache;
