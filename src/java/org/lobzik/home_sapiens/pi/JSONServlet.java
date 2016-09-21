@@ -136,6 +136,15 @@ public class JSONServlet extends HttpServlet {
                             doRequestLogin(request, response);
                         }
                         break;
+                        
+                    case "get_capture":
+                        if (userId > 0) {
+                            replyWithCapture(request, response);
+                        } else {
+                            doRequestLogin(request, response);
+                        }
+                        
+                        break;
 
                     default:
                         if (userId > 0) {
@@ -460,6 +469,22 @@ public class JSONServlet extends HttpServlet {
         reply.put("session_key", json.getString("session_key"));
         response.getWriter().write(reply.toString());
     }
+    
+    private void replyWithCapture(HttpServletRequest request, HttpServletResponse response) throws Exception {
+        JSONObject json = (JSONObject) request.getAttribute("json");
+                UsersSession session = null;
+        if (json.has("session_key")) {
+            String session_key = json.getString("session_key");
+            session = AppData.sessions.get(session_key);
+        }
+        if (session == null) {
+            return;
+        }
+        JSONObject reply = JSONInterface.getEncryptedCaptureJSON((RSAPublicKey)session.get("UsersPublicKey"));
+        reply.put("result", "success");
+        reply.put("session_key", json.getString("session_key"));
+        response.getWriter().write(reply.toString());
+    }    
 
     private void doRequestLogin(HttpServletRequest request, HttpServletResponse response) throws Exception {
         String sSQL = "select id from users where status = 1;";

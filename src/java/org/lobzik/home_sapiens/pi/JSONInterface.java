@@ -5,6 +5,10 @@
  */
 package org.lobzik.home_sapiens.pi;
 
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.SecureRandom;
 import java.security.Signature;
 import java.security.interfaces.RSAPublicKey;
@@ -19,6 +23,7 @@ import org.json.JSONObject;
 import org.lobzik.home_sapiens.entity.Measurement;
 import org.lobzik.home_sapiens.entity.Parameter;
 import org.lobzik.home_sapiens.pi.event.Event;
+import org.lobzik.home_sapiens.pi.modules.VideoModule;
 
 /**
  * class for generating and parsing JSON to be used in TunnelClient and
@@ -57,7 +62,7 @@ public class JSONInterface {
             paramsJson.put(p.getAlias() + "", parJson);
         }
         paramsJson.put("test", "test ok");
-        
+
         String plain = paramsJson.toString();
         KeyGenerator kgen = KeyGenerator.getInstance("AES");
         SecureRandom sr = SecureRandom.getInstance("SHA1PRNG");
@@ -93,13 +98,56 @@ public class JSONInterface {
         reply.put("key_cipher", keyCipher);
         reply.put("digest", digestHex);
         return reply;
-        //TODO encrypt on users key and sign
+
     }
 
-    public static JSONObject getCaptureJSON() throws Exception {
-        JSONObject reply = new JSONObject();
-        //reply.put("captur", paramsJson);
-        return reply;
+    public static JSONObject getEncryptedCaptureJSON(RSAPublicKey publicKey) throws Exception {
+
+        File workdir = AppData.getCaptureWorkDir();
+        KeyGenerator kgen = KeyGenerator.getInstance("AES");
+        SecureRandom sr = SecureRandom.getInstance("SHA1PRNG");
+        sr.nextBytes(new byte[8]);
+        sr.setSeed(1232);//add entropy
+        kgen.init(128, sr);
+        SecretKey skey = kgen.generateKey();
+        byte[] rawKey = skey.getEncoded();
+        IvParameterSpec ivSpec = new IvParameterSpec(rawKey);
+
+        SecretKeySpec skeySpec = new SecretKeySpec(rawKey, "AES");
+        Cipher cipher = Cipher.getInstance("AES/CFB/NoPadding");
+        cipher.init(Cipher.ENCRYPT_MODE, skeySpec, ivSpec);
+     
+        
+        Cipher cipherRSA = Cipher.getInstance("RSA");
+        // encrypt the plain text using the public key
+        cipherRSA.init(Cipher.ENCRYPT_MODE, publicKey);
+        String keyString = DatatypeConverter.printHexBinary(rawKey);
+        byte[] keyCipherRaw = cipherRSA.doFinal(keyString.getBytes());
+        String keyCipher = DatatypeConverter.printHexBinary(keyCipherRaw);
+        
+        Signature digest = Signature.getInstance("SHA256withRSA");
+        digest.initSign(BoxCommonData.PRIVATE_KEY);
+        
+        JSONObject capture = new JSONObject();
+       
+        for (String fileName : VideoModule.IMAGE_FILES) {
+            JSONObject cam = new JSONObject();
+            Path path = Paths.get(workdir.getAbsolutePath(), fileName);
+            byte[] image = Files.readAllBytes(path);
+            byte[] encrypted = cipher.doFinal(image);
+            String data = DatatypeConverter.printHexBinary(encrypted);
+            digest.update(data.getBytes());
+            byte[] digestRaw = digest.sign();
+            String digestHex = DatatypeConverter.printHexBinary(digestRaw);
+
+            cam.put("img_date", Files.getLastModifiedTime(path).toMillis());
+            cam.put("img_cipher", data);
+            cam.put("img_digest", digestHex);
+            cam.put("key_cipher", keyCipher);
+            capture.put(fileName, cam);
+        }
+
+        return capture;
 
     }
 }
