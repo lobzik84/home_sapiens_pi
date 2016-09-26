@@ -6,8 +6,10 @@
 package org.lobzik.home_sapiens.pi.modules;
 
 import java.sql.Connection;
+import org.lobzik.home_sapiens.pi.AppData;
 import org.lobzik.home_sapiens.pi.BoxCommonData;
 import org.lobzik.home_sapiens.pi.event.Event;
+import org.lobzik.home_sapiens.pi.tunnel.client.TunnelClient;
 import org.lobzik.tools.db.mysql.DBTools;
 
 /**
@@ -18,8 +20,8 @@ public class TunnelClientModule implements Module {
 
     public final String MODULE_NAME = this.getClass().getSimpleName();
     private static TunnelClientModule instance = null;
-    private static Connection conn = null;
-
+    private static TunnelClient  client = null;
+            
     private TunnelClientModule() { //singleton
     }
 
@@ -37,12 +39,8 @@ public class TunnelClientModule implements Module {
 
     @Override
     public void start() {
-        try {
-            conn = DBTools.openConnection(BoxCommonData.dataSourceName);
+        client = new TunnelClient(BoxCommonData.TUNNEL_SERVER_URL);
 
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
     }
 
     @Override
@@ -50,6 +48,6 @@ public class TunnelClientModule implements Module {
     }
 
     public static void finish() {
-        DBTools.closeConnection(conn);
+
     }
 }

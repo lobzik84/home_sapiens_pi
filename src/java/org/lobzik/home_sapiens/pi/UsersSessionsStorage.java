@@ -5,6 +5,7 @@
  */
 package org.lobzik.home_sapiens.pi;
 
+import org.lobzik.home_sapiens.entity.UsersSession;
 import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.HashSet;

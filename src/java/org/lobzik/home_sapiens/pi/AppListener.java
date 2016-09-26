@@ -20,6 +20,7 @@ import org.lobzik.home_sapiens.pi.modules.InternalSensorsModule;
 import org.lobzik.home_sapiens.pi.modules.SpeakerModule;
 import org.lobzik.home_sapiens.pi.modules.SystemModule;
 import org.lobzik.home_sapiens.pi.modules.TimerModule;
+import org.lobzik.home_sapiens.pi.modules.TunnelClientModule;
 import org.lobzik.home_sapiens.pi.modules.VideoModule;
 
 /**
@@ -58,6 +59,7 @@ public class AppListener implements ServletContextListener {
             SpeakerModule.getInstance().start();
             VideoModule.getInstance().start();
             SystemModule.getInstance().start();
+            TunnelClientModule.getInstance().start();
 
         } catch (Throwable ex) {
             ex.printStackTrace();

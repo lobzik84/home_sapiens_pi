@@ -5,6 +5,7 @@
  */
 package org.lobzik.home_sapiens.pi;
 
+import org.lobzik.home_sapiens.entity.UsersSession;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -255,7 +256,7 @@ public class JSONServlet extends HttpServlet {
                 json.put(key, userMap.get(key));
             }
             //TODO sign with RSA
-            TunnelClient.getInstance().sendToServer(json.toString());
+//            TunnelClient.getInstance().sendToServer(json.toString());
 
         }
     }
