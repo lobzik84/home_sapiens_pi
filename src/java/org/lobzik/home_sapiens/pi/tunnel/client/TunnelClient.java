@@ -6,6 +6,7 @@
 package org.lobzik.home_sapiens.pi.tunnel.client;
 
 import java.net.URI;
+import java.security.interfaces.RSAPublicKey;
 import javax.websocket.ClientEndpoint;
 import javax.websocket.CloseReason;
 import javax.websocket.ContainerProvider;
@@ -15,14 +16,16 @@ import javax.websocket.OnOpen;
 import javax.websocket.Session;
 import javax.websocket.WebSocketContainer;
 import org.json.JSONObject;
+import org.lobzik.home_sapiens.pi.AppData;
 import org.lobzik.home_sapiens.pi.BoxCommonData;
+import org.lobzik.home_sapiens.pi.JSONInterface;
 
 @ClientEndpoint
 public class TunnelClient {
 
     Session session = null;
     String box_session_key = null;
-            
+
     public TunnelClient(String endpointURI) {
         try {
             WebSocketContainer container = ContainerProvider.getWebSocketContainer();
@@ -79,6 +82,48 @@ public class TunnelClient {
                         sendMessage(json.toString());
                     }
                 }
+                if (json.has("user_id") && json.has("action")) {
+                    String action = json.getString("action");
+                    int userId = json.getInt("user_id");
+                    if (AppData.usersKeys.get(userId) == null) {
+                        AppData.initUserPublicKey(userId); //TODO говнокод. надо переписать на нормальный lazy init в AppData
+                    }
+                    RSAPublicKey usersKey = AppData.usersKeys.get(userId);
+                    if (usersKey == null) {
+                        replyWithError("cannot find users public key userId=" + userId);
+                        return;
+                    }
+
+                    switch (action) {
+                        case "command":
+                            if (userId > 0) {
+                                JSONInterface.doUserCommand(json);
+                            }
+                            JSONObject reply = JSONInterface.getEncryptedParametersJSON(usersKey);
+                            reply.put("result", "success");
+                            reply.put("box_session_key", box_session_key);
+                            sendMessage(reply.toString());
+                            break;
+
+                        case "get_capture":
+
+                            reply = JSONInterface.getEncryptedCaptureJSON(usersKey);
+                            reply.put("box_session_key", box_session_key);
+                            reply.put("result", "success");
+
+                            sendMessage(reply.toString());
+
+                            break;
+
+                        default:
+                            reply = JSONInterface.getEncryptedParametersJSON(usersKey);
+                            reply.put("box_session_key", box_session_key);
+                            reply.put("result", "success");
+                            sendMessage(reply.toString());
+
+                    }
+                }
+
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -91,7 +136,14 @@ public class TunnelClient {
      * @param message
      */
     public void sendMessage(String message) throws Exception {
-        
+
         this.session.getBasicRemote().sendText(message);
+    }
+
+    private void replyWithError(String message) throws Exception {
+        JSONObject json = new JSONObject();
+        json.put("result", "error");
+        json.put("message", message);
+        sendMessage(json.toString());
     }
 }
