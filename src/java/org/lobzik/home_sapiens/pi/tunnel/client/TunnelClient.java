@@ -23,12 +23,15 @@ import org.lobzik.home_sapiens.pi.JSONInterface;
 @ClientEndpoint
 public class TunnelClient {
 
-    Session session = null;
-    String box_session_key = null;
+    private Session session = null;
+    private String box_session_key = null;
+    private long lastDataRecieved = 0l;
+    private WebSocketContainer container = null;
+    private boolean connected = false;
 
     public TunnelClient(String endpointURI) {
         try {
-            WebSocketContainer container = ContainerProvider.getWebSocketContainer();
+            container = ContainerProvider.getWebSocketContainer();
             container.connectToServer(this, new URI(endpointURI));
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -43,6 +46,7 @@ public class TunnelClient {
     @OnOpen
     public void onOpen(Session session) {
         System.out.println("opening websocket");
+        connected = true;
         this.session = session;
     }
 
@@ -55,7 +59,18 @@ public class TunnelClient {
     @OnClose
     public void onClose(Session userSession, CloseReason reason) {
         System.out.println("closing websocket");
+        connected = false;
         this.session = null;
+    }
+
+    public void disconnect() {
+        if (connected) {
+            try {
+                session.close();
+                connected = false;
+            } catch (Exception e) {
+            }
+        }
     }
 
     /**
@@ -67,6 +82,7 @@ public class TunnelClient {
     @OnMessage
     public void onMessage(String message) {
         System.out.println("got message " + message);
+        lastDataRecieved = System.currentTimeMillis();
         try {
             if (message != null && message.startsWith("{")) {
                 JSONObject json = new JSONObject(message);
@@ -85,10 +101,7 @@ public class TunnelClient {
                 if (json.has("user_id") && json.has("action")) {
                     String action = json.getString("action");
                     int userId = json.getInt("user_id");
-                    if (AppData.usersKeys.get(userId) == null) {
-                        AppData.initUserPublicKey(userId); //TODO говнокод. надо переписать на нормальный lazy init в AppData
-                    }
-                    RSAPublicKey usersKey = AppData.usersKeys.get(userId);
+                    RSAPublicKey usersKey = AppData.usersPublicKeysCache.getKey(userId);
                     if (usersKey == null) {
                         replyWithError("cannot find users public key userId=" + userId);
                         return;
@@ -139,6 +152,16 @@ public class TunnelClient {
 
         this.session.getBasicRemote().sendText(message);
     }
+    
+    public long getLastDataRecieved() {
+        return lastDataRecieved;
+    }
+    
+    public boolean isConnected(){
+        return connected;
+    }
+    
+    
 
     private void replyWithError(String message) throws Exception {
         JSONObject json = new JSONObject();

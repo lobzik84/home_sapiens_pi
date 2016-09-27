@@ -72,6 +72,7 @@ public class AppListener implements ServletContextListener {
         try {
             log.info("Context Destroyed called. Stopping application modules!");
             //AppData.tunnel.disconnect();
+            TunnelClientModule.finish();
             TimerModule.finish();
             InternalSensorsModule.finish(); //only static methods works!!
             DBDataWriterModule.finish();

@@ -40,7 +40,7 @@ import org.lobzik.tools.db.mysql.DBTools;
 @WebServlet(name = "JsonServlet", urlPatterns = {"/json", "/json/*"})
 public class JSONServlet extends HttpServlet {
 
-    private static final BigInteger G = new BigInteger("2");
+    private static final BigInteger G = new BigInteger("2"); //TODO move to CommonData (common for all projects)
     private static final BigInteger N = new BigInteger("115b8b692e0e045692cf280b436735c77a5a9e8a9e7ed56c965f87db5b2a2ece3", 16);
     private static final BigInteger K = new BigInteger("c46d46600d87fef149bd79b81119842f3c20241fda67d06ef412d8f6d9479c58", 16);
     private static final String SALT_ALPHABET = "1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -433,6 +433,7 @@ public class JSONServlet extends HttpServlet {
                     RSAPublicKeySpec spec = new RSAPublicKeySpec(modulus, BoxCommonData.RSA_E);
                     KeyFactory factory = KeyFactory.getInstance("RSA");
                     PublicKey usersPublicKey = factory.generatePublic(spec);
+                    AppData.usersPublicKeysCache.addKey(userId, (RSAPublicKey)usersPublicKey);
                     session.put("UsersPublicKey", usersPublicKey);
                     session.put("UserId", userId);
                     json.put("user_id", userId);
