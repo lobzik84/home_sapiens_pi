@@ -6,7 +6,10 @@
 package org.lobzik.home_sapiens.pi.tunnel.client;
 
 import java.net.URI;
+import java.security.Signature;
 import java.security.interfaces.RSAPublicKey;
+import java.sql.Connection;
+import java.util.HashMap;
 import javax.websocket.ClientEndpoint;
 import javax.websocket.CloseReason;
 import javax.websocket.ContainerProvider;
@@ -15,22 +18,28 @@ import javax.websocket.OnMessage;
 import javax.websocket.OnOpen;
 import javax.websocket.Session;
 import javax.websocket.WebSocketContainer;
+import javax.xml.bind.DatatypeConverter;
+import org.apache.log4j.Logger;
 import org.json.JSONObject;
 import org.lobzik.home_sapiens.pi.AppData;
 import org.lobzik.home_sapiens.pi.BoxCommonData;
 import org.lobzik.home_sapiens.pi.JSONInterface;
+import org.lobzik.tools.db.mysql.DBTools;
 
 @ClientEndpoint
 public class TunnelClient {
 
     private Session session = null;
-    private String box_session_key = null;
+    private String box_session_key = "";
     private long lastDataRecieved = 0l;
     private WebSocketContainer container = null;
     private boolean connected = false;
+    // private boolean connected = false;
+    private static Logger log = null;
 
-    public TunnelClient(String endpointURI) {
+    public TunnelClient(String endpointURI, Logger log) {
         try {
+            this.log = log;
             container = ContainerProvider.getWebSocketContainer();
             container.connectToServer(this, new URI(endpointURI));
         } catch (Exception e) {
@@ -45,8 +54,8 @@ public class TunnelClient {
      */
     @OnOpen
     public void onOpen(Session session) {
-        System.out.println("opening websocket");
-        connected = true;
+        log.info("Websocket connected");
+        // connected = true;
         this.session = session;
     }
 
@@ -58,12 +67,13 @@ public class TunnelClient {
      */
     @OnClose
     public void onClose(Session userSession, CloseReason reason) {
-        System.out.println("closing websocket");
+        log.info("closing websocket");
         connected = false;
         this.session = null;
     }
 
     public void disconnect() {
+        log.info("Disconnecting");
         if (connected) {
             try {
                 session.close();
@@ -81,21 +91,53 @@ public class TunnelClient {
      */
     @OnMessage
     public void onMessage(String message) {
-        System.out.println("got message " + message);
+        // System.out.println("got message " + message);
         lastDataRecieved = System.currentTimeMillis();
         try {
             if (message != null && message.startsWith("{")) {
                 JSONObject json = new JSONObject(message);
+                if (json.has("result") && json.getString("result").equals("error") && json.has("message")){
+                    log.error("Got error from server: " + json.getString("message"));
+                            
+                }
                 if (json.has("box_session_key")) {
                     box_session_key = json.getString("box_session_key");
                     if ("do_login".equals(json.get("result"))) {
                         String challenge = json.getString("challenge");
-                        String digest = challenge;//TODO generate digest
+                        log.debug("Server authentication requested, challenge = " + challenge);
+                        Signature digest = Signature.getInstance("SHA256withRSA");
+                        digest.initSign(BoxCommonData.PRIVATE_KEY);
+                        digest.update(challenge.getBytes("UTF-8"));
+                        byte[] digestRaw = digest.sign();
+                        String digestHex = DatatypeConverter.printHexBinary(digestRaw);
+
                         json = new JSONObject();
-                        json.put("box_session_key", box_session_key);
-                        json.put("digest", digest);
+                        json.put("digest", digestHex);
                         json.put("box_id", BoxCommonData.BOX_ID);
-                        sendMessage(json.toString());
+                        sendMessage(json);
+                        return;
+                    }
+                    if ("success_login".equals(json.get("result"))) {
+                        connected = true;
+                        log.info("Authenticated successfully.");
+                        return;
+                    }
+
+                    if ("login_error".equals(json.get("result"))) {
+                        connected = true;
+                        log.error("Authentication error: " + json.get("message"));
+                        return;
+                    }
+
+                    if ("user_update_success".equals(json.get("result"))) {
+                        HashMap user = new HashMap();
+                        user.put("id", json.getInt("user_id"));
+                        user.put("synced", 1);
+                        try (Connection conn = AppData.dataSource.getConnection()) {
+                            DBTools.updateRow("users", user, conn);
+                            log.info("User uploaded successfully");
+                        }
+                        return;
                     }
                 }
                 if (json.has("user_id") && json.has("action")) {
@@ -114,25 +156,22 @@ public class TunnelClient {
                             }
                             JSONObject reply = JSONInterface.getEncryptedParametersJSON(usersKey);
                             reply.put("result", "success");
-                            reply.put("box_session_key", box_session_key);
-                            sendMessage(reply.toString());
+                            sendMessage(reply);
                             break;
 
                         case "get_capture":
 
                             reply = JSONInterface.getEncryptedCaptureJSON(usersKey);
-                            reply.put("box_session_key", box_session_key);
                             reply.put("result", "success");
 
-                            sendMessage(reply.toString());
+                            sendMessage(reply);
 
                             break;
 
                         default:
                             reply = JSONInterface.getEncryptedParametersJSON(usersKey);
-                            reply.put("box_session_key", box_session_key);
                             reply.put("result", "success");
-                            sendMessage(reply.toString());
+                            sendMessage(reply);
 
                     }
                 }
@@ -148,25 +187,28 @@ public class TunnelClient {
      *
      * @param message
      */
-    public void sendMessage(String message) throws Exception {
-
-        this.session.getBasicRemote().sendText(message);
+    public void sendMessage(JSONObject json) throws Exception {
+        json.put("box_session_key", box_session_key);
+        this.session.getBasicRemote().sendText(json.toString());
     }
-    
+
+    public void sendTT() throws Exception {
+
+        this.session.getBasicRemote().sendText("tt");
+    }
+
     public long getLastDataRecieved() {
         return lastDataRecieved;
     }
-    
-    public boolean isConnected(){
+
+    public boolean isConnected() {
         return connected;
     }
-    
-    
 
     private void replyWithError(String message) throws Exception {
         JSONObject json = new JSONObject();
         json.put("result", "error");
         json.put("message", message);
-        sendMessage(json.toString());
+        sendMessage(json);
     }
 }

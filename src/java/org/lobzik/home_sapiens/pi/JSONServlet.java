@@ -28,7 +28,7 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import org.json.JSONObject;
-import org.lobzik.home_sapiens.pi.tunnel.client.TunnelClient;
+import org.lobzik.home_sapiens.pi.event.Event;
 import org.lobzik.tools.Tools;
 import org.lobzik.tools.db.mysql.DBSelect;
 import org.lobzik.tools.db.mysql.DBTools;
@@ -137,14 +137,14 @@ public class JSONServlet extends HttpServlet {
                             doRequestLogin(request, response);
                         }
                         break;
-                        
+
                     case "get_capture":
                         if (userId > 0) {
                             replyWithCapture(request, response);
                         } else {
                             doRequestLogin(request, response);
                         }
-                        
+
                         break;
 
                     default:
@@ -255,8 +255,11 @@ public class JSONServlet extends HttpServlet {
             for (String key : (Set<String>) userMap.keySet()) {
                 json.put(key, userMap.get(key));
             }
-            //TODO sign with RSA
-//            TunnelClient.getInstance().sendToServer(json.toString());
+
+            HashMap data = new HashMap();
+            data.put("json", json);
+            Event e = new Event("msg_to_server", data, Event.Type.SYSTEM_EVENT);
+            AppData.eventManager.newEvent(e);
 
         }
     }
@@ -433,7 +436,7 @@ public class JSONServlet extends HttpServlet {
                     RSAPublicKeySpec spec = new RSAPublicKeySpec(modulus, BoxCommonData.RSA_E);
                     KeyFactory factory = KeyFactory.getInstance("RSA");
                     PublicKey usersPublicKey = factory.generatePublic(spec);
-                    AppData.usersPublicKeysCache.addKey(userId, (RSAPublicKey)usersPublicKey);
+                    AppData.usersPublicKeysCache.addKey(userId, (RSAPublicKey) usersPublicKey);
                     session.put("UsersPublicKey", usersPublicKey);
                     session.put("UserId", userId);
                     json.put("user_id", userId);
@@ -458,7 +461,7 @@ public class JSONServlet extends HttpServlet {
 
     private void replyWithParameters(HttpServletRequest request, HttpServletResponse response) throws Exception {
         JSONObject json = (JSONObject) request.getAttribute("json");
-                UsersSession session = null;
+        UsersSession session = null;
         if (json.has("session_key")) {
             String session_key = json.getString("session_key");
             session = AppData.sessions.get(session_key);
@@ -466,15 +469,15 @@ public class JSONServlet extends HttpServlet {
         if (session == null) {
             return;
         }
-        JSONObject reply = JSONInterface.getEncryptedParametersJSON((RSAPublicKey)session.get("UsersPublicKey"));
+        JSONObject reply = JSONInterface.getEncryptedParametersJSON((RSAPublicKey) session.get("UsersPublicKey"));
         reply.put("result", "success");
         reply.put("session_key", json.getString("session_key"));
         response.getWriter().write(reply.toString());
     }
-    
+
     private void replyWithCapture(HttpServletRequest request, HttpServletResponse response) throws Exception {
         JSONObject json = (JSONObject) request.getAttribute("json");
-                UsersSession session = null;
+        UsersSession session = null;
         if (json.has("session_key")) {
             String session_key = json.getString("session_key");
             session = AppData.sessions.get(session_key);
@@ -482,11 +485,11 @@ public class JSONServlet extends HttpServlet {
         if (session == null) {
             return;
         }
-        JSONObject reply = JSONInterface.getEncryptedCaptureJSON((RSAPublicKey)session.get("UsersPublicKey"));
+        JSONObject reply = JSONInterface.getEncryptedCaptureJSON((RSAPublicKey) session.get("UsersPublicKey"));
         reply.put("result", "success");
         reply.put("session_key", json.getString("session_key"));
         response.getWriter().write(reply.toString());
-    }    
+    }
 
     private void doRequestLogin(HttpServletRequest request, HttpServletResponse response) throws Exception {
         String sSQL = "select id from users where status = 1;";
