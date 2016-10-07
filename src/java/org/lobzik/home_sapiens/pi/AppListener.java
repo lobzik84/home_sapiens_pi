@@ -43,10 +43,6 @@ public class AppListener implements ServletContextListener {
             log.info("Root Log init ok");
             log.info("Starting hs app. Modules start!");
 
-           // System.setProperty("gnu.io.rxtx.LibraryLoader", "true");
-
-            //AppData.tunnel.connect();
-            //TODO start modules
             AppData.setSoundWorkDir(new File(sce.getServletContext().getRealPath("sounds")));
             AppData.setCaptureWorkDir(new File(sce.getServletContext().getRealPath("capture")));
             
