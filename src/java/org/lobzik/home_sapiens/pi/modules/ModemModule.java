@@ -9,9 +9,11 @@ import gnu.io.CommPort;
 import gnu.io.CommPortIdentifier;
 import gnu.io.SerialPort;
 import java.io.BufferedReader;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
 import org.lobzik.home_sapiens.pi.event.Event;
 
 import java.sql.Connection;
@@ -20,6 +22,7 @@ import java.util.*;
 import org.apache.log4j.Logger;
 import org.lobzik.home_sapiens.pi.AppData;
 import org.lobzik.home_sapiens.pi.BoxCommonData;
+import org.lobzik.home_sapiens.pi.event.EventManager;
 import org.lobzik.tools.db.mysql.DBSelect;
 import org.lobzik.tools.db.mysql.DBTools;
 import org.lobzik.tools.sms.CIncomingMessage;
@@ -30,7 +33,7 @@ import org.lobzik.tools.sms.COutgoingMessage;
  *
  * @author lobzik
  */
-public class ModemModule implements Module {
+public class ModemModule extends Thread implements Module {
 
     public final String MODULE_NAME = this.getClass().getSimpleName();
     private static ModemModule instance = null;
@@ -49,7 +52,7 @@ public class ModemModule implements Module {
     private static String lastRecieved = "";
     private static long lastNewCheck = System.currentTimeMillis();
     private static CommPort commPort = null;
-    private static ModemSerialWriter serialWriter = null;
+    private static ModemSerialReader serialReader = null;
     private static final int repliesBufferSize = 100;
 
     private ModemModule() { //singleton
@@ -70,9 +73,102 @@ public class ModemModule implements Module {
     @Override
     public void start() {
         try {
-            conn = DBTools.openConnection(BoxCommonData.dataSourceName);
-            connect(BoxCommonData.MODEM_INFO_PORT);
+
         } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public synchronized void run() {
+        setName(this.getClass().getSimpleName() + "-Thread");
+        log.info("Starting " + getName() + " on " + BoxCommonData.SERIAL_PORT);
+        EventManager.subscribeForEventType(this, Event.Type.TIMER_EVENT);
+        EventManager.subscribeForEventType(this, Event.Type.USER_ACTION);
+
+        try {
+            conn = DBTools.openConnection(BoxCommonData.dataSourceName);
+            CommPortIdentifier portIdentifier = CommPortIdentifier.getPortIdentifier(BoxCommonData.MODEM_INFO_PORT);
+
+            commPort = portIdentifier.open(this.getClass().getName(), timeout);
+
+            SerialPort serialPort = (SerialPort) commPort;
+            serialPort.setSerialPortParams(57600,
+                    SerialPort.DATABITS_8,
+                    SerialPort.STOPBITS_1,
+                    SerialPort.PARITY_NONE);
+
+            serialReader = new ModemSerialReader(serialPort.getInputStream());
+            serialReader.start();
+            
+            OutputStream os = serialPort.getOutputStream();
+            PrintWriter pw = new PrintWriter(os);
+            while (run) {
+                try {
+                    //if (conn == null) conn =  DriverManager.getConnection("jdbc:mysql://192.168.4.4:3306/sh?useUnicode=true" +
+                    //"&characterEncoding=utf8&autoReconnect=true&user=shuser&password=shpass");
+                    String sSQL = "SELECT * FROM SMS_OUTBOX WHERE STATUS = " + STATUS_NEW;
+
+                    synchronized (this) {
+                        try {
+                            wait(pollPeriod * 1000);
+                        } catch (InterruptedException ie) {
+                        }
+                    }
+                    List<HashMap> smsToSendList = DBSelect.getRows(sSQL, conn);
+                    for (HashMap smsToSend : smsToSendList) {
+                        log.info("Sending SMS ID " + smsToSend.get("ID"));
+                        smsToSend.put("STATUS", STATUS_ERROR);
+                        DBTools.updateRow("SMS_OUTBOX", smsToSend, conn);//сразу ему ставим статус с ошибкой, чтобы если что не гонялось по кругу
+                        COutgoingMessage outMsg = new COutgoingMessage();
+
+                        outMsg.setMessageEncoding(CMessage.MESSAGE_ENCODING_UNICODE);
+                        outMsg.setRecipient((String) smsToSend.get("RECIPIENT"));
+                        outMsg.setText((String) smsToSend.get("MESSAGE"));
+                        String pdu = outMsg.getPDU(smscNumber);
+                        int j = pdu.length();
+                        j /= 2;
+                        if (smscNumber.length() == 0) {
+                            j--;
+                        } else {
+                            j -= ((smscNumber.length() - 1) / 2);
+                            j -= 2;
+                        }
+                        j--;
+                        pw.print("AT+CMGS=" + j + "\r");
+                        pw.print(pdu + "\032");
+                        if (lastRecieved.equalsIgnoreCase("OK")) {
+                            smsToSend.put("STATUS", STATUS_SENT);
+                            log.info("Successfully sent");
+                            DBTools.updateRow("SMS_OUTBOX", smsToSend, conn);
+                        } else {
+
+                            log.error("Error sending: " + lastRecieved);
+                        }
+                    }
+                    if (smsToSendList.isEmpty()) {
+                        if (System.currentTimeMillis() - lastNewCheck >= pollPeriod * 1000) {
+                            pw.print("AT+CMGL");
+                            if (smsReplies.size() > 2) {
+                                smsReplies.clear();
+                                pw.print("AT+CMGD=0,4");
+                            }
+                            lastNewCheck = System.currentTimeMillis();
+                        }
+
+                    }
+                } catch (Exception e) {
+                    log.error(e.getMessage());
+                    synchronized (this) {
+                        try {
+                            wait(10000);
+                        } catch (InterruptedException ie) {
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.error(e.getMessage());
             e.printStackTrace();
         }
     }
@@ -82,75 +178,6 @@ public class ModemModule implements Module {
     }
 
     public static void finish() {
-        DBTools.closeConnection(conn);
-    }
-
-    public void run() {
-
-        while (run) {
-            try {
-                //if (conn == null) conn =  DriverManager.getConnection("jdbc:mysql://192.168.4.4:3306/sh?useUnicode=true" +
-                //"&characterEncoding=utf8&autoReconnect=true&user=shuser&password=shpass");
-                String sSQL = "SELECT * FROM SMS_OUTBOX WHERE STATUS = " + STATUS_NEW;
-
-                synchronized (this) {
-                    try {
-                        wait(pollPeriod * 1000);
-                    } catch (InterruptedException ie) {
-                    }
-                }
-                List<HashMap> smsToSendList = DBSelect.getRows(sSQL, conn);
-                for (HashMap smsToSend : smsToSendList) {
-                    log.info("Sending SMS ID " + smsToSend.get("ID"));
-                    smsToSend.put("STATUS", STATUS_ERROR);
-                    DBTools.updateRow("SMS_OUTBOX", smsToSend, conn);//сразу ему ставим статус с ошибкой, чтобы если что не гонялось по кругу
-                    COutgoingMessage outMsg = new COutgoingMessage();
-
-                    outMsg.setMessageEncoding(CMessage.MESSAGE_ENCODING_UNICODE);
-                    outMsg.setRecipient((String) smsToSend.get("RECIPIENT"));
-                    outMsg.setText((String) smsToSend.get("MESSAGE"));
-                    String pdu = outMsg.getPDU(smscNumber);
-                    int j = pdu.length();
-                    j /= 2;
-                    if (smscNumber.length() == 0) {
-                        j--;
-                    } else {
-                        j -= ((smscNumber.length() - 1) / 2);
-                        j -= 2;
-                    }
-                    j--;
-                    handle("AT+CMGS=" + j + "\r");
-                    handle(pdu + "\032");
-                    if (lastRecieved.equalsIgnoreCase("OK")) {
-                        smsToSend.put("STATUS", STATUS_SENT);
-                        log.info("Successfully sent");
-                        DBTools.updateRow("SMS_OUTBOX", smsToSend, conn);
-                    } else {
-
-                        log.error("Error sending: " + lastRecieved);
-                    }
-                }
-                if (smsToSendList.isEmpty()) {
-                    if (System.currentTimeMillis() - lastNewCheck >= pollPeriod * 1000) {
-                        handle("AT+CMGL");
-                        if (smsReplies.size() > 2) {
-                            smsReplies.clear();
-                            handle("AT+CMGD=0,4");
-                        }
-                        lastNewCheck = System.currentTimeMillis();
-                    }
-
-                }
-            } catch (Exception e) {
-                log.error(e.getMessage());
-                synchronized (this) {
-                    try {
-                        wait(10000);
-                    } catch (InterruptedException ie) {
-                    }
-                }
-            }
-        }
         DBTools.closeConnection(conn);
     }
 
@@ -193,66 +220,6 @@ public class ModemModule implements Module {
         }
     }
 
-    private void connect(String portName) throws Exception {
-        CommPortIdentifier portIdentifier = CommPortIdentifier.getPortIdentifier(portName);
-
-        commPort = portIdentifier.open(this.getClass().getName(), timeout);
-
-        SerialPort serialPort = (SerialPort) commPort;
-        serialPort.setSerialPortParams(57600,
-                SerialPort.DATABITS_8,
-                SerialPort.STOPBITS_1,
-                SerialPort.PARITY_NONE);
-
-        serialWriter = new ModemSerialWriter(serialPort.getOutputStream(), serialPort);
-        serialWriter.start();
-
-        BufferedReader in = new BufferedReader(new InputStreamReader(serialPort.getInputStream()));
-
-        String decodedString;
-        while ((decodedString = in.readLine()) != null && run) {
-            log.debug("UART: " + decodedString);
-            smsReplies.add(decodedString);
-            lineRecieved(smsReplies);
-            if (smsReplies.size() > repliesBufferSize) {
-                smsReplies.remove(0);
-            }
-            if (decodedString.contains("ERROR")) {
-                log.error(decodedString);
-            } else {
-                log.debug(decodedString);
-            }
-
-        }
-        in.close();
-        serialWriter.finish();
-        portIdentifier = null;
-        commPort = null;
-    }
-
-    public synchronized void handle(String command) throws Exception {
-        /*if (connector == null || !connector.isConnected()) {
-         return;
-         }*/
-        while (busy) {
-            synchronized (this) {
-                try {
-                    wait(timeout * 10);
-                } catch (InterruptedException ie) {
-                }
-            }
-        }
-        busy = true;
-        serialWriter.doCommand(command);
-        synchronized (this) {
-            try {
-                wait(timeout);
-            } catch (InterruptedException ie) {
-            }
-            busy = false;
-            notifyAll();
-        }
-    }
 
     public void parseReplyLines(ArrayList<String> replyLines) {
         boolean incoming = false;
@@ -284,72 +251,33 @@ public class ModemModule implements Module {
         }
     }
 
-    public static class ModemSerialWriter extends Thread {
+    public static class ModemSerialReader extends Thread {
 
-        OutputStream out;
-        SerialPort port;
-        private String command = null;
+        InputStream is;
         private static boolean run = true;
 
-        public ModemSerialWriter(OutputStream out, SerialPort port) {
+        public ModemSerialReader(InputStream is) {
             setName(this.getClass().getSimpleName() + "-Thread");
-            this.out = out;
-            this.port = port;
-        }
-
-        public void doCommand(String command) {
-            this.command = command;
-            synchronized (this) {
-                notify();
-            }
-        }
-
-        public void finish() {
-            run = false;
-            synchronized (this) {
-                notify();
-            }
-        }
-
-        public void poll() {
-            synchronized (this) {
-                notify();
-            }
+            this.is = is;
         }
 
         public synchronized void run() {
-            OutputStreamWriter outWriter = new OutputStreamWriter(this.out);
-            while (run) {
-                try {
-                    if (command != null) {
-                        outWriter.write(command);
-                        outWriter.flush();
-                        command = null;
-                    }
-                    try {
-                        synchronized (this) {
-                            wait();
-                        }
-                    } catch (InterruptedException ie) {
+            BufferedReader in = new BufferedReader(new InputStreamReader(is));
+
+            String decodedString;
+            try {
+                while ((decodedString = in.readLine()) != null && run) {
+                    log.debug("Modem: " + decodedString);
+                    if (decodedString.contains("ERROR")) {
+                        log.error(decodedString);
+                    } else {
+                        log.debug(decodedString);
                     }
 
-                } catch (Exception e) {
-                    e.printStackTrace();
                 }
-
-            }
-            try {
-                outWriter.close();
             } catch (Exception e) {
-                e.printStackTrace();
+                log.error("Error in ModemReader: " + e.getMessage());
             }
-            try {
-                port.close();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-
         }
     }
-    // Operator-specific comands
 }
