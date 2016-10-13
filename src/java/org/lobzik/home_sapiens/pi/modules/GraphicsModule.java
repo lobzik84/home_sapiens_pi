@@ -8,6 +8,7 @@ package org.lobzik.home_sapiens.pi.modules;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics;
+import java.awt.Image;
 import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
 import java.io.File;
@@ -74,21 +75,30 @@ public class GraphicsModule implements Module {
             //sudo fbi logo.jpg --noverbose -T 1
             Graphics g= null;
             BufferedImage img = null;
+            BufferedImage temperatureImg = null;
+
             try {
                 img = ImageIO.read(new File(AppData.getGraphicsWorkDir().getAbsolutePath() + File.separator + "screen.jpg"));
+                temperatureImg = ImageIO.read(new File(AppData.getGraphicsWorkDir().getAbsolutePath() + File.separator + "temperature.png"));
             } catch (IOException e) {
             }
+            
             g = img.getGraphics();
             g.setColor(new Color(243, 67, 54));
             g.fillRect(0,251, 480, 320);
             //g.drawLine(20, 20, 360, 20);
             g.setColor(new Color(0, 0, 0));
-            Font font = new Font("Tahoma",  Font.PLAIN, 90);
-            g.setFont(font);
+            g.setFont(new Font("Tahoma",  Font.PLAIN, 110));
             Date d = new Date();
+
+            g.drawString(Tools.getFormatedDate(d,"HH:mm"), 100, 180);
+
+            g.drawImage(temperatureImg, 25, 270, null);  
             
-            g.drawString(Tools.getFormatedDate(d,"HH:mm"), 125, 165);
-            
+            g.setColor(new Color(255, 255, 255));
+            g.setFont(new Font("Tahoma",  Font.PLAIN, 20));
+            g.drawString(Tools.getFormatedDate(d,"HH:mm"), 55, 290);
+                        
             File file = new File(AppData.getGraphicsWorkDir().getAbsolutePath() + File.separator + "newimage.png");
             ImageIO.write(img, "png", file);
     
