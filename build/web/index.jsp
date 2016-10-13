@@ -25,6 +25,7 @@ if (request.getMethod().equalsIgnoreCase("POST")) {
     String command = request.getParameter("command");
     String event = request.getParameter("event");
     String sound = request.getParameter("sound");
+    String image = request.getParameter("image");
     String system_event = request.getParameter("system_event");
     if (command != null && command.length() > 0) {
         HashMap data = new HashMap();
@@ -36,6 +37,12 @@ if (request.getMethod().equalsIgnoreCase("POST")) {
         HashMap data = new HashMap();
         data.put("sound_file", sound);
         Event e  = new Event ("play_sound", data, Event.Type.USER_ACTION);
+        AppData.eventManager.newEvent(e);
+    }
+    if (image != null && image.length() > 0) {
+        HashMap data = new HashMap();
+        data.put("image_file", sound);
+        Event e  = new Event ("show_image", data, Event.Type.USER_ACTION);
         AppData.eventManager.newEvent(e);
     }
     else if (system_event != null && system_event.length() > 0) {
@@ -69,6 +76,11 @@ for (Integer pId: ps.getParameterIds()) {
 <b>Play sound: </b>
 <form action="" method="post">
     <input type="text" name="sound" value="Front_Center.wav" /><input type="submit" value="OK" name="submit" />
+</form>
+<br> <br>
+<b>Show image: </b>
+<form action="" method="post">
+    <input type="text" name="image" value="screen.jpg" /><input type="submit" value="OK" name="submit" />
 </form>
 <br> <br>
 <b>Do system command: </b>
