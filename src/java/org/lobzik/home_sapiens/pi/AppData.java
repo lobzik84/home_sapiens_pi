@@ -26,6 +26,8 @@ public class AppData {
     public static final UsersPublicKeysCache usersPublicKeysCache = UsersPublicKeysCache.getInstance();
     public static final UsersSessionsStorage sessions = new UsersSessionsStorage();//  storage class with time limits
     private static File soundWorkDir = null;
+    private static File graphicsWorkDir = null;
+    
     private static File captureWorkDir = null;
 
     static {
@@ -71,6 +73,22 @@ public class AppData {
         }
     }
 
+        /**
+     * @return the soundWorkDir
+     */
+    public static File getGraphicsWorkDir() {
+        return graphicsWorkDir;
+    }
+
+    /**
+     * @param aSoundWorkDir the soundWorkDir to set
+     */
+    public static void setGraphicsWorkDir(File aGraphicsWorkDir) {
+        if (graphicsWorkDir == null) {
+            graphicsWorkDir = aGraphicsWorkDir;
+        }
+    }
+    
     /**
      * @return the captureWorkDir
      */
@@ -78,6 +96,7 @@ public class AppData {
         return captureWorkDir;
     }
 
+    
     /**
      * @param aCaptureWorkDir the captureWorkDir to set
      */

@@ -18,6 +18,7 @@ import org.lobzik.home_sapiens.pi.modules.DBCleanerModule;
 import org.lobzik.home_sapiens.pi.modules.DBDataWriterModule;
 import org.lobzik.home_sapiens.pi.modules.InternalSensorsModule;
 import org.lobzik.home_sapiens.pi.modules.SpeakerModule;
+import org.lobzik.home_sapiens.pi.modules.GraphicsModule;
 import org.lobzik.home_sapiens.pi.modules.SystemModule;
 import org.lobzik.home_sapiens.pi.modules.TimerModule;
 import org.lobzik.home_sapiens.pi.modules.TunnelClientModule;
@@ -44,6 +45,7 @@ public class AppListener implements ServletContextListener {
             log.info("Starting hs app. Modules start!");
 
             AppData.setSoundWorkDir(new File(sce.getServletContext().getRealPath("sounds")));
+            AppData.setGraphicsWorkDir(new File(sce.getServletContext().getRealPath("img")));
             AppData.setCaptureWorkDir(new File(sce.getServletContext().getRealPath("capture")));
             
             DBDataWriterModule.getInstance().start();
@@ -53,6 +55,7 @@ public class AppListener implements ServletContextListener {
             TimerModule.getInstance().start();
             DBCleanerModule.getInstance().start();
             SpeakerModule.getInstance().start();
+            GraphicsModule.getInstance().start();
             VideoModule.getInstance().start();
             SystemModule.getInstance().start();
             TunnelClientModule.getInstance().start();
@@ -74,6 +77,7 @@ public class AppListener implements ServletContextListener {
             DBDataWriterModule.finish();
             DBCleanerModule.finish();
             SpeakerModule.finish();
+            GraphicsModule.finish();
             VideoModule.finish();
             SystemModule.finish();
             
