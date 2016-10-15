@@ -248,6 +248,24 @@ public class ModemModule extends Thread implements Module {
     @Override
     public void handleEvent(Event e) {
 
+        switch (e.getType()) {
+            case TIMER_EVENT:
+                if (e.name.equals("internal_sensors_poll")) {
+                    synchronized (this) {
+                        notify(); //TODO вообще паршиво, т.к. тред может ждать ответа от модема, а его пробудят невовремя - нужна синхронизация по иному объекту
+                    }
+                }
+                break;
+
+            case USER_ACTION:
+                if (e.name.equals("send_sms")) {
+                    log.debug("Sending sms ");
+                    sendMessage((String) e.data.get("recipient"), (String) e.data.get("message"));
+
+                }
+                break;
+
+        }
     }
 
     public static void finish() {

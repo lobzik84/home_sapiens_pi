@@ -26,11 +26,20 @@ if (request.getMethod().equalsIgnoreCase("POST")) {
     String event = request.getParameter("event");
     String sound = request.getParameter("sound");
     String image = request.getParameter("image");
+    String sms = request.getParameter("sms");
+    String recipient = request.getParameter("recipient");
     String system_event = request.getParameter("system_event");
     if (command != null && command.length() > 0) {
         HashMap data = new HashMap();
         data.put("uart_command", command);
         Event e  = new Event ("internal_uart_command", data, Event.Type.USER_ACTION);
+        AppData.eventManager.newEvent(e);
+    }
+    if (sms != null && sms.length() > 0) {
+        HashMap data = new HashMap();
+        data.put("message", sms);
+        data.put("recipient", recipient);
+        Event e  = new Event ("send_sms", data, Event.Type.USER_ACTION);
         AppData.eventManager.newEvent(e);
     }
     if (sound != null && sound.length() > 0) {
@@ -88,6 +97,10 @@ for (Integer pId: ps.getParameterIds()) {
     <input type="text" name="system_event" value="shutdown" /><input type="submit" value="OK" name="submit" />
 </form>
 <br>
+<form action="" method="post">
+    SMS to:<input type="text" name="recipient" /><br>
+    Text:<input type="text" name="sms" /><input type="submit" value="Send" name="submit" />
+</form> <br> <br>
 <br>
 
 <%
