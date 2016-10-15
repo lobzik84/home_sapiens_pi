@@ -6,6 +6,8 @@
 package org.lobzik.home_sapiens.pi;
 
 import java.io.File;
+import java.util.Iterator;
+import java.util.Vector;
 import javax.servlet.ServletContextEvent;
 import javax.servlet.ServletContextListener;
 import javax.servlet.annotation.WebListener;
@@ -19,6 +21,7 @@ import org.lobzik.home_sapiens.pi.modules.DBDataWriterModule;
 import org.lobzik.home_sapiens.pi.modules.InternalSensorsModule;
 import org.lobzik.home_sapiens.pi.modules.SpeakerModule;
 import org.lobzik.home_sapiens.pi.modules.GraphicsModule;
+import org.lobzik.home_sapiens.pi.modules.ModemModule;
 import org.lobzik.home_sapiens.pi.modules.SystemModule;
 import org.lobzik.home_sapiens.pi.modules.TimerModule;
 import org.lobzik.home_sapiens.pi.modules.TunnelClientModule;
@@ -47,18 +50,19 @@ public class AppListener implements ServletContextListener {
             AppData.setSoundWorkDir(new File(sce.getServletContext().getRealPath("sounds")));
             AppData.setGraphicsWorkDir(new File(sce.getServletContext().getRealPath("img")));
             AppData.setCaptureWorkDir(new File(sce.getServletContext().getRealPath("capture")));
-            
+
             DBDataWriterModule.getInstance().start();
             ActualDataStorageModule.getInstance().start();
-            
+
             InternalSensorsModule.getInstance().start();
-            TimerModule.getInstance().start();
+            //TimerModule.getInstance().start();
             DBCleanerModule.getInstance().start();
             SpeakerModule.getInstance().start();
             GraphicsModule.getInstance().start();
             VideoModule.getInstance().start();
             SystemModule.getInstance().start();
             TunnelClientModule.getInstance().start();
+            ModemModule.getInstance().start();
 
         } catch (Throwable ex) {
             ex.printStackTrace();
@@ -80,7 +84,7 @@ public class AppListener implements ServletContextListener {
             GraphicsModule.finish();
             VideoModule.finish();
             SystemModule.finish();
-            
+            ModemModule.finish();
             AppData.eventManager.finish();
             BasicConfigurator.resetConfiguration();
 
@@ -88,4 +92,5 @@ public class AppListener implements ServletContextListener {
             ex.printStackTrace();
         }
     }
+
 }
