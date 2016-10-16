@@ -21,6 +21,8 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import org.apache.log4j.Appender;
 
 import org.apache.log4j.Logger;
+import org.lobzik.home_sapiens.entity.Measurement;
+import org.lobzik.home_sapiens.entity.Parameter;
 import org.lobzik.home_sapiens.pi.AppData;
 import org.lobzik.home_sapiens.pi.BoxCommonData;
 import org.lobzik.home_sapiens.pi.ConnJDBCAppender;
@@ -126,12 +128,22 @@ public class ModemModule extends Thread implements Module {
             waitForCommand("AT+COPS=3,0\r", outWriter);
             waitForCommand("AT+COPS?\r", outWriter);
             String operator = parseCOPSReply(recievedLines);
+            HashMap opData = new HashMap();
+            opData.put("name", operator);
+            Event event = new Event("operator_detected", opData, Event.Type.SYSTEM_EVENT);
+            if (!test) {
+                AppData.eventManager.newEvent(event);
+            }
             log.debug("Operator is " + operator);
 
             recievedLines.clear();
             waitForCommand("AT+CREG=2\r", outWriter);
             waitForCommand("AT+CREG?\r", outWriter);
             HashMap cellId = parseCREGReply(recievedLines);
+            event = new Event("cellid_detected", cellId, Event.Type.SYSTEM_EVENT);
+            if (!test) {
+                AppData.eventManager.newEvent(event);
+            }
             log.debug("Cell ID is " + cellId);
 
             waitForCommand("AT+CSCA?\r", outWriter);
@@ -184,6 +196,19 @@ public class ModemModule extends Thread implements Module {
                     waitForCommand("AT+CSQ\r", outWriter);
                     int db = parseCSQReply(recievedLines);
                     log.debug("RSSI = " + db + " dBm");
+                    int paramId = AppData.parametersStorage.resolveAlias("MODEM_RSSI");
+                    if (paramId > 0) {
+                        Parameter p = AppData.parametersStorage.getParameter(paramId);
+                        Measurement m = new Measurement(p, Tools.parseDouble(db + "", null));
+                        if (!test) {
+                            HashMap eventData = new HashMap();
+                            eventData.put("parameter", p);
+                            eventData.put("measurement", m);
+                            event = new Event("RSSI updated", eventData, Event.Type.PARAMETER_UPDATED);
+
+                            AppData.eventManager.newEvent(event);
+                        }
+                    }
 
                     recievedLines.clear();
                     log.debug("Polling for new messages");

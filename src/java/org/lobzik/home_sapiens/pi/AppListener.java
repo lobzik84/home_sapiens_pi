@@ -6,8 +6,6 @@
 package org.lobzik.home_sapiens.pi;
 
 import java.io.File;
-import java.util.Iterator;
-import java.util.Vector;
 import javax.servlet.ServletContextEvent;
 import javax.servlet.ServletContextListener;
 import javax.servlet.annotation.WebListener;
@@ -16,11 +14,12 @@ import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.Logger;
 import org.apache.log4j.PatternLayout;
 import org.lobzik.home_sapiens.pi.modules.ActualDataStorageModule;
+import org.lobzik.home_sapiens.pi.modules.BehaviorModule;
 import org.lobzik.home_sapiens.pi.modules.DBCleanerModule;
 import org.lobzik.home_sapiens.pi.modules.DBDataWriterModule;
 import org.lobzik.home_sapiens.pi.modules.InternalSensorsModule;
 import org.lobzik.home_sapiens.pi.modules.SpeakerModule;
-import org.lobzik.home_sapiens.pi.modules.GraphicsModule;
+import org.lobzik.home_sapiens.pi.modules.GraphModule;
 import org.lobzik.home_sapiens.pi.modules.ModemModule;
 import org.lobzik.home_sapiens.pi.modules.SystemModule;
 import org.lobzik.home_sapiens.pi.modules.TimerModule;
@@ -58,11 +57,12 @@ public class AppListener implements ServletContextListener {
             TimerModule.getInstance().start();
             DBCleanerModule.getInstance().start();
             SpeakerModule.getInstance().start();
-            GraphicsModule.getInstance().start();
+            GraphModule.getInstance().start();
             VideoModule.getInstance().start();
             SystemModule.getInstance().start();
             TunnelClientModule.getInstance().start();
             ModemModule.getInstance().start();
+            BehaviorModule.getInstance().start();
 
         } catch (Throwable ex) {
             ex.printStackTrace();
@@ -74,14 +74,15 @@ public class AppListener implements ServletContextListener {
     public void contextDestroyed(ServletContextEvent sce) {
         try {
             log.info("Context Destroyed called. Stopping application modules!");
-            //AppData.tunnel.disconnect();
+
+            BehaviorModule.finish();
             TunnelClientModule.finish();
             TimerModule.finish();
             InternalSensorsModule.finish(); //only static methods works!!
             DBDataWriterModule.finish();
             DBCleanerModule.finish();
             SpeakerModule.finish();
-            GraphicsModule.finish();
+            GraphModule.finish();
             VideoModule.finish();
             SystemModule.finish();
             ModemModule.finish();

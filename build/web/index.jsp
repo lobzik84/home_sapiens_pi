@@ -20,6 +20,7 @@
         <h1>Hello World!</h1>
         
 <% 
+    request.setCharacterEncoding("UTF-8");
     
 if (request.getMethod().equalsIgnoreCase("POST")) {
     String command = request.getParameter("command");
