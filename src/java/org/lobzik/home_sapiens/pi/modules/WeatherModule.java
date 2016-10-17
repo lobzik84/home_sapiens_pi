@@ -5,10 +5,7 @@
  */
 package org.lobzik.home_sapiens.pi.modules;
 
-import java.sql.Connection;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import org.apache.log4j.Appender;
 import org.apache.log4j.Logger;
@@ -21,8 +18,6 @@ import org.lobzik.home_sapiens.pi.event.EventManager;
 import static org.lobzik.home_sapiens.pi.modules.ModemModule.test;
 import org.lobzik.home_sapiens.pi.weather.WeatherGetter;
 import org.lobzik.home_sapiens.pi.weather.entity.Forecast;
-import org.lobzik.home_sapiens.pi.weather.entity.WeatherInfo;
-import org.lobzik.tools.HashMapComparator;
 import org.lobzik.tools.Tools;
 
 /**
@@ -58,7 +53,7 @@ public class WeatherModule extends Thread implements Module {
     }
 
     @Override
-    public synchronized void run() {
+    public void run() {
         setName(this.getClass().getSimpleName() + "-Thread");
         log.info("Starting " + getName());
         EventManager.subscribeForEventType(this, Event.Type.TIMER_EVENT);

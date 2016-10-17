@@ -11,10 +11,18 @@ import java.awt.Graphics;
 import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.Date;
+import java.util.LinkedList;
+import java.util.List;
 import org.apache.log4j.Logger;
 import org.lobzik.home_sapiens.pi.AppData;
 import org.lobzik.home_sapiens.pi.event.Event;
@@ -24,23 +32,36 @@ import org.lobzik.home_sapiens.pi.event.Event;
  * @author lobzik
  */
 import javax.imageio.ImageIO;
+import org.apache.log4j.Appender;
+import org.lobzik.home_sapiens.pi.ConnJDBCAppender;
 import org.lobzik.home_sapiens.pi.event.EventManager;
 import org.lobzik.tools.Tools;
+
 public class DisplayModule implements Module {
 
     public final String MODULE_NAME = this.getClass().getSimpleName();
     private static DisplayModule instance = null;
+    
+    private static final String TMP_FILE = "i.tmp";
+    private static final String IMG_FILE = "i.png";
+    private static final String SYMLINK1 = "a.png";
+    private static final String SYMLINK2 = "b.png";
 
-    private Process process = null;
     private static Logger log = null;
     private static final String PREFIX = "/usr/bin/sudo";
-    private static final String COMMAND = "/usr/bin/fbi";
+    private static final String FBI_COMMAND = "/usr/bin/fbi";
+    private static final String LN_COMMAND = "/bin/ln";
+    private FbiRunner fbiRunner = null;
+
     private DisplayModule() { //singleton
     }
 
     public static DisplayModule getInstance() {
         if (instance == null) {
             instance = new DisplayModule(); //lazy init
+            log = Logger.getLogger(instance.MODULE_NAME);
+            Appender appender = ConnJDBCAppender.getAppenderInstance(AppData.dataSource, instance.MODULE_NAME);
+            log.addAppender(appender);
         }
         return instance;
     }
@@ -53,7 +74,10 @@ public class DisplayModule implements Module {
     @Override
     public void start() {
         try {
-            EventManager.subscribeForEventType(this, Event.Type.USER_ACTION);
+            EventManager.subscribeForEventType(this, Event.Type.TIMER_EVENT);
+            fbiRunner = new FbiRunner();
+            fbiRunner.start();
+
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -61,15 +85,16 @@ public class DisplayModule implements Module {
 
     @Override
     public void handleEvent(Event e) {
-        if (e.type == Event.Type.USER_ACTION && e.name.equals("show_image")) {
-            draw((String)e.data.get("image_file"));
+        if (e.type == Event.Type.TIMER_EVENT && e.name.equals("update_display")) {
+            draw();
+
         }
     }
-    
-        private void draw(String txt) {
+
+    private void draw() {
         try {
-            //sudo fbi logo.jpg --noverbose -T 1
-            Graphics g= null;
+            log.debug("Drawing img for screen");
+            Graphics g = null;
             BufferedImage img = null;
             BufferedImage temperatureImg = null;
 
@@ -78,45 +103,40 @@ public class DisplayModule implements Module {
                 temperatureImg = ImageIO.read(new File(AppData.getGraphicsWorkDir().getAbsolutePath() + File.separator + "temperature.png"));
             } catch (IOException e) {
             }
-            
+
             g = img.getGraphics();
             g.setColor(new Color(243, 67, 54));
-            g.fillRect(0,251, 480, 320);
+            g.fillRect(0, 251, 480, 320);
             //g.drawLine(20, 20, 360, 20);
             g.setColor(new Color(0, 0, 0));
-            g.setFont(new Font("Tahoma",  Font.PLAIN, 110));
+            g.setFont(new Font("Tahoma", Font.PLAIN, 110));
             Date d = new Date();
 
-            g.drawString(Tools.getFormatedDate(d,"HH:mm"), 100, 180);
+            g.drawString(Tools.getFormatedDate(d, "HH:mm"), 100, 180);
 
-            g.drawImage(temperatureImg, 25, 270, null);  
-            
+            g.drawImage(temperatureImg, 25, 270, null);
+
             g.setColor(new Color(255, 255, 255));
-            g.setFont(new Font("Tahoma",  Font.PLAIN, 20));
-            g.drawString(Tools.getFormatedDate(d,"HH:mm"), 55, 290);
-                        
-            File file = new File(AppData.getGraphicsWorkDir().getAbsolutePath() + File.separator + "newimage.png");
-            ImageIO.write(img, "png", file);
-    
-            String[] env = {"aaa=bbb", "ccc=ddd"};
+            g.setFont(new Font("Tahoma", Font.PLAIN, 20));
+            g.drawString(Tools.getFormatedDate(d, "HH:mm"), 55, 290);
 
-            String[] args = {PREFIX, COMMAND, AppData.getGraphicsWorkDir().getAbsolutePath() + File.separator + file};
-            File workdir = AppData.getGraphicsWorkDir();
-            Runtime runtime = Runtime.getRuntime();
-            log.debug("Drawing " + txt);
-            process = runtime.exec(args, env, workdir);
-            
-            StreamGobbler errorGobbler = new StreamGobbler(process.getErrorStream());
-            StreamGobbler outputGobbler = new StreamGobbler(process.getInputStream());
-            errorGobbler.start();
-            outputGobbler.start();
-            //process.waitFor();
-            int exitValue = process.exitValue();
-            //log.debug(StreamGobbler.getAllOutput());
-            StreamGobbler.clearOutput();
-            if (exitValue != 0) {
-                log.error("Error executing, exit status: " + exitValue);
+            File file = new File(AppData.getGraphicsWorkDir().getAbsolutePath() + File.separator + TMP_FILE);
+            FileOutputStream fos = new FileOutputStream(file);
+            java.nio.channels.FileLock lock = fos.getChannel().lock();
+            try{
+                ImageIO.write(img, "png", fos);
+                fos.flush();
+                
             }
+            finally {
+                lock.release();
+            }
+            fos.close();
+            Path src = Paths.get(AppData.getGraphicsWorkDir().getAbsolutePath() + File.separator + TMP_FILE);
+            Path dst = Paths.get(AppData.getGraphicsWorkDir().getAbsolutePath() + File.separator + IMG_FILE);
+            
+            Files.move(src, dst, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+
         } catch (Exception e) {
             log.error("Error " + e.getMessage());
         }
@@ -124,10 +144,125 @@ public class DisplayModule implements Module {
     }
 
     public static void finish() {
-        
+        instance.fbiRunner.finish();
     }
-    
-    
+
+    public static class FbiRunner extends Thread {
+
+        private OutputStreamWriter osr = null;
+        private Process process = null;
+        private boolean run = true;
+
+        public void finish() {
+            log.info("Exiting process");
+            try {
+                run = false;
+                osr.write("q");
+                osr.flush();
+                process.destroyForcibly();
+            } catch (Exception e) {
+            }
+        }
+/*
+        public void update() {
+            log.info("Forcing FBI Update");
+            try {
+                osr.write("j");
+                osr.flush();
+                //process.
+                
+            } catch (Exception e) {
+            }
+        }
+*/
+        @Override
+        public void run() {
+            try {
+                //creating file
+                List<String> command = new LinkedList();
+                log.debug("Started, drawing image");
+                instance.draw();
+                String[] env = {"aaa=bbb", "ccc=ddd"};
+                String imgFile = AppData.getGraphicsWorkDir().getAbsolutePath() + File.separator + IMG_FILE;
+                String symLink1 = AppData.getGraphicsWorkDir().getAbsolutePath() + File.separator + SYMLINK1;
+                String symLink2 = AppData.getGraphicsWorkDir().getAbsolutePath() + File.separator + SYMLINK2;
+                command.clear();
+                command.add(LN_COMMAND);
+                command.add("-sf");
+                command.add(imgFile);
+                command.add(symLink1);
+
+                log.debug("Creating symlink1");
+
+                File workdir = AppData.getGraphicsWorkDir();
+                Runtime runtime = Runtime.getRuntime();
+                process = runtime.exec(command.toArray(new String[command.size()]), env, workdir);
+                process.waitFor();
+                int exitValue = process.exitValue();
+                if (exitValue != 0) {
+                    log.error("error creating symlink1, exit status= " + exitValue);
+                    return;
+                }
+
+                command.clear();
+                command.add(LN_COMMAND);
+                command.add("-sf");
+                command.add(imgFile);
+                command.add(symLink2);
+
+                log.debug("Creating symlink2");
+
+                process = runtime.exec(command.toArray(new String[command.size()]), env, workdir);
+                process.waitFor();
+                exitValue = process.exitValue();
+                if (exitValue != 0) {
+                    log.error("error creating symlink2, exit status= " + exitValue);
+                    return;
+                }
+
+                command.clear();
+                command.add(PREFIX);
+                command.add(FBI_COMMAND);
+                command.add(imgFile);
+                command.add(symLink1);
+                command.add(symLink2);
+                command.add("-a");
+                command.add("-noverbose");
+                command.add("-t");
+                command.add("1");
+                command.add("-cachemem");
+                command.add("0");
+                command.add("-T");
+                command.add("1");
+
+                log.info("Running FBI");
+                while (run) {
+                    try {
+                        exitValue = 0;
+                        process = runtime.exec(command.toArray(new String[command.size()]), env, workdir);
+                        //osr = new OutputStreamWriter(process.getOutputStream());
+                        process.waitFor();
+                        log.info("FBI exited");
+                        exitValue = process.exitValue();
+
+                    } catch (Throwable e) {
+                        log.error(e.getMessage());
+                    }
+                    if (exitValue != 0) {
+                        log.debug("error in FBI, exit status= " + exitValue);
+                        Thread.sleep(10000);
+                    } else {
+                        break;
+                    }
+                }
+
+            } catch (Exception e) {
+                log.error(e.getMessage());
+            }
+        }
+    }
+
+    /*
     public static class StreamGobbler extends Thread {
 
         InputStream is;
@@ -158,5 +293,5 @@ public class DisplayModule implements Module {
         public static void clearOutput() {
             output = new StringBuilder();
         }
-    }
+    }*/
 }
