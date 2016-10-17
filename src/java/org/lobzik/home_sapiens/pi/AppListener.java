@@ -17,6 +17,7 @@ import org.lobzik.home_sapiens.pi.modules.ActualDataStorageModule;
 import org.lobzik.home_sapiens.pi.modules.BehaviorModule;
 import org.lobzik.home_sapiens.pi.modules.DBCleanerModule;
 import org.lobzik.home_sapiens.pi.modules.DBDataWriterModule;
+import org.lobzik.home_sapiens.pi.modules.DisplayModule;
 import org.lobzik.home_sapiens.pi.modules.InternalSensorsModule;
 import org.lobzik.home_sapiens.pi.modules.SpeakerModule;
 import org.lobzik.home_sapiens.pi.modules.GraphModule;
@@ -25,6 +26,7 @@ import org.lobzik.home_sapiens.pi.modules.SystemModule;
 import org.lobzik.home_sapiens.pi.modules.TimerModule;
 import org.lobzik.home_sapiens.pi.modules.TunnelClientModule;
 import org.lobzik.home_sapiens.pi.modules.VideoModule;
+import org.lobzik.home_sapiens.pi.modules.WeatherModule;
 
 /**
  * Web application lifecycle listener.
@@ -49,7 +51,9 @@ public class AppListener implements ServletContextListener {
             AppData.setSoundWorkDir(new File(sce.getServletContext().getRealPath("sounds")));
             AppData.setGraphicsWorkDir(new File(sce.getServletContext().getRealPath("img")));
             AppData.setCaptureWorkDir(new File(sce.getServletContext().getRealPath("capture")));
-
+            
+            DisplayModule.getInstance().start();
+            
             DBDataWriterModule.getInstance().start();
             ActualDataStorageModule.getInstance().start();
 
@@ -62,6 +66,8 @@ public class AppListener implements ServletContextListener {
             SystemModule.getInstance().start();
             TunnelClientModule.getInstance().start();
             ModemModule.getInstance().start();
+            WeatherModule.getInstance().start();
+            
             BehaviorModule.getInstance().start();
 
         } catch (Throwable ex) {
@@ -76,6 +82,7 @@ public class AppListener implements ServletContextListener {
             log.info("Context Destroyed called. Stopping application modules!");
 
             BehaviorModule.finish();
+            
             TunnelClientModule.finish();
             TimerModule.finish();
             InternalSensorsModule.finish(); //only static methods works!!
@@ -86,6 +93,8 @@ public class AppListener implements ServletContextListener {
             VideoModule.finish();
             SystemModule.finish();
             ModemModule.finish();
+            DisplayModule.finish();
+            WeatherModule.finish();
             AppData.eventManager.finish();
             BasicConfigurator.resetConfiguration();
 

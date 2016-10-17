@@ -123,10 +123,10 @@ public class WeatherParser {
             NodeList forecasts = doc.getElementsByTagName(Constant.ForecastXml.FORECAST);
             WeatherInfo.Builder builder = new WeatherInfo.Builder();
             for (int i = 0; i < forecasts.getLength(); i++) {
-                System.out.println(forecasts.item(i).getNodeName());
+               // System.out.println(forecasts.item(i).getNodeName());
                 NodeList forecastNodes = forecasts.item(i).getChildNodes();
                 Forecast f = parseForecastNode(forecastNodes);
-                System.out.println(f.toString());
+               // System.out.println(f.toString());
                 builder.addForecast(f);
             }
             return builder.build();

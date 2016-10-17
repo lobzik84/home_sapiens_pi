@@ -36,4 +36,8 @@ public class WeatherInfo {
         }
         return str.toString();
     }
+    
+    public List<Forecast> getList() {
+        return list;
+    }
 }
