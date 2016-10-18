@@ -54,6 +54,7 @@ public class VideoModule implements Module {
     public void start() {
         try {
             EventManager.subscribeForEventType(this, Event.Type.TIMER_EVENT);
+            EventManager.subscribeForEventType(this, Event.Type.USER_ACTION);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -89,7 +90,12 @@ public class VideoModule implements Module {
 
     @Override
     public void handleEvent(Event e) {
-        if (e.type == Event.Type.TIMER_EVENT && e.name.equals("internal_sensors_poll")) {
+        /*if (e.type == Event.Type.TIMER_EVENT && e.name.equals("internal_sensors_poll")) {
+           for (int monitorId: ZM_MONITOR_IDS) {
+               capture(monitorId + "");
+           }
+        }
+        else*/ if (e.type == Event.Type.USER_ACTION && e.name.equals("get_capture")) {
            for (int monitorId: ZM_MONITOR_IDS) {
                capture(monitorId + "");
            }

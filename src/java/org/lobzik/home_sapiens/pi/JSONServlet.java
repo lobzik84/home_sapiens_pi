@@ -485,6 +485,10 @@ public class JSONServlet extends HttpServlet {
         if (session == null) {
             return;
         }
+        
+        Event event = new Event("get_capture", null, Event.Type.USER_ACTION);
+        AppData.eventManager.lockForEvent(event, this);
+        
         JSONObject reply = JSONInterface.getEncryptedCaptureJSON((RSAPublicKey) session.get("UsersPublicKey"));
         reply.put("result", "success");
         reply.put("session_key", json.getString("session_key"));

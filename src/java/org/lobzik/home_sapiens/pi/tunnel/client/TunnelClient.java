@@ -24,6 +24,7 @@ import org.json.JSONObject;
 import org.lobzik.home_sapiens.pi.AppData;
 import org.lobzik.home_sapiens.pi.BoxCommonData;
 import org.lobzik.home_sapiens.pi.JSONInterface;
+import org.lobzik.home_sapiens.pi.event.Event;
 import org.lobzik.tools.db.mysql.DBTools;
 
 @ClientEndpoint
@@ -96,9 +97,9 @@ public class TunnelClient {
         try {
             if (message != null && message.startsWith("{")) {
                 JSONObject json = new JSONObject(message);
-                if (json.has("result") && json.getString("result").equals("error") && json.has("message")){
+                if (json.has("result") && json.getString("result").equals("error") && json.has("message")) {
                     log.error("Got error from server: " + json.getString("message"));
-                            
+
                 }
                 if (json.has("box_session_key")) {
                     box_session_key = json.getString("box_session_key");
@@ -160,7 +161,8 @@ public class TunnelClient {
                             break;
 
                         case "get_capture":
-
+                            Event event = new Event("get_capture", null, Event.Type.USER_ACTION);
+                            AppData.eventManager.lockForEvent(event, this);
                             reply = JSONInterface.getEncryptedCaptureJSON(usersKey);
                             reply.put("result", "success");
 

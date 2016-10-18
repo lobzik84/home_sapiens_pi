@@ -23,7 +23,8 @@ public class EventManager extends Thread {
     private static final Queue<Event> eventList = new ConcurrentLinkedQueue();
     private static boolean run = true;
     private static EventManager instance = null;
-
+    private Object sync = null;
+    
     private EventManager() {
 
     }
@@ -52,9 +53,13 @@ public class EventManager extends Thread {
                             //System.out.println("Notifying " + m.getModuleName());
 
                         }
-                    }               
+                    }
                 }
-                
+                if (sync != null) {
+                    synchronized(sync) {
+                        sync.notify();
+                    }
+                }
                 try {
                     synchronized (this) {
                         wait();
@@ -68,9 +73,24 @@ public class EventManager extends Thread {
 
     }
 
+    public void lockForEvent(Event event, Object sync) {
+        this.sync = sync;
+        newEvent(event);
+
+        try {
+            synchronized (sync) {
+                sync.wait();
+            }
+        } catch (InterruptedException ie) {
+        }
+        this.sync = null;
+    }
+
     public void newEvent(Event event) {
         //System.out.println("New event! " + event.data);
-        if (event == null) return;
+        if (event == null) {
+            return;
+        }
         eventList.add(event);
         synchronized (this) {
             notify();
@@ -90,8 +110,9 @@ public class EventManager extends Thread {
             List<Module> modulesList = new LinkedList();
             subscribers.put(type, modulesList);
         }
-        if (!subscribers.get(type).contains(module))
+        if (!subscribers.get(type).contains(module)) {
             subscribers.get(type).add(module); //subscribe only once
+        }
     }
 
 }
