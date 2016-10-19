@@ -16,6 +16,7 @@ import org.lobzik.home_sapiens.pi.AppData;
 import org.lobzik.home_sapiens.pi.ConnJDBCAppender;
 import org.lobzik.home_sapiens.pi.event.Event;
 import org.lobzik.home_sapiens.pi.event.EventManager;
+import org.lobzik.tools.StreamGobbler;
 
 /**
  *
@@ -71,14 +72,15 @@ public class VideoModule implements Module {
             log.debug("Capturing monitorId = " + camId);
             process = runtime.exec(args, env, workdir);
 
-            StreamGobbler errorGobbler = new StreamGobbler(process.getErrorStream());
-            StreamGobbler outputGobbler = new StreamGobbler(process.getInputStream());
+            StringBuilder output = new StringBuilder();
+            StreamGobbler errorGobbler = new StreamGobbler(process.getErrorStream(), output);
+            StreamGobbler outputGobbler = new StreamGobbler(process.getInputStream(), output);
             errorGobbler.start();
             outputGobbler.start();
             process.waitFor();
             int exitValue = process.exitValue();
-            log.debug(StreamGobbler.getAllOutput());
-            StreamGobbler.clearOutput();
+            log.debug(output);
+
             if (exitValue != 0) {
                 log.error("Error executing, exit status: " + exitValue);
             }
@@ -96,9 +98,9 @@ public class VideoModule implements Module {
            }
         }
         else*/ if (e.type == Event.Type.USER_ACTION && e.name.equals("get_capture")) {
-           for (int monitorId: ZM_MONITOR_IDS) {
-               capture(monitorId + "");
-           }
+            for (int monitorId : ZM_MONITOR_IDS) {
+                capture(monitorId + "");
+            }
         }
     }
 
@@ -106,35 +108,4 @@ public class VideoModule implements Module {
 
     }
 
-    public static class StreamGobbler extends Thread {
-
-        InputStream is;
-        private static StringBuilder output = new StringBuilder();
-
-        public StreamGobbler(InputStream is) {
-            this.is = is;
-        }
-
-        @Override
-        public void run() {
-            try {
-                InputStreamReader isr = new InputStreamReader(is);
-                BufferedReader br = new BufferedReader(isr);
-                String line = null;
-                while ((line = br.readLine()) != null) {
-                    output.append(line).append("\n");
-                }
-            } catch (IOException ioe) {
-                ioe.printStackTrace();
-            }
-        }
-
-        public static String getAllOutput() {
-            return output.toString();
-        }
-
-        public static void clearOutput() {
-            output = new StringBuilder();
-        }
-    }
 }

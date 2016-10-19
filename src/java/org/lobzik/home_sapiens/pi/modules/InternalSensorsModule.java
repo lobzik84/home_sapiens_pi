@@ -39,7 +39,6 @@ public class InternalSensorsModule extends Thread implements Module {
     private static CommPort commPort = null;
     private static SerialWriter serialWriter = null;
 
-    public static final int HISTORY_SIZE = 50;
 
     private static final int BAUD_RATE = 57600;
     private static final int DATABITS = SerialPort.DATABITS_8;
