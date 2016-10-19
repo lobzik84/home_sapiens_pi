@@ -248,14 +248,14 @@ public class MicrophoneModule implements Module {
                             Measurement m = new Measurement(parameter, true);
                             eventData.put("parameter", parameter);
                             eventData.put("measurement", m);
-                            Event e = new Event("mic updated", eventData, Event.Type.PARAMETER_UPDATED);
+                            Event e = new Event("mic_noise", eventData, Event.Type.PARAMETER_UPDATED);
                             AppData.eventManager.newEvent(e);
                         }
                     } else if (parameter != null) {
                         Measurement m = new Measurement(parameter, false);
                         eventData.put("parameter", parameter);
                         eventData.put("measurement", m);
-                        Event e = new Event("mic updated", eventData, Event.Type.PARAMETER_UPDATED);
+                        Event e = new Event("mic_noise", eventData, Event.Type.PARAMETER_UPDATED);
                         AppData.eventManager.newEvent(e);
                     }
 

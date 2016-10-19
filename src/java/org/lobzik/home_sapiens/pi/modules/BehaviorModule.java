@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import org.apache.log4j.Appender;
 import org.apache.log4j.Logger;
+import org.lobzik.home_sapiens.entity.Measurement;
 import org.lobzik.home_sapiens.pi.AppData;
 import org.lobzik.home_sapiens.pi.BoxCommonData;
 import org.lobzik.home_sapiens.pi.ConnJDBCAppender;
@@ -59,6 +60,7 @@ public class BehaviorModule implements Module {
         try {
             EventManager.subscribeForEventType(this, Event.Type.SYSTEM_EVENT);
             EventManager.subscribeForEventType(this, Event.Type.PARAMETER_UPDATED);
+            EventManager.subscribeForEventType(this, Event.Type.PARAMETER_CHANGED);
             EventManager.subscribeForEventType(this, Event.Type.USER_ACTION);
 
         } catch (Exception e) {
@@ -71,6 +73,22 @@ public class BehaviorModule implements Module {
         if (e.type == Event.Type.SYSTEM_EVENT && e.name.equals("cellid_detected")) {
             searchForLocationByCellId(e.data);
 
+        }
+        if (e.type == Event.Type.PARAMETER_CHANGED) {
+            switch (e.name) {
+                case "mic_noise":
+                    Measurement m = (Measurement) e.data.get("measurement");
+                    HashMap data = new HashMap();
+                    if (m.getBooleanValue()) {
+                        data.put("uart_command", "led1=on");
+
+                    } else {
+                        data.put("uart_command", "led1=off");
+                    }
+                    Event reaction = new Event("internal_uart_command", data, Event.Type.USER_ACTION);
+                    AppData.eventManager.newEvent(reaction);
+                    break;
+            }
         }
     }
 
@@ -87,7 +105,9 @@ public class BehaviorModule implements Module {
             String sSQL = "select lat, lon from opencellid.megafon_ru where mcc=250 and net=2 and cell=" + cell.toString() + " and area=" + area.toString();
             try (Connection conn = DBTools.openConnection(BoxCommonData.dataSourceName)) {
                 List<HashMap> resList = DBSelect.getRows(sSQL, conn);
-                if (resList.isEmpty()) throw new Exception("CellId " + cid + " with lac " + lac + " not found in DB");
+                if (resList.isEmpty()) {
+                    throw new Exception("CellId " + cid + " with lac " + lac + " not found in DB");
+                }
                 double latitude = Tools.parseDouble(resList.get(0).get("lat"), 0);
                 double longitude = Tools.parseDouble(resList.get(0).get("lon"), 0);
                 log.info("Detected location " + latitude + ", " + longitude);
