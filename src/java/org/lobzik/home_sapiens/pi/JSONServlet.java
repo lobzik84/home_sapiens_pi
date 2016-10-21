@@ -147,6 +147,15 @@ public class JSONServlet extends HttpServlet {
 
                         break;
 
+                    case "get_settings":
+                        if (userId > 0) {
+                            replyWithSettings(request, response);
+                        } else {
+                            doRequestLogin(request, response);
+                        }
+
+                        break;
+
                     default:
                         if (userId > 0) {
                             replyWithParameters(request, response);
@@ -475,6 +484,22 @@ public class JSONServlet extends HttpServlet {
         response.getWriter().write(reply.toString());
     }
 
+    private void replyWithSettings(HttpServletRequest request, HttpServletResponse response) throws Exception {
+        JSONObject json = (JSONObject) request.getAttribute("json");
+        UsersSession session = null;
+        if (json.has("session_key")) {
+            String session_key = json.getString("session_key");
+            session = AppData.sessions.get(session_key);
+        }
+        if (session == null) {
+            return;
+        }
+        JSONObject reply = JSONAPI.getSettingsJSON((RSAPublicKey) session.get("UsersPublicKey"));
+        reply.put("result", "success");
+        reply.put("session_key", json.getString("session_key"));
+        response.getWriter().write(reply.toString());
+    }
+
     private void replyWithCapture(HttpServletRequest request, HttpServletResponse response) throws Exception {
         JSONObject json = (JSONObject) request.getAttribute("json");
         UsersSession session = null;
@@ -485,10 +510,10 @@ public class JSONServlet extends HttpServlet {
         if (session == null) {
             return;
         }
-        
+
         Event event = new Event("get_capture", null, Event.Type.USER_ACTION);
         AppData.eventManager.lockForEvent(event, this);
-        
+
         JSONObject reply = JSONAPI.getEncryptedCaptureJSON((RSAPublicKey) session.get("UsersPublicKey"));
         reply.put("result", "success");
         reply.put("session_key", json.getString("session_key"));

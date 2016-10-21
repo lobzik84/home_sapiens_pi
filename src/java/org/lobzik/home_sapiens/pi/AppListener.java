@@ -48,12 +48,14 @@ public class AppListener implements ServletContextListener {
             BasicConfigurator.configure(consoleAppender);
             log.info("Root Log init ok");
             log.info("Starting hs app. Modules start!");
-
+            BoxSettingsAPI.initBoxSettings();
+            BoxMode.initFromDB();
+            
             AppData.setSoundWorkDir(new File(sce.getServletContext().getRealPath("sounds")));
             AppData.setGraphicsWorkDir(new File(sce.getServletContext().getRealPath("img")));
             AppData.setCaptureWorkDir(new File(sce.getServletContext().getRealPath("capture")));
 
-            DisplayModule.getInstance().start();
+           // DisplayModule.getInstance().start();
 
             DBDataWriterModule.getInstance().start();
             ActualDataStorageModule.getInstance().start();

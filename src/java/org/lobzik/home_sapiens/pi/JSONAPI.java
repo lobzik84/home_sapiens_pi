@@ -13,6 +13,7 @@ import java.security.SecureRandom;
 import java.security.Signature;
 import java.security.interfaces.RSAPublicKey;
 import java.util.HashMap;
+import java.util.Map;
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
@@ -37,15 +38,35 @@ public class JSONAPI {
         String commandName = json.getString("command_name");
         HashMap commandData = new HashMap();
         JSONObject jsonData = json.getJSONObject("command_data");
-        for (String key : jsonData.keySet()) {
-            commandData.put(key, jsonData.get(key));
+        if (commandName.equals("save_settings")) {
+            JSONObject settingsJson = jsonData.getJSONObject("settings");
+            Map<String, String> smap = new HashMap();
+            for (String key : settingsJson.keySet()) {
+                smap.put(key, settingsJson.getString(key));
+            }
+            BoxSettingsAPI.set(smap);
+        } else {
+            for (String key : jsonData.keySet()) {
+                commandData.put(key, jsonData.get(key));
+            }
+            Event event = new Event(commandName, commandData, Event.Type.USER_ACTION);
+            AppData.eventManager.newEvent(event);
         }
-        Event event = new Event(commandName, commandData, Event.Type.USER_ACTION);
-        AppData.eventManager.newEvent(event);
+    }
+
+    public static JSONObject getSettingsJSON(RSAPublicKey publicKey) throws Exception {
+        JSONObject reply = new JSONObject();
+        JSONObject settingsJSON = new JSONObject();
+        Map<String, String> settings = BoxSettingsAPI.getSettingsMap();
+        for (String name : settings.keySet()) {
+            settingsJSON.put(name, settings.get(name));
+        }
+        reply.put("settings", settingsJSON);
+        return reply;
     }
 
     public static JSONObject getEncryptedParametersJSON(RSAPublicKey publicKey) throws Exception {
-        //TODO get scaled image for mobile version
+
         JSONObject paramsJson = new JSONObject();
         ParametersStorage ps = AppData.parametersStorage;
         MeasurementsCache mc = AppData.measurementsCache;
@@ -102,7 +123,7 @@ public class JSONAPI {
     }
 
     public static JSONObject getEncryptedCaptureJSON(RSAPublicKey publicKey) throws Exception {
-
+        //TODO get scaled image for mobile version
         File workdir = AppData.getCaptureWorkDir();
         KeyGenerator kgen = KeyGenerator.getInstance("AES");
         SecureRandom sr = SecureRandom.getInstance("SHA1PRNG");
@@ -116,20 +137,19 @@ public class JSONAPI {
         SecretKeySpec skeySpec = new SecretKeySpec(rawKey, "AES");
         Cipher cipher = Cipher.getInstance("AES/CFB/NoPadding");
         cipher.init(Cipher.ENCRYPT_MODE, skeySpec, ivSpec);
-     
-        
+
         Cipher cipherRSA = Cipher.getInstance("RSA");
         // encrypt the plain text using the public key
         cipherRSA.init(Cipher.ENCRYPT_MODE, publicKey);
         String keyString = DatatypeConverter.printHexBinary(rawKey);
         byte[] keyCipherRaw = cipherRSA.doFinal(keyString.getBytes());
         String keyCipher = DatatypeConverter.printHexBinary(keyCipherRaw);
-        
+
         Signature digest = Signature.getInstance("SHA256withRSA");
         digest.initSign(BoxCommonData.PRIVATE_KEY);
-        
+
         JSONObject capture = new JSONObject();
-       
+
         for (String fileName : VideoModule.IMAGE_FILES) {
             JSONObject cam = new JSONObject();
             Path path = Paths.get(workdir.getAbsolutePath(), fileName);

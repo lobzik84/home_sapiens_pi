@@ -169,6 +169,15 @@ public class TunnelClient {
                             sendMessage(reply);
 
                             break;
+                            
+                        case "get_settings":
+
+                            reply = JSONAPI.getSettingsJSON(usersKey);
+                            reply.put("result", "success");
+
+                            sendMessage(reply);
+
+                            break;
 
                         default:
                             reply = JSONAPI.getEncryptedParametersJSON(usersKey);
