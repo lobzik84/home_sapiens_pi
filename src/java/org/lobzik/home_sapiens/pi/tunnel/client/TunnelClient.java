@@ -23,7 +23,7 @@ import org.apache.log4j.Logger;
 import org.json.JSONObject;
 import org.lobzik.home_sapiens.pi.AppData;
 import org.lobzik.home_sapiens.pi.BoxCommonData;
-import org.lobzik.home_sapiens.pi.JSONInterface;
+import org.lobzik.home_sapiens.pi.JSONAPI;
 import org.lobzik.home_sapiens.pi.event.Event;
 import org.lobzik.tools.db.mysql.DBTools;
 
@@ -153,9 +153,9 @@ public class TunnelClient {
                     switch (action) {
                         case "command":
                             if (userId > 0) {
-                                JSONInterface.doUserCommand(json);
+                                JSONAPI.doUserCommand(json);
                             }
-                            JSONObject reply = JSONInterface.getEncryptedParametersJSON(usersKey);
+                            JSONObject reply = JSONAPI.getEncryptedParametersJSON(usersKey);
                             reply.put("result", "success");
                             sendMessage(reply);
                             break;
@@ -163,7 +163,7 @@ public class TunnelClient {
                         case "get_capture":
                             Event event = new Event("get_capture", null, Event.Type.USER_ACTION);
                             AppData.eventManager.lockForEvent(event, this);
-                            reply = JSONInterface.getEncryptedCaptureJSON(usersKey);
+                            reply = JSONAPI.getEncryptedCaptureJSON(usersKey);
                             reply.put("result", "success");
 
                             sendMessage(reply);
@@ -171,7 +171,7 @@ public class TunnelClient {
                             break;
 
                         default:
-                            reply = JSONInterface.getEncryptedParametersJSON(usersKey);
+                            reply = JSONAPI.getEncryptedParametersJSON(usersKey);
                             reply.put("result", "success");
                             sendMessage(reply);
 

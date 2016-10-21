@@ -456,7 +456,7 @@ public class JSONServlet extends HttpServlet {
 
     private void doUserCommand(HttpServletRequest request, HttpServletResponse response) throws Exception {
         JSONObject json = (JSONObject) request.getAttribute("json");
-        JSONInterface.doUserCommand(json);
+        JSONAPI.doUserCommand(json);
     }
 
     private void replyWithParameters(HttpServletRequest request, HttpServletResponse response) throws Exception {
@@ -469,7 +469,7 @@ public class JSONServlet extends HttpServlet {
         if (session == null) {
             return;
         }
-        JSONObject reply = JSONInterface.getEncryptedParametersJSON((RSAPublicKey) session.get("UsersPublicKey"));
+        JSONObject reply = JSONAPI.getEncryptedParametersJSON((RSAPublicKey) session.get("UsersPublicKey"));
         reply.put("result", "success");
         reply.put("session_key", json.getString("session_key"));
         response.getWriter().write(reply.toString());
@@ -489,7 +489,7 @@ public class JSONServlet extends HttpServlet {
         Event event = new Event("get_capture", null, Event.Type.USER_ACTION);
         AppData.eventManager.lockForEvent(event, this);
         
-        JSONObject reply = JSONInterface.getEncryptedCaptureJSON((RSAPublicKey) session.get("UsersPublicKey"));
+        JSONObject reply = JSONAPI.getEncryptedCaptureJSON((RSAPublicKey) session.get("UsersPublicKey"));
         reply.put("result", "success");
         reply.put("session_key", json.getString("session_key"));
         response.getWriter().write(reply.toString());

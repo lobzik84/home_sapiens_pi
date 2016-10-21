@@ -31,7 +31,7 @@ import org.lobzik.home_sapiens.pi.modules.VideoModule;
  *
  * @author lobzik
  */
-public class JSONInterface {
+public class JSONAPI {
 
     public static void doUserCommand(JSONObject json) throws Exception {
         String commandName = json.getString("command_name");
