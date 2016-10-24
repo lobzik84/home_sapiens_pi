@@ -170,7 +170,7 @@ public class TunnelClient {
                             sendMessage(reply);
 
                             break;
-                            
+
                         case "get_settings":
 
                             reply = JSONAPI.getSettingsJSON(usersKey);
@@ -190,7 +190,11 @@ public class TunnelClient {
 
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error(e.getMessage());
+            try {
+                replyWithError(e.getMessage());
+            } catch (Exception ee) {
+            };
         }
     }
 
