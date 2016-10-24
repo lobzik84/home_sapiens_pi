@@ -465,7 +465,15 @@ public class JSONServlet extends HttpServlet {
 
     private void doUserCommand(HttpServletRequest request, HttpServletResponse response) throws Exception {
         JSONObject json = (JSONObject) request.getAttribute("json");
-        JSONAPI.doUserCommand(json);
+        UsersSession session = null;
+        if (json.has("session_key")) {
+            String session_key = json.getString("session_key");
+            session = AppData.sessions.get(session_key);
+        }
+        if (session == null) {
+            return;
+        }
+        JSONAPI.doEncryptedUserCommand(json, BoxCommonData.PRIVATE_KEY, (RSAPublicKey) session.get("UsersPublicKey"));
     }
 
     private void replyWithParameters(HttpServletRequest request, HttpServletResponse response) throws Exception {

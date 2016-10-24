@@ -15,6 +15,7 @@ import org.apache.log4j.Logger;
 import org.lobzik.home_sapiens.entity.Measurement;
 import org.lobzik.home_sapiens.pi.AppData;
 import org.lobzik.home_sapiens.pi.BoxCommonData;
+import org.lobzik.home_sapiens.pi.BoxMode;
 import org.lobzik.home_sapiens.pi.ConnJDBCAppender;
 import org.lobzik.home_sapiens.pi.event.Event;
 import org.lobzik.home_sapiens.pi.event.EventManager;
@@ -59,6 +60,7 @@ public class BehaviorModule implements Module {
     public void start() {
         try {
             EventManager.subscribeForEventType(this, Event.Type.SYSTEM_EVENT);
+            EventManager.subscribeForEventType(this, Event.Type.SYSTEM_MODE_CHANGED);
             EventManager.subscribeForEventType(this, Event.Type.PARAMETER_UPDATED);
             EventManager.subscribeForEventType(this, Event.Type.PARAMETER_CHANGED);
             EventManager.subscribeForEventType(this, Event.Type.USER_ACTION);
@@ -70,26 +72,37 @@ public class BehaviorModule implements Module {
 
     @Override
     public void handleEvent(Event e) {
-        if (e.type == Event.Type.SYSTEM_EVENT && e.name.equals("cellid_detected")) {
-            searchForLocationByCellId(e.data);
+        switch (e.type) {
+            case SYSTEM_EVENT:
+                searchForLocationByCellId(e.data);
+                break;
+
+            case SYSTEM_MODE_CHANGED:
+                if (BoxMode.isArmed()) log.warn("Включен режим Охрана") ;
+                else if (BoxMode.isIdle()) log.warn("Включен режим Хозяин Дома") ;
+                
+                break;
+
+            case PARAMETER_CHANGED:
+                switch (e.name) {
+                    case "mic_noise":
+                        Measurement m = (Measurement) e.data.get("measurement");
+                        HashMap data = new HashMap();
+                        if (m.getBooleanValue()) {
+                            data.put("uart_command", "led1=on");
+
+                        } else {
+                            data.put("uart_command", "led1=off");
+                        }
+                        Event reaction = new Event("internal_uart_command", data, Event.Type.USER_ACTION);
+                        AppData.eventManager.newEvent(reaction);
+                        break;
+                }
+
+                break;
 
         }
-        if (e.type == Event.Type.PARAMETER_CHANGED) {
-            switch (e.name) {
-                case "mic_noise":
-                    Measurement m = (Measurement) e.data.get("measurement");
-                    HashMap data = new HashMap();
-                    if (m.getBooleanValue()) {
-                        data.put("uart_command", "led1=on");
 
-                    } else {
-                        data.put("uart_command", "led1=off");
-                    }
-                    Event reaction = new Event("internal_uart_command", data, Event.Type.USER_ACTION);
-                    AppData.eventManager.newEvent(reaction);
-                    break;
-            }
-        }
     }
 
     public static void finish() {

@@ -11,6 +11,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.SecureRandom;
 import java.security.Signature;
+import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.util.HashMap;
 import java.util.Map;
@@ -25,6 +26,7 @@ import org.lobzik.home_sapiens.entity.Measurement;
 import org.lobzik.home_sapiens.entity.Parameter;
 import org.lobzik.home_sapiens.pi.event.Event;
 import org.lobzik.home_sapiens.pi.modules.VideoModule;
+import org.lobzik.tools.Tools;
 
 /**
  * class for generating and parsing JSON to be used in TunnelClient and
@@ -34,23 +36,71 @@ import org.lobzik.home_sapiens.pi.modules.VideoModule;
  */
 public class JSONAPI {
 
-    public static void doUserCommand(JSONObject json) throws Exception {
+    public static void doEncryptedUserCommand(JSONObject json, RSAPrivateKey boxKey, RSAPublicKey userPublicKey) throws Exception {
         String commandName = json.getString("command_name");
         HashMap commandData = new HashMap();
-        JSONObject jsonData = json.getJSONObject("command_data");
-        if (commandName.equals("save_settings")) {
-            JSONObject settingsJson = jsonData.getJSONObject("settings");
-            Map<String, String> smap = new HashMap();
-            for (String key : settingsJson.keySet()) {
-                smap.put(key, settingsJson.getString(key));
-            }
-            BoxSettingsAPI.set(smap);
-        } else {
-            for (String key : jsonData.keySet()) {
-                commandData.put(key, jsonData.get(key));
-            }
-            Event event = new Event(commandName, commandData, Event.Type.USER_ACTION);
-            AppData.eventManager.newEvent(event);
+        //JSONObject jsonData = json.getJSONObject("command_data");
+        String digest = json.getString("digest");
+        String keyCipher = json.getString("key_cipher");
+        String encrypted = json.getString("command_data");
+
+        Cipher cipherRSA = Cipher.getInstance("RSA");
+        cipherRSA.init(Cipher.DECRYPT_MODE, boxKey);
+        String aesKeyStr = new String(cipherRSA.doFinal(Tools.toByteArray(keyCipher)));
+         byte[] rawKey = Tools.toByteArray(aesKeyStr);
+        IvParameterSpec ivSpec = new IvParameterSpec(rawKey);
+
+        SecretKeySpec skeySpec = new SecretKeySpec(rawKey, "AES");
+        Cipher cipher = Cipher.getInstance("AES/CFB/NoPadding");
+        cipher.init(Cipher.DECRYPT_MODE, skeySpec, ivSpec);
+
+        byte[] decrypted = cipher.doFinal(Tools.toByteArray(encrypted));
+
+        Signature verifier = Signature.getInstance("SHA256withRSA");
+        verifier.initVerify(userPublicKey);
+        verifier.update(decrypted);
+        boolean valid = verifier.verify(Tools.toByteArray(digest));
+        if (!valid) {
+            throw new Exception("Invalid digest for command");
+        }
+        String data = new String(decrypted);
+        JSONObject jsonData = new JSONObject(data);
+
+        switch (commandName) {
+            case "save_settings":
+                JSONObject settingsJson = jsonData.getJSONObject("settings");
+                Map<String, String> smap = new HashMap();
+                for (String key : settingsJson.keySet()) {
+                    smap.put(key, settingsJson.getString(key));
+                }
+                BoxSettingsAPI.set(smap);
+                break;
+
+            case "switch_mode":
+                String mode = jsonData.getString("mode");
+                switch (mode) {
+                    case "ARMED":
+                        BoxMode.setArmed();
+                        Event event = new Event(commandName, commandData, Event.Type.SYSTEM_MODE_CHANGED);
+                        AppData.eventManager.newEvent(event);
+                        break;
+
+                    case "IDLE":
+                        BoxMode.setIdle();
+                        event = new Event(commandName, commandData, Event.Type.SYSTEM_MODE_CHANGED);
+                        AppData.eventManager.newEvent(event);
+                        break;
+                }
+                break;
+
+            default:
+                for (String key : jsonData.keySet()) {
+                    commandData.put(key, jsonData.get(key));
+                }
+                Event event = new Event(commandName, commandData, Event.Type.USER_ACTION);
+                AppData.eventManager.newEvent(event);
+                break;
+
         }
     }
 
@@ -82,7 +132,8 @@ public class JSONAPI {
             parJson.put("last_date", m.getTime());
             paramsJson.put(p.getAlias() + "", parJson);
         }
-        paramsJson.put("test", "test ok");
+
+        paramsJson.put("mode", BoxMode.string());
 
         String plain = paramsJson.toString();
         KeyGenerator kgen = KeyGenerator.getInstance("AES");

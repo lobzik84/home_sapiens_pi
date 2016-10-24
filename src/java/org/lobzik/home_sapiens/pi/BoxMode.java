@@ -58,6 +58,10 @@ public class BoxMode {
             saveMode();
         }
     }
+    
+    public static String string() {
+        return Mode.toString();
+    }
 
     private static void saveMode() {
         try (Connection conn = DBTools.openConnection(BoxCommonData.dataSourceName)) {
