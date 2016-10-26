@@ -55,7 +55,7 @@ public class AppListener implements ServletContextListener {
             AppData.setGraphicsWorkDir(new File(sce.getServletContext().getRealPath("img")));
             AppData.setCaptureWorkDir(new File(sce.getServletContext().getRealPath("capture")));
 
-            //DisplayModule.getInstance().start();
+            DisplayModule.getInstance().start();
 
             DBDataWriterModule.getInstance().start();
             ActualDataStorageModule.getInstance().start();
