@@ -95,7 +95,33 @@ public class WeatherModule extends Thread implements Module {
                                     HashMap eventData = new HashMap();
                                     eventData.put("parameter", p);
                                     eventData.put("measurement", m);
-                                    Event event = new Event("RSSI updated", eventData, Event.Type.PARAMETER_UPDATED);
+                                    Event event = new Event("forecast updated", eventData, Event.Type.PARAMETER_UPDATED);
+
+                                    AppData.eventManager.newEvent(event);
+                                }
+                            }
+                            paramId = AppData.parametersStorage.resolveAlias("RAIN");
+                            if (paramId > 0) {
+                                Parameter p = AppData.parametersStorage.getParameter(paramId);
+                                Measurement m = new Measurement(p, mostActual.getPrecipitation(), mostActual.getTime().getTime());
+                                if (!test) {
+                                    HashMap eventData = new HashMap();
+                                    eventData.put("parameter", p);
+                                    eventData.put("measurement", m);
+                                    Event event = new Event("forecast updated", eventData, Event.Type.PARAMETER_UPDATED);
+
+                                    AppData.eventManager.newEvent(event);
+                                }
+                            }
+                            paramId = AppData.parametersStorage.resolveAlias("CLOUDS");
+                            if (paramId > 0) {
+                                Parameter p = AppData.parametersStorage.getParameter(paramId);
+                                Measurement m = new Measurement(p, (double)mostActual.getClouds(), mostActual.getTime().getTime());
+                                if (!test) {
+                                    HashMap eventData = new HashMap();
+                                    eventData.put("parameter", p);
+                                    eventData.put("measurement", m);
+                                    Event event = new Event("forecast updated", eventData, Event.Type.PARAMETER_UPDATED);
 
                                     AppData.eventManager.newEvent(event);
                                 }

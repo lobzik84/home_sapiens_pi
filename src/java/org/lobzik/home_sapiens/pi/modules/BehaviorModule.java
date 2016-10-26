@@ -20,6 +20,7 @@ import org.lobzik.home_sapiens.pi.BoxCommonData;
 import org.lobzik.home_sapiens.pi.BoxMode;
 import org.lobzik.home_sapiens.pi.BoxSettingsAPI;
 import org.lobzik.home_sapiens.pi.ConnJDBCAppender;
+import org.lobzik.home_sapiens.pi.MeasurementsCache;
 import org.lobzik.home_sapiens.pi.event.Event;
 import org.lobzik.home_sapiens.pi.event.EventManager;
 import static org.lobzik.home_sapiens.pi.modules.ModemModule.test;
@@ -140,6 +141,49 @@ public class BehaviorModule implements Module {
                             data.put("uart_command", "433_TX=" + uartCommand);
                             reaction = new Event("internal_uart_command", data, Event.Type.USER_ACTION);
                             AppData.eventManager.newEvent(reaction);
+                        }
+                        break;
+
+                    default:
+                        p = (Parameter) e.data.get("parameter");
+                        if (p != null) {
+                            m = (Measurement) e.data.get("measurement");
+                            switch (p.getAlias()) {
+                                case "INTERNAL_TEMP":
+                                    if (m.getDoubleValue() > BoxSettingsAPI.getDouble("InTempAlertMax") || m.getDoubleValue() < BoxSettingsAPI.getDouble("InTempAlertMin")) {
+                                        p.setState("Alert");
+                                    } else {
+                                        p.setState(null);
+                                    }
+                                    break;
+                                case "VAC_SENSOR":
+                                    if (m.getDoubleValue() > BoxSettingsAPI.getDouble("VACAlertMax") || m.getDoubleValue() < BoxSettingsAPI.getDouble("VACAlertMin")) {
+                                        p.setState("Alert");
+                                    } else {
+                                        p.setState(null);
+                                    }
+
+                                    break;
+                                case "VBAT_SENSOR":
+                                    double avgBattVoltage = AppData.measurementsCache.getAvgMeasurement(p).getDoubleValue();
+                                    int chargePercents = 5;
+                                    if (avgBattVoltage > 500) {
+                                        chargePercents += (avgBattVoltage - 500) / 5; //при 1000 будет 100%
+                                    }
+                                    if (chargePercents > 100) {
+                                        chargePercents = 100;
+                                    }
+                                    Parameter chargeP = AppData.parametersStorage.getParameter(AppData.parametersStorage.resolveAlias("BATT_CHARGE"));
+                                    Measurement chargeM = new Measurement(chargeP, chargePercents);
+                                    HashMap eventData = new HashMap();
+                                    eventData.put("parameter", chargeP);
+                                    eventData.put("measurement", chargeM);
+                                    Event newE = new Event("calculated", eventData, Event.Type.PARAMETER_UPDATED);
+
+                                    AppData.eventManager.newEvent(newE);
+                                    break;
+
+                            }
                         }
                         break;
                 }
