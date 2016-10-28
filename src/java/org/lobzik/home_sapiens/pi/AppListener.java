@@ -24,6 +24,7 @@ import org.lobzik.home_sapiens.pi.modules.GraphModule;
 import org.lobzik.home_sapiens.pi.modules.MicrophoneModule;
 import org.lobzik.home_sapiens.pi.modules.ModemModule;
 import org.lobzik.home_sapiens.pi.modules.SystemModule;
+import org.lobzik.home_sapiens.pi.modules.TestModule;
 import org.lobzik.home_sapiens.pi.modules.TimerModule;
 import org.lobzik.home_sapiens.pi.modules.TunnelClientModule;
 import org.lobzik.home_sapiens.pi.modules.VideoModule;
@@ -50,30 +51,34 @@ public class AppListener implements ServletContextListener {
             log.info("Starting hs app. Modules start!");
             BoxSettingsAPI.initBoxSettings();
             BoxMode.initFromDB();
-            
+
             AppData.setSoundWorkDir(new File(sce.getServletContext().getRealPath("sounds")));
             AppData.setGraphicsWorkDir(new File(sce.getServletContext().getRealPath("img")));
             AppData.setCaptureWorkDir(new File(sce.getServletContext().getRealPath("capture")));
 
-            DisplayModule.getInstance().start();
-
-            DBDataWriterModule.getInstance().start();
+            InternalSensorsModule.getInstance().start();
             ActualDataStorageModule.getInstance().start();
 
-            InternalSensorsModule.getInstance().start();
-            TimerModule.getInstance().start();
-            DBCleanerModule.getInstance().start();
+            if (!BoxCommonData.TEST_MODE) {
+                DisplayModule.getInstance().start();
+                DBDataWriterModule.getInstance().start();
+                TimerModule.getInstance().start();
+                DBCleanerModule.getInstance().start();
+                GraphModule.getInstance().start();
+                BehaviorModule.getInstance().start();
+                TunnelClientModule.getInstance().start();
+                WeatherModule.getInstance().start();
+            }
             SpeakerModule.getInstance().start();
-            GraphModule.getInstance().start();
             VideoModule.getInstance().start();
             MicrophoneModule.getInstance().start();
             SystemModule.getInstance().start();
-            TunnelClientModule.getInstance().start();
+
             ModemModule.getInstance().start();
-            WeatherModule.getInstance().start();
 
-            BehaviorModule.getInstance().start();
-
+            if (BoxCommonData.TEST_MODE) {
+                TestModule.getInstance().start();
+            }
         } catch (Throwable ex) {
             ex.printStackTrace();
         }
@@ -84,23 +89,24 @@ public class AppListener implements ServletContextListener {
     public void contextDestroyed(ServletContextEvent sce) {
         try {
             log.info("Context Destroyed called. Stopping application modules!");
+            if (!BoxCommonData.TEST_MODE) {
+                BehaviorModule.finish();
 
-            BehaviorModule.finish();
-
-            TunnelClientModule.finish();
-            TimerModule.finish();
-            InternalSensorsModule.finish(); //only static methods works!!
-            DBDataWriterModule.finish();
-            DBCleanerModule.finish();
-            SpeakerModule.finish();
-            GraphModule.finish();
-            VideoModule.finish();
-            MicrophoneModule.finish();
-            SystemModule.finish();
-            ModemModule.finish();
-            DisplayModule.finish();
-            WeatherModule.finish();
-            AppData.eventManager.finish();
+                TunnelClientModule.finish();
+                TimerModule.finish();
+                InternalSensorsModule.finish(); //only static methods works!!
+                DBDataWriterModule.finish();
+                DBCleanerModule.finish();
+                SpeakerModule.finish();
+                GraphModule.finish();
+                VideoModule.finish();
+                MicrophoneModule.finish();
+                SystemModule.finish();
+                ModemModule.finish();
+                DisplayModule.finish();
+                WeatherModule.finish();
+                AppData.eventManager.finish();
+            }
             BasicConfigurator.resetConfiguration();
 
         } catch (Throwable ex) {

@@ -66,22 +66,41 @@ public class BoxSettingsAPI {
     }
 
     public static boolean isSet(String name) {
-        if (settings.get(name) == null) return false;
+        if (settings.get(name) == null) {
+            return false;
+        }
         return "true".equals(settings.get(name).trim().toLowerCase());
     }
 
     public static void set(String settingName, String settingNewValue) {
         settings.put(settingName, settingNewValue);
-        saveSettings();        
-        
+        saveSettings();
+
     }
-    
+
     public static void set(Map newSettings) {
-        settings.putAll(newSettings);
-        saveSettings();        
-        
+        for (Object key : newSettings.keySet()) {
+            if (!(key instanceof String)) {
+                continue;
+            }
+            Object val = newSettings.get(key);
+            if (val instanceof String) {
+                String valStr = (String) val;
+                if (settings.containsKey((String) key)) {
+                    settings.put((String) key, valStr);
+                }
+            } else if (val instanceof String[]) {
+                String valStr = ((String[])val)[0];
+                if (settings.containsKey((String) key)) {
+                    settings.put((String) key, valStr);
+                }
+            }
+        }
+        //settings.putAll(newSettings);
+        saveSettings();
+
     }
-    
+
     public static Map<String, String> getSettingsMap() {
         HashMap<String, String> clone = new HashMap();
         clone.putAll(settings);

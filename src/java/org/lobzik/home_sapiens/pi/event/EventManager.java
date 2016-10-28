@@ -10,7 +10,9 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.CopyOnWriteArrayList;
 import org.lobzik.home_sapiens.pi.modules.Module;
 
 /**
@@ -19,7 +21,7 @@ import org.lobzik.home_sapiens.pi.modules.Module;
  */
 public class EventManager extends Thread {
 
-    private static final Map<Event.Type, List> subscribers = new HashMap();
+    private static final Map<Event.Type, List> subscribers = new ConcurrentHashMap();
     private static final Queue<Event> eventList = new ConcurrentLinkedQueue();
     private static boolean run = true;
     private static EventManager instance = null;
@@ -107,7 +109,7 @@ public class EventManager extends Thread {
     public static void subscribeForEventType(Module module, Event.Type type) {
 
         if (subscribers.get(type) == null) {
-            List<Module> modulesList = new LinkedList();
+            List<Module> modulesList = new CopyOnWriteArrayList();
             subscribers.put(type, modulesList);
         }
         if (!subscribers.get(type).contains(module)) {

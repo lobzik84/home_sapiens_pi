@@ -29,6 +29,8 @@ public class AppData {
     private static File graphicsWorkDir = null;
     
     private static File captureWorkDir = null;
+    
+    public static int testStage = 0;
 
     static {
         BasicDataSource ds = null;

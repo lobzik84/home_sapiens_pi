@@ -30,6 +30,7 @@ import org.lobzik.home_sapiens.pi.event.Event;
  */
 import javax.imageio.ImageIO;
 import org.apache.log4j.Appender;
+import org.lobzik.home_sapiens.pi.BoxCommonData;
 import org.lobzik.home_sapiens.pi.ConnJDBCAppender;
 import org.lobzik.home_sapiens.pi.event.EventManager;
 import org.lobzik.tools.Tools;
@@ -38,7 +39,7 @@ public class DisplayModule implements Module {
 
     public final String MODULE_NAME = this.getClass().getSimpleName();
     private static DisplayModule instance = null;
-    
+
     private static final String TMP_FILE = "i.tmp";
     private static final String IMG_FILE = "i.png";
     private static final String SYMLINK1 = "a.png";
@@ -71,6 +72,7 @@ public class DisplayModule implements Module {
     @Override
     public void start() {
         try {
+            draw();
             EventManager.subscribeForEventType(this, Event.Type.TIMER_EVENT);
             fbiRunner = new FbiRunner();
             fbiRunner.start();
@@ -102,36 +104,45 @@ public class DisplayModule implements Module {
             }
 
             g = img.getGraphics();
-            g.setColor(new Color(243, 67, 54));
-            g.fillRect(0, 251, 480, 320);
-            //g.drawLine(20, 20, 360, 20);
             g.setColor(new Color(0, 0, 0));
+
             g.setFont(new Font("Tahoma", Font.PLAIN, 110));
             Date d = new Date();
+            if (BoxCommonData.TEST_MODE) {
+                g.drawString("TEST", 100, 180);
 
-            g.drawString(Tools.getFormatedDate(d, "HH:mm"), 100, 180);
+            } else {
+                g.drawString(Tools.getFormatedDate(d, "HH:mm"), 100, 180);
+                
+                
+                //alert
+                g.setColor(new Color(243, 67, 54));
+                g.fillRect(0, 251, 480, 320);
+                //g.drawLine(20, 20, 360, 20);
+                g.setColor(new Color(0, 0, 0));
 
-            g.drawImage(temperatureImg, 25, 270, null);
+                g.drawImage(temperatureImg, 25, 270, null);
 
-            g.setColor(new Color(255, 255, 255));
-            g.setFont(new Font("Tahoma", Font.PLAIN, 20));
-            g.drawString(Tools.getFormatedDate(d, "HH:mm"), 55, 290);
+                g.setColor(new Color(255, 255, 255));
+                g.setFont(new Font("Tahoma", Font.PLAIN, 20));
+                g.drawString(Tools.getFormatedDate(d, "HH:mm"), 55, 290);
+            }
+
 
             File file = new File(AppData.getGraphicsWorkDir().getAbsolutePath() + File.separator + TMP_FILE);
             FileOutputStream fos = new FileOutputStream(file);
             java.nio.channels.FileLock lock = fos.getChannel().lock();
-            try{
+            try {
                 ImageIO.write(img, "png", fos);
                 fos.flush();
-                
-            }
-            finally {
+
+            } finally {
                 lock.release();
             }
             fos.close();
             Path src = Paths.get(AppData.getGraphicsWorkDir().getAbsolutePath() + File.separator + TMP_FILE);
             Path dst = Paths.get(AppData.getGraphicsWorkDir().getAbsolutePath() + File.separator + IMG_FILE);
-            
+
             Files.move(src, dst, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
 
         } catch (Exception e) {
@@ -160,18 +171,7 @@ public class DisplayModule implements Module {
             } catch (Exception e) {
             }
         }
-/*
-        public void update() {
-            log.info("Forcing FBI Update");
-            try {
-                osr.write("j");
-                osr.flush();
-                //process.
-                
-            } catch (Exception e) {
-            }
-        }
-*/
+
         @Override
         public void run() {
             try {
@@ -258,37 +258,4 @@ public class DisplayModule implements Module {
             }
         }
     }
-
-    /*
-    public static class StreamGobbler extends Thread {
-
-        InputStream is;
-        private static StringBuilder output = new StringBuilder();
-
-        public StreamGobbler(InputStream is) {
-            this.is = is;
-        }
-
-        @Override
-        public void run() {
-            try {
-                InputStreamReader isr = new InputStreamReader(is);
-                BufferedReader br = new BufferedReader(isr);
-                String line = null;
-                while ((line = br.readLine()) != null) {
-                    output.append(line).append("\n");
-                }
-            } catch (IOException ioe) {
-                ioe.printStackTrace();
-            }
-        }
-
-        public static String getAllOutput() {
-            return output.toString();
-        }
-
-        public static void clearOutput() {
-            output = new StringBuilder();
-        }
-    }*/
 }
