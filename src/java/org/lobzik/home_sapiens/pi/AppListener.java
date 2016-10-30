@@ -21,6 +21,7 @@ import org.lobzik.home_sapiens.pi.modules.DisplayModule;
 import org.lobzik.home_sapiens.pi.modules.InternalSensorsModule;
 import org.lobzik.home_sapiens.pi.modules.SpeakerModule;
 import org.lobzik.home_sapiens.pi.modules.GraphModule;
+import org.lobzik.home_sapiens.pi.modules.InstinctsModule;
 import org.lobzik.home_sapiens.pi.modules.MicrophoneModule;
 import org.lobzik.home_sapiens.pi.modules.ModemModule;
 import org.lobzik.home_sapiens.pi.modules.SystemModule;
@@ -55,10 +56,11 @@ public class AppListener implements ServletContextListener {
             AppData.setSoundWorkDir(new File(sce.getServletContext().getRealPath("sounds")));
             AppData.setGraphicsWorkDir(new File(sce.getServletContext().getRealPath("img")));
             AppData.setCaptureWorkDir(new File(sce.getServletContext().getRealPath("capture")));
-
-            InternalSensorsModule.getInstance().start();
+            
             ActualDataStorageModule.getInstance().start();
-
+            InstinctsModule.getInstance().start();
+            InternalSensorsModule.getInstance().start();
+            
             if (!BoxCommonData.TEST_MODE) {
                 DisplayModule.getInstance().start();
                 DBDataWriterModule.getInstance().start();
@@ -91,7 +93,6 @@ public class AppListener implements ServletContextListener {
             log.info("Context Destroyed called. Stopping application modules!");
             if (!BoxCommonData.TEST_MODE) {
                 BehaviorModule.finish();
-
                 TunnelClientModule.finish();
                 TimerModule.finish();
                 InternalSensorsModule.finish(); //only static methods works!!

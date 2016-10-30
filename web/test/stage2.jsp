@@ -5,27 +5,41 @@
 <%@ page import="java.util.*"%>
 <%@ page import="org.lobzik.home_sapiens.pi.*"%>
 <%@ page import="org.lobzik.home_sapiens.entity.*"%>
+<script>
+setTimeout(function(){
+   window.location.reload(1);
+}, 3000);    
+</script>
+    
+
 <h2>Тесты - этап 2</h2>
 <% 
 String rtcTime = Tools.sysExec("sudo hwclock -r", new File("/"));
 %>
 <br>
-Проверьте актуальность параметров!
+Проверьте время RTC: <%=rtcTime%>
 <br>
-Время RTC: <%=rtcTime%>
-<br><br>
+Проверьте бинарные датчики (обновляются раз в 3 секунды):
+<br>
+
 <%
     ParametersStorage ps = AppData.parametersStorage;
     MeasurementsCache mc = AppData.measurementsCache;
 
     for (Integer pId : ps.getParameterIds()) {
         Parameter p = ps.getParameter(pId);
-        if (mc.getLastMeasurement(p) == null) {
+        if (p.getType() != Parameter.Type.BOOLEAN) {
             continue;
         }
-%>
-<%=p.getName()%>: <%=mc.getLastMeasurement(p).toStringValue()%> <%=p.getUnit()%><br>
-<%}%>
+        Measurement m = mc.getLastMeasurement(p);
+        if (m == null) {
+            %><font color="red"><%=p.getName()%>:  NULL !!! </font><%
+        } else if (m.getBooleanValue()){
+            %><font color="green"><%=p.getName()%>:  TRUE </font> <%                
+        } else if (!m.getBooleanValue()) {
+            %><font color="black"><%=p.getName()%>:  FALSE </font> <%   
+        }
+%><br> <%}%>
 <br>
 <br>
 Если всё в порядке, можно двигаться дальше! <br><br>

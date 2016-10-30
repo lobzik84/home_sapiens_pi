@@ -37,8 +37,8 @@
                             dataMap.put("stage", AppData.testStage);
                             DBTools.insertRow("test_stages", dataMap, conn);
                             conn.close();
-                            if (AppData.testStage == 2) {
-                                //после первого этапа отрубаем питание
+                            if (AppData.testStage == 2 || AppData.testStage == 5) {
+                                //после первого и 4го этапа отрубаем питание
                                 Tools.sysExec("sudo halt -p", new File("/"));
                             }
 

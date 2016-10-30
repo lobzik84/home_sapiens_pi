@@ -51,7 +51,7 @@ public class TestModule implements Module {
             EventManager.subscribeForEventType(this, Event.Type.USER_ACTION);
 
             Event e = new Event("internal_sensors_poll", new HashMap(), Event.Type.TIMER_EVENT);
-            Thread.sleep(10000);//чтобы дождалось
+            Thread.sleep(3000);//чтобы дождалось
             AppData.eventManager.newEvent(e); //чтобы загрузило
             e = new Event("get_capture", null, Event.Type.USER_ACTION);
             AppData.eventManager.newEvent(e); //чтобы забрало картинку
