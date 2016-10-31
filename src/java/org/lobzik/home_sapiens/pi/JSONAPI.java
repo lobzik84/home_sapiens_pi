@@ -130,8 +130,8 @@ public class JSONAPI {
             Measurement m = mc.getLastMeasurement(p);
             parJson.put("last_value", m.toStringValue());
             parJson.put("last_date", m.getTime());
-            if (p.getState() != null)
-                parJson.put("state", p.getState());
+            if (p.getState() != Parameter.State.OK)
+                parJson.put("state", p.getState().toString());
             
             paramsJson.put(p.getAlias() + "", parJson);
         }

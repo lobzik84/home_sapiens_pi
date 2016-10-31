@@ -172,14 +172,14 @@ public class InstinctsModule implements Module {
                             switch (p.getAlias()) {
                                 case "INTERNAL_TEMP":
                                     if (m.getDoubleValue() > BoxSettingsAPI.getDouble("InTempAlertMax") || m.getDoubleValue() < BoxSettingsAPI.getDouble("InTempAlertMin")) {
-                                        p.setState("Alert");
+                                        p.setState(Parameter.State.ALARM);
                                     } else {
                                         p.setState(null);
                                     }
                                     break;
                                 case "VAC_SENSOR":
                                     if (m.getDoubleValue() > BoxSettingsAPI.getDouble("VACAlertMax") || m.getDoubleValue() < BoxSettingsAPI.getDouble("VACAlertMin")) {
-                                        p.setState("Alert");
+                                       p.setState(Parameter.State.ALARM);
                                     } else {
                                         p.setState(null);
                                     }
