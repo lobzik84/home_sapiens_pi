@@ -8,6 +8,7 @@ package org.lobzik.home_sapiens.pi.modules;
 import java.math.BigInteger;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,6 +20,7 @@ import org.lobzik.home_sapiens.entity.Parameter;
 import org.lobzik.home_sapiens.pi.AppData;
 import org.lobzik.home_sapiens.pi.BoxCommonData;
 import org.lobzik.home_sapiens.pi.BoxMode;
+import org.lobzik.home_sapiens.pi.BoxMode.MODE;
 import org.lobzik.home_sapiens.pi.BoxSettingsAPI;
 import org.lobzik.home_sapiens.pi.ConnJDBCAppender;
 import org.lobzik.home_sapiens.pi.MeasurementsCache;
@@ -43,7 +45,8 @@ public class BehaviorModule implements Module {
     private static Connection conn = null;
     private static String mobileNumber = null;
     private static String email = null;
-
+    private static List<Condition> conditions=null;
+    
     public enum Severity
     {   
         INFO,
@@ -95,6 +98,53 @@ public class BehaviorModule implements Module {
                     mobileNumber = Tools.getStringValue(ud.get("login"), "");
                     email = Tools.getStringValue(ud.get("email"), "");
                     mobileNumber=mobileNumber.replaceAll("(", "").replaceAll(")", "").replaceAll("-", "");
+               }
+                    
+            } catch (Exception ee) {
+            ee.printStackTrace();
+            }
+            
+            try {
+                String sSQL = "SELECT * FROM conditions";
+                List<HashMap> conditionsList = DBSelect.getRows(sSQL, conn);
+                conditions=new ArrayList();
+                if(conditionsList.size()>0){
+                    for (HashMap c:conditionsList){                      
+                        Condition cond = new Condition(
+                                Tools.parseInt(c.get("id"), 0), 
+                                Tools.parseInt(c.get("parameter_id"), 0), 
+                                Tools.getStringValue(c.get("alias"), ""), 
+                                Tools.getStringValue(c.get("name"), ""), 
+                                MODE.valueOf(Tools.getStringValue(c.get("box_mode"), "")), 
+                                Tools.parseInt(c.get("state"), 0));
+                    conditions.add(cond);
+                    }
+               }
+                    
+            } catch (Exception ee) {
+            ee.printStackTrace();
+            }
+            
+            try {
+                String sSQL = "SELECT * FROM actions order by condition_id";
+                List<HashMap> actionsList = DBSelect.getRows(sSQL, conn);
+                if(actionsList.size()>0){
+                    for (HashMap a:actionsList){ 
+                        int conditionId = Tools.parseInt(a.get("condition_id"), 0);
+                        if (conditionId>0)
+                        {
+                            Action act = new Action(
+                                    Tools.parseInt(a.get("id"), 0), 
+                                    Tools.getStringValue(a.get("alias"), ""),
+                                    Tools.getStringValue(a.get("module"), ""),
+                                    Tools.getStringValue(a.get("data"), ""),
+                                    Severity.valueOf(Tools.getStringValue(a.get("severity"), ""))
+                            );
+                            Condition cond = getConditionById(conditions, conditionId);
+                            
+                            cond.addAction(act);
+                        }
+                    }
                }
                     
             } catch (Exception ee) {
@@ -162,5 +212,74 @@ public class BehaviorModule implements Module {
          data.put("recipient",mobileNumber);
          Event e = new Event("send_sms", data, Event.Type.USER_ACTION);
          AppData.eventManager.newEvent(e);
+    }
+
+        
+    public static void actionEmail(Severity severity, String message){
+         HashMap data = new HashMap();
+         data.put("message", message);
+         data.put("recipient", email);
+         Event e = new Event("send_email", data, Event.Type.USER_ACTION);
+         AppData.eventManager.newEvent(e);
+    }
+    
+    public static Condition getConditionById(List<Condition> conditions, int conditionId){
+        Condition result=null;
+        for(Condition c:conditions){
+            if (c.id==conditionId)
+                result=c;
+        }
+        return result;
+    }
+
+    public static Condition getConditionByParameterAndState(List<Condition> conditions, int parameterId, MODE mode){
+        Condition result=null;
+        for(Condition c:conditions){
+            if (c.parameterId==parameterId && c.boxMode == mode)
+                result=c;
+        }
+        return result;
+    }
+    
+    public class Condition {
+    
+        public int id;
+        public int parameterId;
+        public String alias;
+        public String name;
+        public MODE boxMode;
+        public int state;
+        public List<Action> actions;
+        
+        public Condition(int id, int parameterId, String alias, String name, MODE boxMode, int state) {
+            this.id = id;
+            this.parameterId = parameterId;
+            this.alias = alias;
+            this.name = name;
+            this.boxMode = boxMode;
+            this.state = state;
+            actions = new ArrayList<Action>();
+        }
+        
+        public void addAction(Action action){
+            actions.add(action);
+        }            
+        
+    }
+    
+    public class Action {
+        public int id;
+        public String alias;
+        public String module;
+        public String data;
+        public Severity severity;
+        
+        public Action(int id, String alias, String module, String data, Severity severity){
+            this.id = id;
+            this.alias = alias;
+            this.module = module;
+            this.data = data;
+            this.severity = severity;
+        }
     }
 }
