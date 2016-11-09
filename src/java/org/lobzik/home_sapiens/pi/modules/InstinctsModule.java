@@ -76,7 +76,7 @@ public class InstinctsModule implements Module {
             eventData.put("measurement", off);
             Event newE = new Event("init", eventData, Event.Type.PARAMETER_UPDATED);
             AppData.eventManager.newEvent(newE);
-            
+
             p = AppData.parametersStorage.getParameter(AppData.parametersStorage.resolveAlias("LAMP_1"));
             off = new Measurement(p, false);
             eventData = new HashMap();
@@ -84,7 +84,7 @@ public class InstinctsModule implements Module {
             eventData.put("measurement", off);
             newE = new Event("init", eventData, Event.Type.PARAMETER_UPDATED);
             AppData.eventManager.newEvent(newE);
-            
+
             p = AppData.parametersStorage.getParameter(AppData.parametersStorage.resolveAlias("LAMP_2"));
             off = new Measurement(p, false);
             eventData = new HashMap();
@@ -92,7 +92,7 @@ public class InstinctsModule implements Module {
             eventData.put("measurement", off);
             newE = new Event("init", eventData, Event.Type.PARAMETER_UPDATED);
             AppData.eventManager.newEvent(newE);
-            
+
             p = AppData.parametersStorage.getParameter(AppData.parametersStorage.resolveAlias("DOOR_SENSOR"));
             off = new Measurement(p, false);
             eventData = new HashMap();
@@ -100,7 +100,7 @@ public class InstinctsModule implements Module {
             eventData.put("measurement", off);
             newE = new Event("init", eventData, Event.Type.PARAMETER_UPDATED);
             AppData.eventManager.newEvent(newE);
-            
+
             p = AppData.parametersStorage.getParameter(AppData.parametersStorage.resolveAlias("WET_SENSOR"));
             off = new Measurement(p, false);
             eventData = new HashMap();
@@ -108,8 +108,7 @@ public class InstinctsModule implements Module {
             eventData.put("measurement", off);
             newE = new Event("init", eventData, Event.Type.PARAMETER_UPDATED);
             AppData.eventManager.newEvent(newE);
-            
-            
+
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -119,7 +118,21 @@ public class InstinctsModule implements Module {
     public void handleEvent(Event e) {
         switch (e.type) {
             case SYSTEM_EVENT:
-                searchForLocationByCellId(e.data);
+                if (e.name.equals("shutdown")) {
+                    log.info("Sending poweroff command");
+                    HashMap data = new HashMap();
+                    data.put("uart_command", "poweroff=45"); //timer for 45 secs
+                    Event powerOffCommand = new Event("internal_uart_command", data, Event.Type.USER_ACTION);
+                    AppData.eventManager.newEvent(powerOffCommand);
+                    try {
+                        Thread.sleep(3000);
+                    } catch (InterruptedException ioe) {
+                    }
+                    Event halt = new Event("internal_uart_command", null, Event.Type.SYSTEM_EVENT);
+                    AppData.eventManager.newEvent(halt);
+                } else if (e.name.equals("cellid_detected")) {
+                    searchForLocationByCellId(e.data);
+                }
                 break;
 
             case PARAMETER_CHANGED:
@@ -179,7 +192,7 @@ public class InstinctsModule implements Module {
                                     break;
                                 case "VAC_SENSOR":
                                     if (m.getDoubleValue() > BoxSettingsAPI.getDouble("VACAlertMax") || m.getDoubleValue() < BoxSettingsAPI.getDouble("VACAlertMin")) {
-                                       p.setState(Parameter.State.ALARM);
+                                        p.setState(Parameter.State.ALARM);
                                     } else {
                                         p.setState(null);
                                     }

@@ -10,6 +10,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.HashMap;
 import org.apache.log4j.Appender;
 import org.apache.log4j.Logger;
 import org.lobzik.home_sapiens.pi.AppData;
@@ -61,12 +62,14 @@ public class SystemModule implements Module {
 
     private void shutdown() {
         try {
+
+            
             String[] env = {"aaa=bbb", "ccc=ddd"};
 
             String[] args = {PREFIX, SHUTDOWN_COMMAND, SHUTDOWN_SUFFIX};
             File workdir = AppData.getSoundWorkDir();
             Runtime runtime = Runtime.getRuntime();
-            log.info("Shutting down system");
+            log.info("Shutting down system");/*
             process = runtime.exec(args, env, workdir);
 
             StringBuilder output = new StringBuilder();
@@ -80,7 +83,7 @@ public class SystemModule implements Module {
 
             if (exitValue != 0) {
                 log.error("Error executing, exit status: " + exitValue);
-            }
+            }*/
         } catch (Exception e) {
             log.error("Error " + e.getMessage());
         }
