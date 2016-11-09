@@ -288,7 +288,12 @@ public class InternalSensorsModule extends Thread implements Module {
             if (m.getBooleanValue())
             {
                 if (m.getTime() + ONEWAY_PARAMETERS_TIMEOUT < System.currentTimeMillis()){
-                   measurementsCache.add(new Measurement(p, false));
+                    HashMap eventData = new HashMap();
+                    eventData.put("parameter", p);
+                    eventData.put("measurement", m);
+                    Event e = new Event("internal sensors updated", eventData, Event.Type.PARAMETER_UPDATED);
+                    AppData.eventManager.newEvent(e);
+
                 }
                                         
             }
