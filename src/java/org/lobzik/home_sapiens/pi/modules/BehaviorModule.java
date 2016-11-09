@@ -26,6 +26,7 @@ import org.lobzik.home_sapiens.pi.BoxSettingsAPI;
 import org.lobzik.home_sapiens.pi.Condition;
 import org.lobzik.home_sapiens.pi.ConnJDBCAppender;
 import org.lobzik.home_sapiens.pi.MeasurementsCache;
+import org.lobzik.home_sapiens.pi.WebNotification;
 import org.lobzik.home_sapiens.pi.event.Event;
 import org.lobzik.home_sapiens.pi.event.EventManager;
 import static org.lobzik.home_sapiens.pi.modules.ModemModule.STATUS_NEW;
@@ -49,13 +50,6 @@ public class BehaviorModule implements Module {
     private static String email = null;
     private static List<Condition> conditions=null;
     
-    public enum Severity
-    {   
-        INFO,
-        WARNING,
-        ALARM
-    };
-
     private BehaviorModule() { //singleton
     }
 
@@ -140,7 +134,7 @@ public class BehaviorModule implements Module {
                                     Tools.getStringValue(a.get("alias"), ""),
                                     Tools.getStringValue(a.get("module"), ""),
                                     Tools.getStringValue(a.get("data"), ""),
-                                    Severity.valueOf(Tools.getStringValue(a.get("severity"), ""))
+                                    WebNotification.Severity.valueOf(Tools.getStringValue(a.get("severity"), ""))
                             );
                             Condition cond = getConditionById(conditions, conditionId);
                             
@@ -192,13 +186,13 @@ public class BehaviorModule implements Module {
 
     }
 
-    public static void actionLog(Severity severity, String message) {
+    public static void actionLog(WebNotification.Severity severity, String message) {
         switch (severity) {
             case INFO:
                 log.info(message);
                 break;
 
-            case WARNING:
+            case OK:
                 log.warn(message);
                 break;
 
@@ -208,7 +202,7 @@ public class BehaviorModule implements Module {
         }
     }
 
-    public static void actionSMS(Severity severity, String message) {
+    public static void actionSMS(WebNotification.Severity severity, String message) {
         HashMap data = new HashMap();
         data.put("message", message);
         data.put("recipient", mobileNumber);
@@ -217,7 +211,7 @@ public class BehaviorModule implements Module {
     }
 
         
-    public static void actionEmail(Severity severity, String message){
+    public static void actionEmail(WebNotification.Severity severity, String message){
          HashMap data = new HashMap();
          data.put("message", message);
          data.put("recipient", email);
@@ -225,7 +219,7 @@ public class BehaviorModule implements Module {
          AppData.eventManager.newEvent(e);
     }
 
-    public static void actionDisplay(Severity severity, String message){
+    public static void actionDisplay(WebNotification.Severity severity, String message){
          HashMap data = new HashMap();
          data.put("message", message);
          Event e = new Event("update_display", data, Event.Type.SYSTEM_EVENT);

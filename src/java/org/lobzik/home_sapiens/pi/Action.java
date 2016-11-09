@@ -16,9 +16,9 @@ import org.lobzik.home_sapiens.pi.modules.BehaviorModule;
         public String alias;
         public String module;
         public String data;
-        public BehaviorModule.Severity severity;
+        public WebNotification.Severity severity;
         
-        public Action(int id, String alias, String module, String data, BehaviorModule.Severity severity){
+        public Action(int id, String alias, String module, String data, WebNotification.Severity severity){
             this.id = id;
             this.alias = alias;
             this.module = module;
