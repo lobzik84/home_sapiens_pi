@@ -44,13 +44,12 @@ public class BehaviorModule implements Module {
     private static String mobileNumber = null;
     private static String email = null;
 
-    public enum Severity
-    {   
+    public enum Severity {
         INFO,
         WARNING,
         ALARM
     };
-        
+
     private BehaviorModule() { //singleton
     }
 
@@ -86,19 +85,19 @@ public class BehaviorModule implements Module {
             } else {
                 conn = DBTools.openConnection(BoxCommonData.dataSourceName);
             }
-                 
+
             try {
                 String sSQL = "SELECT * FROM users";
                 List<HashMap> userData = DBSelect.getRows(sSQL, conn);
-                if(userData.size()>0){
+                if (userData.size() > 0) {
                     HashMap ud = userData.get(0);
                     mobileNumber = Tools.getStringValue(ud.get("login"), "");
                     email = Tools.getStringValue(ud.get("email"), "");
-                    mobileNumber=mobileNumber.replaceAll("(", "").replaceAll(")", "").replaceAll("-", "");
-               }
-                    
+                   // mobileNumber = mobileNumber.replaceAll("(", "").replaceAll(")", "").replaceAll("-", "");
+                }
+
             } catch (Exception ee) {
-            ee.printStackTrace();
+                ee.printStackTrace();
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -116,7 +115,7 @@ public class BehaviorModule implements Module {
                 }
 
                 break;
-                
+
             case PARAMETER_CHANGED:
                 switch (e.name) {
                     case "mic_noise": //just for debug of microphone module, to be removed
@@ -135,32 +134,32 @@ public class BehaviorModule implements Module {
                 break;
         }
     }
-    
+
     public static void finish() {
-        
+
     }
-    
-    public static void actionLog(Severity severity, String message){
+
+    public static void actionLog(Severity severity, String message) {
         switch (severity) {
             case INFO:
                 log.info(message);
-            break;
-                
+                break;
+
             case WARNING:
                 log.warn(message);
-            break;
-                
+                break;
+
             case ALARM:
                 log.error(message);
-            break;
+                break;
         }
     }
-    
-    public static void actionSMS(Severity severity, String message){
-         HashMap data = new HashMap();
-         data.put("message", message);
-         data.put("recipient",mobileNumber);
-         Event e = new Event("send_sms", data, Event.Type.USER_ACTION);
-         AppData.eventManager.newEvent(e);
+
+    public static void actionSMS(Severity severity, String message) {
+        HashMap data = new HashMap();
+        data.put("message", message);
+        data.put("recipient", mobileNumber);
+        Event e = new Event("send_sms", data, Event.Type.USER_ACTION);
+        AppData.eventManager.newEvent(e);
     }
 }

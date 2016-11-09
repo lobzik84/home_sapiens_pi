@@ -46,6 +46,14 @@ public class TunnelClientModule extends Thread implements Module {
         return MODULE_NAME;
     }
 
+    public boolean tunnelIsUp() {
+        if (client != null && client.isConnected()) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
     @Override
     public void run() {
         setName(this.getClass().getSimpleName() + "-Thread");

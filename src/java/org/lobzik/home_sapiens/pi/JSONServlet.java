@@ -29,6 +29,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import org.json.JSONObject;
 import org.lobzik.home_sapiens.pi.event.Event;
+import org.lobzik.home_sapiens.pi.modules.TunnelClientModule;
 import org.lobzik.tools.Tools;
 import org.lobzik.tools.db.mysql.DBSelect;
 import org.lobzik.tools.db.mysql.DBTools;
@@ -493,6 +494,8 @@ public class JSONServlet extends HttpServlet {
         JSONObject reply = JSONAPI.getEncryptedParametersJSON((RSAPublicKey) session.get("UsersPublicKey"));
         reply.put("result", "success");
         reply.put("session_key", json.getString("session_key"));
+        reply.put("connection_type", "local");
+        reply.put("server_link", TunnelClientModule.getInstance().tunnelIsUp()?"up":"down");
         response.getWriter().write(reply.toString());
     }
 

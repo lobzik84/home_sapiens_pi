@@ -18,6 +18,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import org.apache.log4j.Logger;
@@ -32,6 +33,7 @@ import javax.imageio.ImageIO;
 import org.apache.log4j.Appender;
 import org.lobzik.home_sapiens.pi.BoxCommonData;
 import org.lobzik.home_sapiens.pi.ConnJDBCAppender;
+import org.lobzik.home_sapiens.pi.WebNotification;
 import org.lobzik.home_sapiens.pi.event.EventManager;
 import org.lobzik.tools.Tools;
 
@@ -86,7 +88,12 @@ public class DisplayModule implements Module {
     public void handleEvent(Event e) {
         if (e.type == Event.Type.TIMER_EVENT && e.name.equals("update_display")) {
             draw();
-
+            //TODO мама, это только для отладки
+            WebNotification wn = new WebNotification(WebNotification.Severity.ALERT, "INTERNAL_TEMP", "Быстрый рост температуры", new Date(System.currentTimeMillis() - 1800000), new Date());
+            HashMap data = new HashMap();
+            data.put("WebNotification", wn);
+            Event reaction = new Event ("web_notification", data, Event.Type.REACTION_EVENT);
+            AppData.eventManager.newEvent(reaction);
         }
     }
 

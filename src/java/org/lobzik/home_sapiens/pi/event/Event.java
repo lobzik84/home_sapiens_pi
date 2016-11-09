@@ -28,7 +28,8 @@ public class Event {
         SYSTEM_SETTING_CHANGED,
         SYSTEM_MODE_CHANGED,
         TIMER_EVENT,
-        SYSTEM_EVENT
+        SYSTEM_EVENT,
+        REACTION_EVENT
     };
     
     public Event(String name, Map data, Event.Type type ) {

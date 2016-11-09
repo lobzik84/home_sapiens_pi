@@ -30,6 +30,7 @@ import org.lobzik.home_sapiens.pi.modules.TimerModule;
 import org.lobzik.home_sapiens.pi.modules.TunnelClientModule;
 import org.lobzik.home_sapiens.pi.modules.VideoModule;
 import org.lobzik.home_sapiens.pi.modules.WeatherModule;
+import org.lobzik.home_sapiens.pi.modules.WebNotificationsModule;
 
 /**
  * Web application lifecycle listener.
@@ -39,7 +40,7 @@ import org.lobzik.home_sapiens.pi.modules.WeatherModule;
 @WebListener()
 public class AppListener implements ServletContextListener {
 
-    private static Logger log = Logger.getRootLogger();
+    private static final Logger log = Logger.getRootLogger();
 
     @Override
     public void contextInitialized(ServletContextEvent sce) {
@@ -63,6 +64,7 @@ public class AppListener implements ServletContextListener {
             
             if (!BoxCommonData.TEST_MODE) {
                 DisplayModule.getInstance().start();
+                WebNotificationsModule.getInstance().start();
                 DBDataWriterModule.getInstance().start();
                 TimerModule.getInstance().start();
                 DBCleanerModule.getInstance().start();
@@ -77,7 +79,8 @@ public class AppListener implements ServletContextListener {
             SystemModule.getInstance().start();
 
             ModemModule.getInstance().start();
-
+            
+            
             if (BoxCommonData.TEST_MODE) {
                 TestModule.getInstance().start();
             }

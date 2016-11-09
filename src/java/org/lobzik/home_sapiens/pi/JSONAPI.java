@@ -14,6 +14,7 @@ import java.security.Signature;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
@@ -21,11 +22,13 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import javax.xml.bind.DatatypeConverter;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.lobzik.home_sapiens.entity.Measurement;
 import org.lobzik.home_sapiens.entity.Parameter;
 import org.lobzik.home_sapiens.pi.event.Event;
 import org.lobzik.home_sapiens.pi.modules.VideoModule;
+import org.lobzik.home_sapiens.pi.modules.WebNotificationsModule;
 import org.lobzik.tools.Tools;
 
 /**
@@ -47,7 +50,7 @@ public class JSONAPI {
         Cipher cipherRSA = Cipher.getInstance("RSA");
         cipherRSA.init(Cipher.DECRYPT_MODE, boxKey);
         String aesKeyStr = new String(cipherRSA.doFinal(Tools.toByteArray(keyCipher)));
-         byte[] rawKey = Tools.toByteArray(aesKeyStr);
+        byte[] rawKey = Tools.toByteArray(aesKeyStr);
         IvParameterSpec ivSpec = new IvParameterSpec(rawKey);
 
         SecretKeySpec skeySpec = new SecretKeySpec(rawKey, "AES");
@@ -130,15 +133,26 @@ public class JSONAPI {
             Measurement m = mc.getLastMeasurement(p);
             parJson.put("last_value", m.toStringValue());
             parJson.put("last_date", m.getTime());
-            if (p.getState() != null && p.getState() != Parameter.State.OK)
+            if (p.getState() != null && p.getState() != Parameter.State.OK) {
                 parJson.put("state", p.getState().toString());
-            
+            }
+
             paramsJson.put(p.getAlias() + "", parJson);
         }
 
         paramsJson.put("mode", BoxMode.string());
+        paramsJson.put("box_time", System.currentTimeMillis());
 
-        String plain = paramsJson.toString();
+        List<WebNotification> notifications = WebNotificationsModule.getNotifications();
+        JSONObject[] notifStrings = new JSONObject[notifications.size()];
+        for (int i = 0; i < notifications.size(); i++) {
+            notifStrings[i] = notifications.get(i).toJSON();
+        }
+        JSONArray webNotificationsJson = new JSONArray(notifStrings);
+
+        String notifPlain = webNotificationsJson.toString();
+
+        String paramsPlain = paramsJson.toString();
         KeyGenerator kgen = KeyGenerator.getInstance("AES");
         SecureRandom sr = SecureRandom.getInstance("SHA1PRNG");
         sr.nextBytes(new byte[8]);
@@ -152,12 +166,17 @@ public class JSONAPI {
         SecretKeySpec skeySpec = new SecretKeySpec(rawKey, "AES");
         Cipher cipher = Cipher.getInstance("AES/CFB/NoPadding");
         cipher.init(Cipher.ENCRYPT_MODE, skeySpec, ivSpec);
-        byte[] encrypted = cipher.doFinal(plain.getBytes("UTF-8"));
-        String data = DatatypeConverter.printHexBinary(encrypted);
+        byte[] parEncrypted = cipher.doFinal(paramsPlain.getBytes("UTF-8"));
+        String paramData = DatatypeConverter.printHexBinary(parEncrypted);
+
+        cipher = Cipher.getInstance("AES/CFB/NoPadding");
+        cipher.init(Cipher.ENCRYPT_MODE, skeySpec, ivSpec);
+        byte[] notifEncrypted = cipher.doFinal(notifPlain.getBytes("UTF-8"));
+        String notifData = DatatypeConverter.printHexBinary(notifEncrypted);
 
         Signature digest = Signature.getInstance("SHA256withRSA");
         digest.initSign(BoxCommonData.PRIVATE_KEY);
-        digest.update(data.getBytes());
+        digest.update(paramData.getBytes());
         byte[] digestRaw = digest.sign();
         String digestHex = DatatypeConverter.printHexBinary(digestRaw);
 
@@ -169,7 +188,8 @@ public class JSONAPI {
 
         String keyCipher = DatatypeConverter.printHexBinary(keyCipherRaw);
         JSONObject reply = new JSONObject();
-        reply.put("parameters", data);
+        reply.put("notifications", notifData);
+        reply.put("parameters", paramData);
         reply.put("key_cipher", keyCipher);
         reply.put("digest", digestHex);
         return reply;

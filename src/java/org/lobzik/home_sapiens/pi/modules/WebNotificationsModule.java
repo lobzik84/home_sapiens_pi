@@ -5,18 +5,18 @@
  */
 package org.lobzik.home_sapiens.pi.modules;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import org.apache.log4j.Appender;
 import org.apache.log4j.Logger;
+import org.lobzik.home_sapiens.pi.WebNotification;
 import org.lobzik.home_sapiens.pi.AppData;
 import org.lobzik.home_sapiens.pi.ConnJDBCAppender;
 import org.lobzik.home_sapiens.pi.event.Event;
 import org.lobzik.home_sapiens.pi.event.EventManager;
-import org.lobzik.tools.StreamGobbler;
+import org.lobzik.tools.Tools;
 
 /**
  *
@@ -26,12 +26,12 @@ public class WebNotificationsModule implements Module {
 
     public final String MODULE_NAME = this.getClass().getSimpleName();
     private static WebNotificationsModule instance = null;
-    private Process process = null;
     private static Logger log = null;
-    private static final String PREFIX = "/usr/bin/sudo";
-    private static final String SHUTDOWN_COMMAND = "halt";
-    private static final String SHUTDOWN_SUFFIX = "-p";
-
+    private final List<WebNotification> notifications = new LinkedList();
+    
+    public static final int MAX_NOTIFICATIONS = 10;
+    
+    
     private WebNotificationsModule() { //singleton
     }
 
@@ -53,49 +53,53 @@ public class WebNotificationsModule implements Module {
     @Override
     public void start() {
         try {
-            EventManager.subscribeForEventType(this, Event.Type.SYSTEM_EVENT);
+            EventManager.subscribeForEventType(this, Event.Type.REACTION_EVENT);
+            EventManager.subscribeForEventType(this, Event.Type.USER_ACTION);
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    private void webNotify() {
-        try {
-            String[] env = {"aaa=bbb", "ccc=ddd"};
-
-            String[] args = {PREFIX, SHUTDOWN_COMMAND, SHUTDOWN_SUFFIX};
-            File workdir = AppData.getSoundWorkDir();
-            Runtime runtime = Runtime.getRuntime();
-            log.info("Shutting down system");
-            process = runtime.exec(args, env, workdir);
-
-            StringBuilder output = new StringBuilder();
-            StreamGobbler errorGobbler = new StreamGobbler(process.getErrorStream(), output);
-            StreamGobbler outputGobbler = new StreamGobbler(process.getInputStream(), output);
-            errorGobbler.start();
-            outputGobbler.start();
-            process.waitFor();
-            int exitValue = process.exitValue();
-            //log.debug(StreamGobbler.getAllOutput());
-
-            if (exitValue != 0) {
-                log.error("Error executing, exit status: " + exitValue);
-            }
-        } catch (Exception e) {
-            log.error("Error " + e.getMessage());
-        }
-
-    }
-
     @Override
     public void handleEvent(Event e) {
-        if (e.type == Event.Type.SYSTEM_EVENT && e.name.equals("webNotify")) {
-            webNotify();
+        switch (e.type) {
+            case REACTION_EVENT:
+                if (e.name.equals("web_notification")) {
+                    WebNotification wn = (WebNotification) e.data.get("WebNotification");
+                    if (wn != null) {
+                        while (notifications.size() > MAX_NOTIFICATIONS) {
+                            notifications.remove(0); //удаляем старые
+                        }
+                        notifications.add(wn);
+                    }
+                }
+                break;
+
+            case USER_ACTION:
+                if (e.name.equals("delete_web_notification")) {
+                    int wnId = Tools.parseInt(e.data.get("notification_id"), 0);
+                    int index = -1;
+                    for (int i = 0; i < notifications.size(); i++) {
+                        WebNotification wn = notifications.get(i);
+                        if (wnId == wn.id) {
+                            index = i;
+                            break;
+                        }
+                    }
+                    notifications.remove(index);
+
+                }
+                break;
         }
+
     }
 
+    public static List<WebNotification> getNotifications() {
+        return instance.notifications;
+    }
+    
     public static void finish() {
-
+        instance.notifications.clear();
     }
 
 }
