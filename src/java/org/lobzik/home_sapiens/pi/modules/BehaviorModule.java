@@ -7,6 +7,7 @@ package org.lobzik.home_sapiens.pi.modules;
 
 import java.math.BigInteger;
 import java.sql.Connection;
+import java.sql.DriverManager;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -23,6 +24,7 @@ import org.lobzik.home_sapiens.pi.ConnJDBCAppender;
 import org.lobzik.home_sapiens.pi.MeasurementsCache;
 import org.lobzik.home_sapiens.pi.event.Event;
 import org.lobzik.home_sapiens.pi.event.EventManager;
+import static org.lobzik.home_sapiens.pi.modules.ModemModule.STATUS_NEW;
 import static org.lobzik.home_sapiens.pi.modules.ModemModule.test;
 import org.lobzik.tools.Tools;
 import org.lobzik.tools.db.mysql.DBSelect;
@@ -38,7 +40,17 @@ public class BehaviorModule implements Module {
     public final String MODULE_NAME = this.getClass().getSimpleName();
     private static Logger log = null;
     private static BehaviorModule instance = null;
+    private static Connection conn = null;
+    private static String mobileNumber = null;
+    private static String email = null;
 
+    public enum Severity
+    {   
+        INFO,
+        WARNING,
+        ALARM
+    };
+        
     private BehaviorModule() { //singleton
     }
 
@@ -69,6 +81,25 @@ public class BehaviorModule implements Module {
             EventManager.subscribeForEventType(this, Event.Type.PARAMETER_CHANGED);
             EventManager.subscribeForEventType(this, Event.Type.USER_ACTION);
 
+            if (test) {
+                conn = DriverManager.getConnection("jdbc:mysql://localhost:3306/hs?useUnicode=true&amp;characterEncoding=utf8&user=hsuser&password=hspass");
+            } else {
+                conn = DBTools.openConnection(BoxCommonData.dataSourceName);
+            }
+                 
+            try {
+                String sSQL = "SELECT * FROM users";
+                List<HashMap> userData = DBSelect.getRows(sSQL, conn);
+                if(userData.size()>0){
+                    HashMap ud = userData.get(0);
+                    mobileNumber = Tools.getStringValue(ud.get("login"), "");
+                    email = Tools.getStringValue(ud.get("email"), "");
+                    mobileNumber=mobileNumber.replaceAll("(", "").replaceAll(")", "").replaceAll("-", "");
+               }
+                    
+            } catch (Exception ee) {
+            ee.printStackTrace();
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -107,5 +138,29 @@ public class BehaviorModule implements Module {
     
     public static void finish() {
         
+    }
+    
+    public static void actionLog(Severity severity, String message){
+        switch (severity) {
+            case INFO:
+                log.info(message);
+            break;
+                
+            case WARNING:
+                log.warn(message);
+            break;
+                
+            case ALARM:
+                log.error(message);
+            break;
+        }
+    }
+    
+    public static void actionSMS(Severity severity, String message){
+         HashMap data = new HashMap();
+         data.put("message", message);
+         data.put("recipient",mobileNumber);
+         Event e = new Event("send_sms", data, Event.Type.USER_ACTION);
+         AppData.eventManager.newEvent(e);
     }
 }
