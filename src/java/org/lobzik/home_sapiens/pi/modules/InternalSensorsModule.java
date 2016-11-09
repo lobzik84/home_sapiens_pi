@@ -12,12 +12,15 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import org.apache.log4j.Appender;
 import org.apache.log4j.Logger;
 import org.lobzik.home_sapiens.entity.Measurement;
 import org.lobzik.home_sapiens.entity.Parameter;
 import org.lobzik.home_sapiens.pi.AppData;
+import static org.lobzik.home_sapiens.pi.AppData.measurementsCache;
 import org.lobzik.home_sapiens.pi.BoxCommonData;
 import org.lobzik.home_sapiens.pi.ConnJDBCAppender;
 import org.lobzik.home_sapiens.pi.event.Event;
@@ -45,7 +48,9 @@ public class InternalSensorsModule extends Thread implements Module {
     private static final int STOPBITS = SerialPort.STOPBITS_1;
     private static final int PARITY = SerialPort.PARITY_NONE;
     private static final int PORT_TIMEOUT = 2000;
-
+    private static final int ONEWAY_PARAMETERS_TIMEOUT = 1000*60*5;
+    private static List<Integer> ONEWAY_PARAMETERS = new ArrayList();
+    
     @Override
     public String getModuleName() {
         return MODULE_NAME;
@@ -60,6 +65,7 @@ public class InternalSensorsModule extends Thread implements Module {
                     if (serialWriter != null) {
                         serialWriter.poll();
                     }
+                    this.clearOnewayParameters();
                 }
                 break;
 
@@ -90,6 +96,9 @@ public class InternalSensorsModule extends Thread implements Module {
 
     @Override
     public synchronized void run() {
+        ONEWAY_PARAMETERS.add(20);
+        ONEWAY_PARAMETERS.add(21);
+
         setName(this.getClass().getSimpleName() + "-Thread");
         log.info("Starting " + getName() + " on " + BoxCommonData.SERIAL_PORT);
         EventManager.subscribeForEventType(this, Event.Type.TIMER_EVENT);
@@ -269,6 +278,23 @@ public class InternalSensorsModule extends Thread implements Module {
             }
 
         }
+    }
+    
+    public void clearOnewayParameters(){
+        for (int paramId:ONEWAY_PARAMETERS)
+        {
+            Parameter p = AppData.parametersStorage.getParameter(paramId);
+            Measurement m = measurementsCache.getLastMeasurement(p);
+            if (m.getBooleanValue())
+            {
+                if (m.getTime() + ONEWAY_PARAMETERS_TIMEOUT < System.currentTimeMillis()){
+                   measurementsCache.add(new Measurement(p, false));
+                }
+                                        
+            }
+                
+        }
+
     }
 
 }

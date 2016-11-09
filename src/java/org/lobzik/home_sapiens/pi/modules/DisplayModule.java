@@ -74,6 +74,8 @@ public class DisplayModule implements Module {
         try {
             draw();
             EventManager.subscribeForEventType(this, Event.Type.TIMER_EVENT);
+            EventManager.subscribeForEventType(this, Event.Type.SYSTEM_EVENT);
+            
             fbiRunner = new FbiRunner();
             fbiRunner.start();
 
@@ -84,7 +86,7 @@ public class DisplayModule implements Module {
 
     @Override
     public void handleEvent(Event e) {
-        if (e.type == Event.Type.TIMER_EVENT && e.name.equals("update_display")) {
+        if ((e.type == Event.Type.TIMER_EVENT || e.type == Event.Type.SYSTEM_EVENT) && e.name.equals("update_display")) {
             draw();
 
         }

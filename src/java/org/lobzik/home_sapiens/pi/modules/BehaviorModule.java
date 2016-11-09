@@ -17,11 +17,13 @@ import org.apache.log4j.Appender;
 import org.apache.log4j.Logger;
 import org.lobzik.home_sapiens.entity.Measurement;
 import org.lobzik.home_sapiens.entity.Parameter;
+import org.lobzik.home_sapiens.pi.Action;
 import org.lobzik.home_sapiens.pi.AppData;
 import org.lobzik.home_sapiens.pi.BoxCommonData;
 import org.lobzik.home_sapiens.pi.BoxMode;
 import org.lobzik.home_sapiens.pi.BoxMode.MODE;
 import org.lobzik.home_sapiens.pi.BoxSettingsAPI;
+import org.lobzik.home_sapiens.pi.Condition;
 import org.lobzik.home_sapiens.pi.ConnJDBCAppender;
 import org.lobzik.home_sapiens.pi.MeasurementsCache;
 import org.lobzik.home_sapiens.pi.event.Event;
@@ -222,6 +224,13 @@ public class BehaviorModule implements Module {
          Event e = new Event("send_email", data, Event.Type.USER_ACTION);
          AppData.eventManager.newEvent(e);
     }
+
+    public static void actionDisplay(Severity severity, String message){
+         HashMap data = new HashMap();
+         data.put("message", message);
+         Event e = new Event("update_display", data, Event.Type.SYSTEM_EVENT);
+         AppData.eventManager.newEvent(e);
+    }
     
     public static Condition getConditionById(List<Condition> conditions, int conditionId){
         Condition result=null;
@@ -241,45 +250,4 @@ public class BehaviorModule implements Module {
         return result;
     }
     
-    public class Condition {
-    
-        public int id;
-        public int parameterId;
-        public String alias;
-        public String name;
-        public MODE boxMode;
-        public int state;
-        public List<Action> actions;
-        
-        public Condition(int id, int parameterId, String alias, String name, MODE boxMode, int state) {
-            this.id = id;
-            this.parameterId = parameterId;
-            this.alias = alias;
-            this.name = name;
-            this.boxMode = boxMode;
-            this.state = state;
-            actions = new ArrayList<Action>();
-        }
-        
-        public void addAction(Action action){
-            actions.add(action);
-        }            
-        
-    }
-    
-    public class Action {
-        public int id;
-        public String alias;
-        public String module;
-        public String data;
-        public Severity severity;
-        
-        public Action(int id, String alias, String module, String data, Severity severity){
-            this.id = id;
-            this.alias = alias;
-            this.module = module;
-            this.data = data;
-            this.severity = severity;
-        }
-    }
 }
