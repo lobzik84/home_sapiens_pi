@@ -268,7 +268,7 @@ public class JSONAPI {
             for (Integer pId : AppData.parametersStorage.getParameterIds()) {
                 Parameter p = AppData.parametersStorage.getParameter(pId);
                 if (p.getType() == Parameter.Type.DOUBLE) {
-                    String alias = p.getAlias();
+                    //String alias = p.getAlias();
                     String sSQL = "select  unix_timestamp(sd.date) as x,floor(unix_timestamp(sd.date)/" + quant / 1000 + ") as udate, \n"
                             + " avg(sd.value_d) as value_d\n"
                             + " from sensors_data sd \n"
@@ -295,7 +295,8 @@ public class JSONAPI {
                     JSONArray data = new JSONArray(points);
 
                     JSONObject parameterHistory = new JSONObject();
-                    parameterHistory.put("alias", alias);
+                    parameterHistory.put("alias", p.getAlias());
+                    parameterHistory.put("description", p.getDescription());
                     parameterHistory.put("data", data);
 
                     historyList.add(parameterHistory);
