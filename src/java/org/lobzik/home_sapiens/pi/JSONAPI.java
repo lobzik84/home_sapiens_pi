@@ -13,7 +13,9 @@ import java.security.SecureRandom;
 import java.security.Signature;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
+import java.sql.Connection;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import javax.crypto.Cipher;
@@ -30,6 +32,8 @@ import org.lobzik.home_sapiens.pi.event.Event;
 import org.lobzik.home_sapiens.pi.modules.VideoModule;
 import org.lobzik.home_sapiens.pi.modules.WebNotificationsModule;
 import org.lobzik.tools.Tools;
+import org.lobzik.tools.db.mysql.DBSelect;
+import org.lobzik.tools.db.mysql.DBTools;
 
 /**
  * class for generating and parsing JSON to be used in TunnelClient and
@@ -243,5 +247,108 @@ public class JSONAPI {
 
         return capture;
 
+    }
+
+    public static JSONObject getEncryptedHistoryJSON(JSONObject json, RSAPublicKey publicKey) throws Exception {
+        long from = json.getLong("from");
+        long to = json.getLong("to");
+        long quant = 30 * 60 * 1000;//30 mins by default
+        if (json.has("quant")) {
+            quant = json.getLong("quant");
+        }
+        JSONObject historyJson = new JSONObject();
+        historyJson.put("test", "test");
+        historyJson.put("from", from);
+        historyJson.put("to", to);
+        historyJson.put("quant", quant);
+
+        try (Connection conn = DBTools.openConnection(BoxCommonData.dataSourceName)) {
+
+            List<JSONObject> historyList = new LinkedList();
+            for (Integer pId : AppData.parametersStorage.getParameterIds()) {
+                Parameter p = AppData.parametersStorage.getParameter(pId);
+                if (p.getType() == Parameter.Type.DOUBLE) {
+                    String alias = p.getAlias();
+                    String sSQL = "select  unix_timestamp(sd.date) as x,floor(unix_timestamp(sd.date)/" + quant / 1000 + ") as udate, \n"
+                            + " avg(sd.value_d) as value_d\n"
+                            + " from sensors_data sd \n"
+                            + " where sd.parameter_id=" + pId
+                            + " and unix_timestamp(sd.date) > " + from / 1000 + " \n"
+                            + " and unix_timestamp(sd.date) < " + to / 1000 + " \n"
+                            + "  and sd.value_d is not null\n"
+                            + " group by udate;";
+                    List<HashMap> history = DBSelect.getRows(sSQL, conn);
+
+                    if (history.isEmpty()) {
+                        continue;
+                    }
+                    double calibration = Tools.parseDouble(p.getCalibration(), 1);
+                    JSONObject[] points = new JSONObject[history.size()];
+                    for (int i = 0; i < history.size(); i++) {
+                        HashMap h = history.get(i);
+
+                        JSONObject point = new JSONObject();
+                        point.put("x", Tools.parseInt(h.get("x"), 0) * 1000);
+                        point.put("y", (Double) h.get("value_d") * calibration);
+                        points[i] = point;
+                    }
+                    JSONArray data = new JSONArray(points);
+
+                    JSONObject parameterHistory = new JSONObject();
+                    parameterHistory.put("alias", alias);
+                    parameterHistory.put("data", data);
+
+                    historyList.add(parameterHistory);
+                }
+            }
+
+            JSONObject[] histories = new JSONObject[historyList.size()];
+            for (int i = 0; i < historyList.size(); i++) {
+                histories[i] = historyList.get(i);
+            }
+            JSONArray historyListJson = new JSONArray(histories);
+
+            historyJson.put("list", historyListJson);
+
+        } catch (Exception e) {
+            throw e;
+        }
+        String historyPlain = historyJson.toString();
+        KeyGenerator kgen = KeyGenerator.getInstance("AES");
+        SecureRandom sr = SecureRandom.getInstance("SHA1PRNG");
+        sr.nextBytes(new byte[8]);
+        sr.setSeed(1232);//add entropy
+        kgen.init(128, sr);
+        SecretKey skey = kgen.generateKey();
+        byte[] rawKey = skey.getEncoded();
+        //byte[] iv = new byte[] { 0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF }; 
+        IvParameterSpec ivSpec = new IvParameterSpec(rawKey);
+
+        SecretKeySpec skeySpec = new SecretKeySpec(rawKey, "AES");
+        Cipher cipher = Cipher.getInstance("AES/CFB/NoPadding");
+        cipher.init(Cipher.ENCRYPT_MODE, skeySpec, ivSpec);
+
+        byte[] historyEncrypted = cipher.doFinal(historyPlain.getBytes("UTF-8"));
+        String historyData = DatatypeConverter.printHexBinary(historyEncrypted);
+
+        Signature digest = Signature.getInstance("SHA256withRSA");
+        digest.initSign(BoxCommonData.PRIVATE_KEY);
+        digest.update(historyData.getBytes());
+        byte[] digestRaw = digest.sign();
+        String digestHex = DatatypeConverter.printHexBinary(digestRaw);
+
+        Cipher cipherRSA = Cipher.getInstance("RSA");
+        // encrypt the plain text using the public key
+        cipherRSA.init(Cipher.ENCRYPT_MODE, publicKey);
+        String keyString = DatatypeConverter.printHexBinary(rawKey);
+        byte[] keyCipherRaw = cipherRSA.doFinal(keyString.getBytes());
+
+        String keyCipher = DatatypeConverter.printHexBinary(keyCipherRaw);
+        JSONObject reply = new JSONObject();
+
+        reply.put("history", historyData);
+        reply.put("key_cipher", keyCipher);
+        reply.put("digest", digestHex);
+        return reply;
     }
 }

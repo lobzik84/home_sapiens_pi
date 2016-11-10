@@ -156,7 +156,15 @@ public class JSONServlet extends HttpServlet {
                         }
 
                         break;
+                        
+                    case "get_history":
+                        if (userId > 0) {
+                            replyWithHistory(request, response);
+                        } else {
+                            doRequestLogin(request, response);
+                        }
 
+                        break;
                     default:
                         if (userId > 0) {
                             replyWithParameters(request, response);
@@ -510,6 +518,24 @@ public class JSONServlet extends HttpServlet {
             return;
         }
         JSONObject reply = JSONAPI.getSettingsJSON((RSAPublicKey) session.get("UsersPublicKey"));
+        reply.put("result", "success");
+        reply.put("session_key", json.getString("session_key"));
+        response.getWriter().write(reply.toString());
+    }
+    
+    private void replyWithHistory(HttpServletRequest request, HttpServletResponse response) throws Exception {
+        JSONObject json = (JSONObject) request.getAttribute("json");
+        UsersSession session = null;
+        if (json.has("session_key")) {
+            String session_key = json.getString("session_key");
+            session = AppData.sessions.get(session_key);
+        }
+        if (session == null) {
+            return;
+        }
+
+        
+        JSONObject reply = JSONAPI.getEncryptedHistoryJSON(json, (RSAPublicKey) session.get("UsersPublicKey"));
         reply.put("result", "success");
         reply.put("session_key", json.getString("session_key"));
         response.getWriter().write(reply.toString());
