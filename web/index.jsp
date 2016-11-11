@@ -78,11 +78,21 @@
                 String image = request.getParameter("image");
                 String sms = request.getParameter("sms");
                 String recipient = request.getParameter("recipient");
+                String subject = request.getParameter("subject");
+                String mail = request.getParameter("mail");
                 String system_event = request.getParameter("system_event");
                 if (command != null && command.length() > 0) {
                     HashMap data = new HashMap();
                     data.put("uart_command", command);
                     Event e = new Event("internal_uart_command", data, Event.Type.USER_ACTION);
+                    AppData.eventManager.newEvent(e);
+                }
+                if (mail != null && mail.length() > 0) {
+                    HashMap data = new HashMap();
+                    data.put("mail_text", mail);
+                    data.put("mail_to", recipient);
+                    data.put("mail_subject", subject);
+                    Event e = new Event("send_email", data, Event.Type.REACTION_EVENT);
                     AppData.eventManager.newEvent(e);
                 }
                 if (sms != null && sms.length() > 0) {
@@ -158,7 +168,12 @@
             Text:<input type="text" name="sms" /><input type="submit" value="Send" name="submit" />
         </form> <br> <br>
         <br>
-
+        <form action="" method="post">
+            EMAIL to:<input type="text" name="recipient" /><br>
+            Subject:<input type="text" name="subject" /><br>
+            Text:<input type="text" name="mail" /><input type="submit" value="Send" name="submit" />
+        </form> <br> <br>
+        <br>
         <%
             for (String capture : VideoModule.IMAGE_FILES) {
         %>

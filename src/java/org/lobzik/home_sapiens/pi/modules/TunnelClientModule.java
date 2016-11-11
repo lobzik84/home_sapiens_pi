@@ -66,6 +66,7 @@ public class TunnelClientModule extends Thread implements Module {
         setName(this.getClass().getSimpleName() + "-Thread");
         log.info("Starting " + getName());
         EventManager.subscribeForEventType(this, Event.Type.SYSTEM_EVENT);
+        EventManager.subscribeForEventType(this, Event.Type.REACTION_EVENT);
         while (run) {
             if (client == null || !client.isConnected() || System.currentTimeMillis() - client.getLastDataRecieved() > 3 * WS_CHECK_PERIOD) {
                 if (client != null && client.isConnected()) {
@@ -106,36 +107,59 @@ public class TunnelClientModule extends Thread implements Module {
 
     @Override
     public void handleEvent(Event e) {
-        switch (e.name) {
-            case "msg_to_server":
-                if (client != null && client.isConnected()) {
-                    try {
-                        JSONObject json = (JSONObject) e.data.get("json");
-                        log.debug("Sending to server " + json.toString().length() + " bytes");
-                        client.sendMessage(json);
-                    } catch (Exception ee) {
-                        log.debug("Error on send msg: " + ee.getMessage());
+        switch (e.type) {
+            case SYSTEM_EVENT:
+                switch (e.name) {
+                    case "msg_to_server":
+                        if (client != null && client.isConnected()) {
+                            try {
+                                JSONObject json = (JSONObject) e.data.get("json");
+                                log.debug("Sending to server " + json.toString().length() + " bytes");
+                                client.sendMessage(json);
+                            } catch (Exception ee) {
+                                log.debug("Error on send msg: " + ee.getMessage());
+                            }
+                        }
+                        break;
+
+                    case "upload_user_to_server":
+                        try {
+                            int userId = Tools.parseInt(e.data.get("userId"), 0);
+                            log.info("Uploading user id=" + userId);
+                            uploadUserToServer(userId);
+                        } catch (Exception ee) {
+                            log.error("Error on user sync: " + ee.getMessage());
+                        }
+
+                        break;
+
+                    case "upload_unsynced_users_to_server":
+                        try {
+                            log.info("Users sync");
+                            uploadUnsyncedUsers();
+                        } catch (Exception ee) {
+                            log.error("Error on user sync: " + ee.getMessage());
+                        }
+                        break;
+                }
+                break;
+            case REACTION_EVENT:
+                if (e.name.equals("send_email")) {
+                    if (client != null && client.isConnected()) {
+                        try {
+                            JSONObject json = new JSONObject();
+                            json.put("box_id", BoxCommonData.BOX_ID);
+                            json.put("action", "send_email");
+                            json.put("mail_to", e.data.get("mail_to"));
+                            json.put("mail_text", e.data.get("mail_text"));
+                            json.put("mail_subject", e.data.get("mail_subject"));
+                            log.debug("Sending email to " +  e.data.get("mail_to"));
+                            client.sendMessage(json);
+                        } catch (Exception ee) {
+                            log.debug("Error on send msg: " + ee.getMessage());
+                        }
                     }
-                }
-                break;
-
-            case "upload_user_to_server":
-                try {
-                    int userId = Tools.parseInt(e.data.get("userId"), 0);
-                    log.info("Uploading user id=" + userId);
-                    uploadUserToServer(userId);
-                } catch (Exception ee) {
-                    log.error("Error on user sync: " + ee.getMessage());
-                }
-
-                break;
-
-            case "upload_unsynced_users_to_server":
-                try {
-                    log.info("Users sync");
-                    uploadUnsyncedUsers();
-                } catch (Exception ee) {
-                    log.error("Error on user sync: " + ee.getMessage());
+                    break;
                 }
                 break;
         }
