@@ -86,7 +86,9 @@ public class WebNotificationsModule implements Module {
                             break;
                         }
                     }
-                    notifications.remove(index);
+                    if (index >= 0) {
+                        notifications.remove(index);
+                    }
 
                 }
                 break;
