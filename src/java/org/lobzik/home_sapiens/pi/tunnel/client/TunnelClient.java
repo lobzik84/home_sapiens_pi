@@ -121,11 +121,13 @@ public class TunnelClient {
                     if ("success_login".equals(json.get("result"))) {
                         connected = true;
                         log.info("Authenticated successfully.");
+                        Event e = new Event("upload_unsynced_users_to_server", new HashMap(), Event.Type.SYSTEM_EVENT);
+                        AppData.eventManager.newEvent(e);
                         return;
                     }
 
                     if ("login_error".equals(json.get("result"))) {
-                        connected = true;
+                        connected = false;
                         log.error("Authentication error: " + json.get("message"));
                         return;
                     }
@@ -136,7 +138,7 @@ public class TunnelClient {
                         user.put("synced", 1);
                         try (Connection conn = AppData.dataSource.getConnection()) {
                             DBTools.updateRow("users", user, conn);
-                            log.info("User uploaded successfully");
+                            log.info("User uploaded successfully, synced=1");
                         }
                         return;
                     }
@@ -197,7 +199,7 @@ public class TunnelClient {
                             sendMessage(reply);
 
                             break;
-                            
+
                         default:
                             reply = JSONAPI.getEncryptedParametersJSON(usersKey);
                             reply.put("result", "success");

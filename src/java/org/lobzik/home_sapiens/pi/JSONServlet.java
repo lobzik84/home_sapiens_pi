@@ -21,7 +21,6 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
-import java.util.Set;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
@@ -115,7 +114,8 @@ public class JSONServlet extends HttpServlet {
                     case "kf_upload":
                         if (userId > 0) {
                             updateKeyFile(userId, request, response);
-                            uploadUserToServer(userId);
+                            Event e = new Event("upload_unsynced_users_to_server", new HashMap(), Event.Type.SYSTEM_EVENT);
+                            AppData.eventManager.newEvent(e);
                         } else {
                             doRequestLogin(request, response);
                         }
@@ -165,7 +165,7 @@ public class JSONServlet extends HttpServlet {
                         }
 
                         break;
-                        
+
                     case "get_log":
                         if (userId > 0) {
                             replyWithLog(request, response);
@@ -266,31 +266,6 @@ public class JSONServlet extends HttpServlet {
         }
     }
 
-    private void uploadUserToServer(int userId) throws Exception {
-        //create userdata with box_id, sign it with RSA and upload to server - send object to tunnelcient and notify
-        //on server side - check signature and insert to users_db
-        String sSQL = "select * from users where status = 1 and id = " + userId;
-        try (Connection conn = DBTools.openConnection(BoxCommonData.dataSourceName)) {
-            List<HashMap> resList = DBSelect.getRows(sSQL, conn);
-            if (resList.isEmpty()) {
-                throw new Exception("User id=" + userId + " not found");
-            }
-            HashMap userMap = resList.get(0);
-            JSONObject json = new JSONObject();
-            json.put("box_id", BoxCommonData.BOX_ID);
-            json.put("action", "user_data_upload");
-            for (String key : (Set<String>) userMap.keySet()) {
-                json.put(key, userMap.get(key));
-            }
-
-            HashMap data = new HashMap();
-            data.put("json", json);
-            Event e = new Event("msg_to_server", data, Event.Type.SYSTEM_EVENT);
-            AppData.eventManager.newEvent(e);
-
-        }
-    }
-
     private void updateKeyFile(int userId, HttpServletRequest request, HttpServletResponse response) throws Exception {
         if (userId <= 0) {
             throw new Exception("Trying to upload unauthorized keyfile!");
@@ -299,6 +274,7 @@ public class JSONServlet extends HttpServlet {
             HashMap dataMap = new HashMap();
             JSONObject json = (JSONObject) request.getAttribute("json");
             dataMap.put("id", userId);
+            dataMap.put("synced", 0);            
             dataMap.put("keyfile", json.getString("kfCipher"));
             DBTools.updateRow("users", dataMap, conn);
             json = new JSONObject();
@@ -549,7 +525,7 @@ public class JSONServlet extends HttpServlet {
         response.getWriter().write(reply.toString());
     }
 
-        private void replyWithLog(HttpServletRequest request, HttpServletResponse response) throws Exception {
+    private void replyWithLog(HttpServletRequest request, HttpServletResponse response) throws Exception {
         JSONObject json = (JSONObject) request.getAttribute("json");
         UsersSession session = null;
         if (json.has("session_key")) {
@@ -565,7 +541,7 @@ public class JSONServlet extends HttpServlet {
         reply.put("session_key", json.getString("session_key"));
         response.getWriter().write(reply.toString());
     }
-    
+
     private void replyWithCapture(HttpServletRequest request, HttpServletResponse response) throws Exception {
         JSONObject json = (JSONObject) request.getAttribute("json");
         UsersSession session = null;

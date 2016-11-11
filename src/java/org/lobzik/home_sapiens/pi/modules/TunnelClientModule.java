@@ -5,6 +5,10 @@
  */
 package org.lobzik.home_sapiens.pi.modules;
 
+import java.sql.Connection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Set;
 import org.apache.log4j.Appender;
 import org.apache.log4j.Logger;
 import org.json.JSONObject;
@@ -14,6 +18,9 @@ import org.lobzik.home_sapiens.pi.ConnJDBCAppender;
 import org.lobzik.home_sapiens.pi.event.Event;
 import org.lobzik.home_sapiens.pi.event.EventManager;
 import org.lobzik.home_sapiens.pi.tunnel.client.TunnelClient;
+import org.lobzik.tools.Tools;
+import org.lobzik.tools.db.mysql.DBSelect;
+import org.lobzik.tools.db.mysql.DBTools;
 
 /**
  *
@@ -99,16 +106,78 @@ public class TunnelClientModule extends Thread implements Module {
 
     @Override
     public void handleEvent(Event e) {
-        if (e.name.equals("msg_to_server")) {
-            if (client != null && client.isConnected()) {
-                try {
-                    JSONObject json = (JSONObject) e.data.get("json");
-                    log.debug("Sending to server " + json.toString().length() + " bytes");
-                    client.sendMessage(json);
-                } catch (Exception ee) {
-                    log.debug("Error on send msg: " + ee.getMessage());
+        switch (e.name) {
+            case "msg_to_server":
+                if (client != null && client.isConnected()) {
+                    try {
+                        JSONObject json = (JSONObject) e.data.get("json");
+                        log.debug("Sending to server " + json.toString().length() + " bytes");
+                        client.sendMessage(json);
+                    } catch (Exception ee) {
+                        log.debug("Error on send msg: " + ee.getMessage());
+                    }
                 }
+                break;
+
+            case "upload_user_to_server":
+                try {
+                    int userId = Tools.parseInt(e.data.get("userId"), 0);
+                    log.info("Uploading user id=" + userId);
+                    uploadUserToServer(userId);
+                } catch (Exception ee) {
+                    log.error("Error on user sync: " + ee.getMessage());
+                }
+
+                break;
+
+            case "upload_unsynced_users_to_server":
+                try {
+                    log.info("Users sync");
+                    uploadUnsyncedUsers();
+                } catch (Exception ee) {
+                    log.error("Error on user sync: " + ee.getMessage());
+                }
+                break;
+        }
+
+    }
+
+    private void uploadUnsyncedUsers() throws Exception {
+
+        String sSQL = "select * from users where status = 1 and synced=0";
+        try (Connection conn = DBTools.openConnection(BoxCommonData.dataSourceName)) {
+            List<HashMap> resList = DBSelect.getRows(sSQL, conn);
+            log.info("Syncing " + resList.size() + " users");
+            for (HashMap userMap : resList) {
+
+                JSONObject json = new JSONObject();
+                json.put("box_id", BoxCommonData.BOX_ID);
+                json.put("action", "user_data_upload");
+                for (String key : (Set<String>) userMap.keySet()) {
+                    json.put(key, userMap.get(key));
+                }
+                client.sendMessage(json);
             }
+        }
+    }
+
+    private void uploadUserToServer(int userId) throws Exception {
+
+        String sSQL = "select * from users where status = 1 and id = " + userId;
+        try (Connection conn = DBTools.openConnection(BoxCommonData.dataSourceName)) {
+            List<HashMap> resList = DBSelect.getRows(sSQL, conn);
+            if (resList.isEmpty()) {
+                throw new Exception("User id=" + userId + " not found");
+            }
+            HashMap userMap = resList.get(0);
+            JSONObject json = new JSONObject();
+            json.put("box_id", BoxCommonData.BOX_ID);
+            json.put("action", "user_data_upload");
+            for (String key : (Set<String>) userMap.keySet()) {
+                json.put(key, userMap.get(key));
+            }
+            client.sendMessage(json);
+
         }
     }
 
