@@ -156,10 +156,19 @@ public class JSONServlet extends HttpServlet {
                         }
 
                         break;
-                        
+
                     case "get_history":
                         if (userId > 0) {
                             replyWithHistory(request, response);
+                        } else {
+                            doRequestLogin(request, response);
+                        }
+
+                        break;
+                        
+                    case "get_log":
+                        if (userId > 0) {
+                            replyWithLog(request, response);
                         } else {
                             doRequestLogin(request, response);
                         }
@@ -503,7 +512,7 @@ public class JSONServlet extends HttpServlet {
         reply.put("result", "success");
         reply.put("session_key", json.getString("session_key"));
         reply.put("connection_type", "local");
-        reply.put("server_link", TunnelClientModule.getInstance().tunnelIsUp()?"up":"down");
+        reply.put("server_link", TunnelClientModule.getInstance().tunnelIsUp() ? "up" : "down");
         response.getWriter().write(reply.toString());
     }
 
@@ -522,7 +531,7 @@ public class JSONServlet extends HttpServlet {
         reply.put("session_key", json.getString("session_key"));
         response.getWriter().write(reply.toString());
     }
-    
+
     private void replyWithHistory(HttpServletRequest request, HttpServletResponse response) throws Exception {
         JSONObject json = (JSONObject) request.getAttribute("json");
         UsersSession session = null;
@@ -534,13 +543,29 @@ public class JSONServlet extends HttpServlet {
             return;
         }
 
-        
         JSONObject reply = JSONAPI.getEncryptedHistoryJSON(json, (RSAPublicKey) session.get("UsersPublicKey"));
         reply.put("result", "success");
         reply.put("session_key", json.getString("session_key"));
         response.getWriter().write(reply.toString());
     }
 
+        private void replyWithLog(HttpServletRequest request, HttpServletResponse response) throws Exception {
+        JSONObject json = (JSONObject) request.getAttribute("json");
+        UsersSession session = null;
+        if (json.has("session_key")) {
+            String session_key = json.getString("session_key");
+            session = AppData.sessions.get(session_key);
+        }
+        if (session == null) {
+            return;
+        }
+
+        JSONObject reply = JSONAPI.getEncryptedLogJSON(json, (RSAPublicKey) session.get("UsersPublicKey"));
+        reply.put("result", "success");
+        reply.put("session_key", json.getString("session_key"));
+        response.getWriter().write(reply.toString());
+    }
+    
     private void replyWithCapture(HttpServletRequest request, HttpServletResponse response) throws Exception {
         JSONObject json = (JSONObject) request.getAttribute("json");
         UsersSession session = null;

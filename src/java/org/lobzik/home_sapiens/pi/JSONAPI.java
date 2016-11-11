@@ -14,6 +14,7 @@ import java.security.Signature;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.sql.Connection;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -288,7 +289,7 @@ public class JSONAPI {
                         HashMap h = history.get(i);
 
                         JSONObject point = new JSONObject();
-                        point.put("x", (long)Tools.parseInt(h.get("x"), 0) * 1000l);
+                        point.put("x", (long) Tools.parseInt(h.get("x"), 0) * 1000l);
                         point.put("y", (Double) h.get("value_d") * calibration);
                         points[i] = point;
                     }
@@ -348,6 +349,117 @@ public class JSONAPI {
         JSONObject reply = new JSONObject();
 
         reply.put("history", historyData);
+        reply.put("key_cipher", keyCipher);
+        reply.put("digest", digestHex);
+        return reply;
+    }
+
+    public static JSONObject getEncryptedLogJSON(JSONObject json, RSAPublicKey publicKey) throws Exception {
+        long from = json.getLong("from");
+        long to = json.getLong("to");
+        String moduleName = "";
+        if (json.has("module_name")) {
+            moduleName = json.getString("module_name");
+        }
+        String severity = "";
+        if (json.has("severity")) {
+            severity = json.getString("severity");
+        }
+
+        JSONObject logJson = new JSONObject();
+        logJson.put("from", from);
+        logJson.put("to", to);
+
+        try (Connection conn = DBTools.openConnection(BoxCommonData.dataSourceName)) {
+            String sSQL = "select * from logs l where 1=1 \n"
+                    + " and unix_timestamp(l.dated) > " + from / 1000 + " \n"
+                    + " and unix_timestamp(l.dated) < " + to / 1000 + " \n";
+            if (moduleName != null && moduleName.length() > 0 && !moduleName.equals("*")) {
+                sSQL += " and l.module_name = '" + moduleName + "' \n"; //;)
+            }
+            switch (severity) {
+                case "ALARM":
+                    sSQL += " and l.level in ('FATAL') \n";
+                    break;
+                case "ALERT":
+                    sSQL += " and l.level in ('FATAL', 'ERROR') \n";
+                    break;
+                case "OK":
+                    sSQL += " and l.level in ('FATAL', 'ERROR', 'WARNING') \n";
+                    break;
+                case "INFO":
+                    sSQL += " and l.level in ('FATAL', 'ERROR', 'WARNING', 'INFO') \n";
+                    break;
+                default:
+                    break;
+            }
+            sSQL += " order by l.dated limit 100;";
+            List<HashMap> logs = DBSelect.getRows(sSQL, conn);
+            JSONObject[] logRecords = new JSONObject[logs.size()];
+            for (int i = 0; i < logs.size(); i++) {
+                JSONObject logRecord = new JSONObject();
+                HashMap h = logs.get(i);
+                switch ((String) h.get("level")) {
+                    case "FATAL":
+                        logRecord.put("severity", "ALARM");
+                        break;
+                    case "ERROR":
+                        logRecord.put("severity", "ALERT");
+                        break;
+                    case "WARNING":
+                        logRecord.put("severity", "OK");
+                        break;
+                    default:
+                        logRecord.put("severity", "INFO");
+                        break;
+                        
+                }
+                logRecord.put("id", (int) h.get("id"));
+
+                logRecord.put("date", ((Date) h.get("dated")).getTime());
+                logRecord.put("text", (String) h.get("message"));
+                logRecords[i] = logRecord;
+            }
+            JSONArray recs = new JSONArray(logRecords);
+            logJson.put("recs", recs);
+
+        } catch (Exception e) {
+            throw e;
+        }
+        String logPlain = logJson.toString();
+        KeyGenerator kgen = KeyGenerator.getInstance("AES");
+        SecureRandom sr = SecureRandom.getInstance("SHA1PRNG");
+        sr.nextBytes(new byte[8]);
+        sr.setSeed(1232);//add entropy
+        kgen.init(128, sr);
+        SecretKey skey = kgen.generateKey();
+        byte[] rawKey = skey.getEncoded();
+        //byte[] iv = new byte[] { 0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF }; 
+        IvParameterSpec ivSpec = new IvParameterSpec(rawKey);
+
+        SecretKeySpec skeySpec = new SecretKeySpec(rawKey, "AES");
+        Cipher cipher = Cipher.getInstance("AES/CFB/NoPadding");
+        cipher.init(Cipher.ENCRYPT_MODE, skeySpec, ivSpec);
+
+        byte[] logEncrypted = cipher.doFinal(logPlain.getBytes("UTF-8"));
+        String logData = DatatypeConverter.printHexBinary(logEncrypted);
+
+        Signature digest = Signature.getInstance("SHA256withRSA");
+        digest.initSign(BoxCommonData.PRIVATE_KEY);
+        digest.update(logData.getBytes());
+        byte[] digestRaw = digest.sign();
+        String digestHex = DatatypeConverter.printHexBinary(digestRaw);
+
+        Cipher cipherRSA = Cipher.getInstance("RSA");
+        // encrypt the plain text using the public key
+        cipherRSA.init(Cipher.ENCRYPT_MODE, publicKey);
+        String keyString = DatatypeConverter.printHexBinary(rawKey);
+        byte[] keyCipherRaw = cipherRSA.doFinal(keyString.getBytes());
+
+        String keyCipher = DatatypeConverter.printHexBinary(keyCipherRaw);
+        JSONObject reply = new JSONObject();
+
+        reply.put("log", logData);
         reply.put("key_cipher", keyCipher);
         reply.put("digest", digestHex);
         return reply;
