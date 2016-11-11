@@ -288,7 +288,7 @@ public class JSONAPI {
                         HashMap h = history.get(i);
 
                         JSONObject point = new JSONObject();
-                        point.put("x", Tools.parseInt(h.get("x"), 0) * 1000);
+                        point.put("x", (long)Tools.parseInt(h.get("x"), 0) * 1000l);
                         point.put("y", (Double) h.get("value_d") * calibration);
                         points[i] = point;
                     }
