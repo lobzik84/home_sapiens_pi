@@ -23,6 +23,7 @@ public class UsersPublicKeysCache {
     private static final UsersPublicKeysCache instance = new UsersPublicKeysCache();
 
     private static final HashMap<Integer, RSAPublicKey> usersKeys = new HashMap();
+    private static final HashMap<Integer, String> usersLogins = new HashMap();
 
     private UsersPublicKeysCache() {
     }
@@ -39,13 +40,24 @@ public class UsersPublicKeysCache {
             return initUserPublicKey(userId);
         }
     }
-    
-    public void addKey(int userId, RSAPublicKey key) {
+
+    public String getLogin(int userId) {
+        String login = usersLogins.get(userId);
+        if (usersLogins != null) {
+            return login;
+        } else {
+            initUserPublicKey(userId);
+            return usersLogins.get(userId);
+        }
+    }
+
+    public void addKey(int userId, RSAPublicKey key, String login) {
         usersKeys.put(userId, key);
+        usersLogins.put(userId, login);
     }
 
     public RSAPublicKey initUserPublicKey(int userId) {
-        String sSQL = "select id, public_key from users where id=" + userId;
+        String sSQL = "select id, login, public_key from users where id=" + userId;
 
         try (Connection conn = AppData.dataSource.getConnection()) {
             List<HashMap> resList = DBSelect.getRows(sSQL, conn);
@@ -56,6 +68,7 @@ public class UsersPublicKeysCache {
                 KeyFactory factory = KeyFactory.getInstance("RSA");
                 RSAPublicKey usersPublicKey = (RSAPublicKey) factory.generatePublic(spec);
                 usersKeys.put(userId, usersPublicKey);
+                usersLogins.put(userId, (String) resList.get(0).get("login"));
                 return usersPublicKey;
             }
         } catch (Exception e) {

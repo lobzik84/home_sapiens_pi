@@ -29,6 +29,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import org.lobzik.home_sapiens.entity.Measurement;
 import org.lobzik.home_sapiens.entity.Parameter;
+import org.lobzik.home_sapiens.entity.UsersSession;
 import org.lobzik.home_sapiens.pi.event.Event;
 import org.lobzik.home_sapiens.pi.modules.VideoModule;
 import org.lobzik.home_sapiens.pi.modules.WebNotificationsModule;
@@ -112,13 +113,14 @@ public class JSONAPI {
         }
     }
 
-    public static JSONObject getSettingsJSON(RSAPublicKey publicKey) throws Exception {
+    public static JSONObject getSettingsJSON(RSAPublicKey publicKey, String login) throws Exception {
         JSONObject reply = new JSONObject();
         JSONObject settingsJSON = new JSONObject();
         Map<String, String> settings = BoxSettingsAPI.getSettingsMap();
         for (String name : settings.keySet()) {
             settingsJSON.put(name, settings.get(name));
         }
+        settingsJSON.put("UserLogin", login);
         reply.put("settings", settingsJSON);
         return reply;
     }

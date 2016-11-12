@@ -107,6 +107,10 @@ public class JSONServlet extends HttpServlet {
                         loginUserSRP(request, response);
                         break;
 
+                    case "update_srp":
+                        updateUserSRP(request, response);
+                        break;
+
                     case "login_rsa":
                         loginUserRSA(request, response);
                         break;
@@ -185,7 +189,7 @@ public class JSONServlet extends HttpServlet {
                 response.getWriter().print("accepted json only");
             }
         } catch (Throwable e) {
-            e.printStackTrace();
+            //e.printStackTrace();
             response.getWriter().print("{\"result\":\"error\",\"message\":\"" + e.getMessage() + "\"}");
         }
 
@@ -254,6 +258,7 @@ public class JSONServlet extends HttpServlet {
             String session_key = AppData.sessions.createSession();
             AppData.sessions.get(session_key).put("UserId", newUserId);
             AppData.sessions.get(session_key).put("UsersPublicKey", usersPublicKey);
+            AppData.sessions.get(session_key).put("Login", json.getString("login"));
             String hexModulus = BoxCommonData.PUBLIC_KEY.getModulus().toString(16);
             json = new JSONObject();
             json.put("result", "success");
@@ -274,7 +279,7 @@ public class JSONServlet extends HttpServlet {
             HashMap dataMap = new HashMap();
             JSONObject json = (JSONObject) request.getAttribute("json");
             dataMap.put("id", userId);
-            dataMap.put("synced", 0);            
+            dataMap.put("synced", 0);
             dataMap.put("keyfile", json.getString("kfCipher"));
             DBTools.updateRow("users", dataMap, conn);
             json = new JSONObject();
@@ -311,9 +316,12 @@ public class JSONServlet extends HttpServlet {
         String challenge = (String) session.get("challenge");
         int userId = Tools.parseInt(json.get("user_id"), 0);
         String digest = json.getString("digest");
-        String sSQL = "select id, public_key from users where status = 1 and id=" + userId;
+        String sSQL = "select id, public_key, login from users where status = 1 and id=" + userId;
         try (Connection conn = DBTools.openConnection(BoxCommonData.dataSourceName)) {
             List<HashMap> resList = DBSelect.getRows(sSQL, conn);
+            if (resList.isEmpty()) {
+                throw new Exception("Login using RSA failed: userId " + userId + " not found on this box");
+            }
             String publicKey = (String) resList.get(0).get("public_key");
             BigInteger modulus = new BigInteger(publicKey, 16);
             RSAPublicKeySpec spec = new RSAPublicKeySpec(modulus, BoxCommonData.RSA_E);
@@ -327,16 +335,20 @@ public class JSONServlet extends HttpServlet {
             if (valid) {
                 session.put("UsersPublicKey", usersPublicKey);
                 session.put("UserId", userId);
+                session.put("Login", (String) resList.get(0).get("login"));
                 json.put("user_id", userId);
                 json.put("result", "success");
                 System.out.println("RSA LOGIN OK! UserId=" + userId);
             } else {
-                System.out.println("RSA Login error");
-                json.put("result", "error");
-                json.put("message", "Login using RSA digest failed");
+                throw new Exception("Login using RSA digest check failed");
             }
-            response.getWriter().print(json.toString());
+
+        } catch (Exception e) {
+            System.out.println("RSA Login error");
+            json.put("result", "error");
+            json.put("message", e.getMessage());
         }
+        response.getWriter().print(json.toString());
     }
 
     private void handshakeUserSRP(HttpServletRequest request, HttpServletResponse response) throws Exception {
@@ -352,9 +364,11 @@ public class JSONServlet extends HttpServlet {
             List<HashMap> resList = DBSelect.getRows(sSQL, params, conn);
             String salt;
             BigInteger v;
+            int userId = 0;
             if (resList.size() > 0) {
                 salt = (String) resList.get(0).get("salt");
                 v = new BigInteger((String) resList.get(0).get("verifier"), 16);
+                userId = Tools.parseInt(resList.get(0).get("id"), 0);
             } else {
                 salt = ""; //если нету такого юзера в БД, нельзя это показать пытающемуся зайти. Так что на основе введённого логина генерируем "поддельную" соль и отдаём.
                 BigInteger fakeSaltNum = sha256(login + FAKE_SALT_KEY);
@@ -390,6 +404,7 @@ public class JSONServlet extends HttpServlet {
                 session.put("srp_M", M.toString(16));
                 session.put("srp_A", A.toString(16));
                 session.put("srp_login", login);
+                session.put("Login", login);
                 json.put("result", "success");
                 json.put("srp_B", B.toString(16));
                 json.put("salt", salt);
@@ -439,7 +454,7 @@ public class JSONServlet extends HttpServlet {
                     RSAPublicKeySpec spec = new RSAPublicKeySpec(modulus, BoxCommonData.RSA_E);
                     KeyFactory factory = KeyFactory.getInstance("RSA");
                     PublicKey usersPublicKey = factory.generatePublic(spec);
-                    AppData.usersPublicKeysCache.addKey(userId, (RSAPublicKey) usersPublicKey);
+                    AppData.usersPublicKeysCache.addKey(userId, (RSAPublicKey) usersPublicKey, username);
                     session.put("UsersPublicKey", usersPublicKey);
                     session.put("UserId", userId);
                     json.put("user_id", userId);
@@ -451,6 +466,79 @@ public class JSONServlet extends HttpServlet {
             }
         } else {
             System.out.println("SRP Login error");
+            json.put("result", "error");
+            json.put("message", "Invalid login or password");
+        }
+        response.getWriter().print(json.toString());
+    }
+
+    private void updateUserSRP(HttpServletRequest request, HttpServletResponse response) throws Exception {
+        JSONObject json = (JSONObject) request.getAttribute("json");
+        UsersSession session = null;
+        if (json.has("session_key")) {
+            String session_key = json.getString("session_key");
+            session = AppData.sessions.get(session_key);
+        }
+        if (session == null) {
+            return;
+        }
+        String Astr = (String) session.remove("srp_A");
+        String Mstr = (String) session.remove("srp_M");
+        String Sstr = (String) session.remove("srp_S");
+        String username = (String) session.remove("srp_login");
+
+        BigInteger A = new BigInteger(Astr, 16);
+        BigInteger M = new BigInteger(Mstr, 16);
+        BigInteger S = new BigInteger(Sstr, 16);
+
+        String M_client = json.getString("srp_M");
+        String newLogin = json.getString("new_login");
+        String newSalt = json.getString("new_salt");
+        String newVerifier = json.getString("new_verifier");
+
+        json = new JSONObject();
+        if (M_client.equals(Mstr)) {
+            String sSQL = "select id, public_key from users where status = 1 and login=?;";
+            List params = new LinkedList();
+            params.add(username);
+            try (Connection conn = DBTools.openConnection(BoxCommonData.dataSourceName)) {
+
+                List<HashMap> resList = DBSelect.getRows(sSQL, params, conn);
+                if (resList.size() > 0) {
+                    M = sha256(A.toString(16) + M.toString(16) + S.toString(16));
+                    int userId = Tools.parseInt(resList.get(0).get("id"), 0);
+                    String publicKey = (String) resList.get(0).get("public_key");
+                    BigInteger modulus = new BigInteger(publicKey, 16);
+                    RSAPublicKeySpec spec = new RSAPublicKeySpec(modulus, BoxCommonData.RSA_E);
+                    KeyFactory factory = KeyFactory.getInstance("RSA");
+                    PublicKey usersPublicKey = factory.generatePublic(spec);
+                    AppData.usersPublicKeysCache.addKey(userId, (RSAPublicKey) usersPublicKey, username);
+                    session.put("UsersPublicKey", usersPublicKey);
+                    session.put("UserId", userId);
+                    json.put("user_id", userId);
+                    json.put("box_id", BoxCommonData.BOX_ID);
+                    json.put("result", "success");
+                    json.put("srp_M", M.toString(16));
+                    System.out.println("SRP OK, updating userdata");
+                    HashMap userMap = new HashMap();
+                    userMap.put("id", userId);
+                    userMap.put("login", newLogin);
+                    userMap.put("salt", newSalt);
+                    userMap.put("verifier", newVerifier);
+                    userMap.put("synced", 0);
+                    DBTools.updateRow("users", userMap, conn);
+                    json.put("result", "success");
+                    json.put("message", "User updated");
+                }
+
+            } catch (Exception e) {
+                System.err.println("SRP Userupdate error");
+                e.printStackTrace();
+                json.put("result", "error");
+                json.put("message", e.getMessage());
+            }
+        } else {
+            System.err.println("SRP Userupdate Login error");
             json.put("result", "error");
             json.put("message", "Invalid login or password");
         }
@@ -502,7 +590,7 @@ public class JSONServlet extends HttpServlet {
         if (session == null) {
             return;
         }
-        JSONObject reply = JSONAPI.getSettingsJSON((RSAPublicKey) session.get("UsersPublicKey"));
+        JSONObject reply = JSONAPI.getSettingsJSON((RSAPublicKey) session.get("UsersPublicKey"), (String) session.get("Login"));
         reply.put("result", "success");
         reply.put("session_key", json.getString("session_key"));
         response.getWriter().write(reply.toString());

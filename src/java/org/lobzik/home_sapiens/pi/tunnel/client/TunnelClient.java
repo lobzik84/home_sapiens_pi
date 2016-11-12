@@ -175,7 +175,7 @@ public class TunnelClient {
 
                         case "get_settings":
 
-                            reply = JSONAPI.getSettingsJSON(usersKey);
+                            reply = JSONAPI.getSettingsJSON(usersKey, AppData.usersPublicKeysCache.getLogin(userId));
                             reply.put("result", "success");
 
                             sendMessage(reply);
