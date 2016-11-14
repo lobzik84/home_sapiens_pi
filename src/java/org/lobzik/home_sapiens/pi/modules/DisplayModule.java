@@ -91,11 +91,13 @@ public class DisplayModule implements Module {
         if ((e.type == Event.Type.TIMER_EVENT || e.type == Event.Type.SYSTEM_EVENT) && e.name.equals("update_display")) {
             draw();
             //TODO мама, это только для отладки
+            /*
             WebNotification wn = new WebNotification(WebNotification.Severity.ALERT, "INTERNAL_TEMP", "Быстрый рост температуры", new Date(System.currentTimeMillis() - 1800000), new Date());
             HashMap data = new HashMap();
             data.put("WebNotification", wn);
             Event reaction = new Event ("web_notification", data, Event.Type.REACTION_EVENT);
             AppData.eventManager.newEvent(reaction);
+*/
         }
     }
 

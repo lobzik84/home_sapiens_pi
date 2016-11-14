@@ -18,6 +18,7 @@ import org.lobzik.home_sapiens.pi.ConnJDBCAppender;
 import org.lobzik.home_sapiens.pi.event.Event;
 import org.lobzik.home_sapiens.pi.event.EventManager;
 import org.lobzik.tools.StreamGobbler;
+import org.lobzik.tools.Tools;
 
 /**
  *
@@ -60,40 +61,29 @@ public class SystemModule implements Module {
         }
     }
 
-    private void shutdown() {
-        try {
-
-            
-            String[] env = {"aaa=bbb", "ccc=ddd"};
-
-            String[] args = {PREFIX, SHUTDOWN_COMMAND, SHUTDOWN_SUFFIX};
-            File workdir = AppData.getSoundWorkDir();
-            Runtime runtime = Runtime.getRuntime();
-            log.info("Shutting down system");/*
-            process = runtime.exec(args, env, workdir);
-
-            StringBuilder output = new StringBuilder();
-            StreamGobbler errorGobbler = new StreamGobbler(process.getErrorStream(), output);
-            StreamGobbler outputGobbler = new StreamGobbler(process.getInputStream(), output);
-            errorGobbler.start();
-            outputGobbler.start();
-            process.waitFor();
-            int exitValue = process.exitValue();
-            //log.debug(StreamGobbler.getAllOutput());
-
-            if (exitValue != 0) {
-                log.error("Error executing, exit status: " + exitValue);
-            }*/
-        } catch (Exception e) {
-            log.error("Error " + e.getMessage());
-        }
-
-    }
-
     @Override
     public void handleEvent(Event e) {
         if (e.type == Event.Type.SYSTEM_EVENT && e.name.equals("shutdown")) {
-            shutdown();
+            try {
+
+                new Thread() {
+                    @Override
+                    public void run() {
+                        try {
+                            HashMap data = new HashMap();
+                            data.put("uart_command", "poweroff=45"); //timer for 45 secs
+                            Event e = new Event("internal_uart_command", data, Event.Type.USER_ACTION);
+                            AppData.eventManager.lockForEvent(e, this);
+                            log.info("Now shutting down");
+                            Tools.sysExec("sudo halt -p", new File("/"));
+                        } catch (Exception e) {
+                            log.error(e.getMessage());
+                        }
+                    }
+                }.start();
+            } catch (Exception ee) {
+                log.error("Error " + ee.getMessage());
+            }
         }
     }
 

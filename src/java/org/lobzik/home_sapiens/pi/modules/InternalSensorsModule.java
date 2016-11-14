@@ -42,15 +42,14 @@ public class InternalSensorsModule extends Thread implements Module {
     private static CommPort commPort = null;
     private static SerialWriter serialWriter = null;
 
-
     private static final int BAUD_RATE = 57600;
     private static final int DATABITS = SerialPort.DATABITS_8;
     private static final int STOPBITS = SerialPort.STOPBITS_1;
     private static final int PARITY = SerialPort.PARITY_NONE;
     private static final int PORT_TIMEOUT = 2000;
-    private static final int ONEWAY_PARAMETERS_TIMEOUT = 1000*60*5;
+    private static final int ONEWAY_PARAMETERS_TIMEOUT = 1000 * 60 * 5;
     private static List<Integer> ONEWAY_PARAMETERS = new ArrayList();
-    
+
     @Override
     public String getModuleName() {
         return MODULE_NAME;
@@ -156,7 +155,11 @@ public class InternalSensorsModule extends Thread implements Module {
                             break;
 
                         case DOUBLE:
-                            m = new Measurement(p, Tools.parseDouble(val, null));
+                            double raw = Tools.parseDouble(val, null);
+                            if (raw == 1023) {
+                                log.warn("Suspicious value " + p.getAlias() + "=" + raw + " ADC overloaded?");
+                            }
+                            m = new Measurement(p, raw * p.getCalibration());
                             break;
 
                         case INTEGER:
@@ -279,15 +282,13 @@ public class InternalSensorsModule extends Thread implements Module {
 
         }
     }
-    
-    public void clearOnewayParameters(){
-        for (int paramId:ONEWAY_PARAMETERS)
-        {
+
+    public void clearOnewayParameters() {
+        for (int paramId : ONEWAY_PARAMETERS) {
             Parameter p = AppData.parametersStorage.getParameter(paramId);
             Measurement m = measurementsCache.getLastMeasurement(p);
-            if (m.getBooleanValue())
-            {
-                if (m.getTime() + ONEWAY_PARAMETERS_TIMEOUT < System.currentTimeMillis()){
+            if (m.getBooleanValue()) {
+                if (m.getTime() + ONEWAY_PARAMETERS_TIMEOUT < System.currentTimeMillis()) {
                     HashMap eventData = new HashMap();
                     eventData.put("parameter", p);
                     eventData.put("measurement", m);
@@ -295,9 +296,9 @@ public class InternalSensorsModule extends Thread implements Module {
                     AppData.eventManager.newEvent(e);
 
                 }
-                                        
+
             }
-                
+
         }
 
     }

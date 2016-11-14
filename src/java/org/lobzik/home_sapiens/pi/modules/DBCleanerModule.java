@@ -30,7 +30,7 @@ public class DBCleanerModule extends Thread implements Module {
     private static boolean run = true;
     private static boolean clearingInProgress = false;
     private static final int DAYS_TO_STORE_RAW_SENSORS_DATA = 5;
-    private static final int DAYS_TO_STORE_DEBUG_MSG = 3;
+    private static final int DAYS_TO_STORE_DEBUG_MSG = 1;
 
     private DBCleanerModule() { //singleton
     }

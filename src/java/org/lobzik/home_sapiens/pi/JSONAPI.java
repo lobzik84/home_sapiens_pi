@@ -285,14 +285,14 @@ public class JSONAPI {
                     if (history.isEmpty()) {
                         continue;
                     }
-                    double calibration = Tools.parseDouble(p.getCalibration(), 1);
+                   // double calibration = Tools.parseDouble(p.getCalibration(), 1);
                     JSONObject[] points = new JSONObject[history.size()];
                     for (int i = 0; i < history.size(); i++) {
                         HashMap h = history.get(i);
 
                         JSONObject point = new JSONObject();
                         point.put("x", (long) Tools.parseInt(h.get("x"), 0) * 1000l);
-                        point.put("y", (Double) h.get("value_d") * calibration);
+                        point.put("y", (Double) h.get("value_d"));
                         points[i] = point;
                     }
                     JSONArray data = new JSONArray(points);

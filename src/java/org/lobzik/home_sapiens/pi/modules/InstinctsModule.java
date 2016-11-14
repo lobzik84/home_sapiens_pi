@@ -118,19 +118,7 @@ public class InstinctsModule implements Module {
     public void handleEvent(Event e) {
         switch (e.type) {
             case SYSTEM_EVENT:
-                if (e.name.equals("shutdown")) {
-                    log.info("Sending poweroff command");
-                    HashMap data = new HashMap();
-                    data.put("uart_command", "poweroff=45"); //timer for 45 secs
-                    Event powerOffCommand = new Event("internal_uart_command", data, Event.Type.USER_ACTION);
-                    AppData.eventManager.newEvent(powerOffCommand);
-                    try {
-                        Thread.sleep(3000);
-                    } catch (InterruptedException ioe) {
-                    }
-                    Event halt = new Event("internal_uart_command", null, Event.Type.SYSTEM_EVENT);
-                    AppData.eventManager.newEvent(halt);
-                } else if (e.name.equals("cellid_detected")) {
+                if (e.name.equals("cellid_detected")) {
                     searchForLocationByCellId(e.data);
                 }
                 break;
@@ -187,22 +175,44 @@ public class InstinctsModule implements Module {
                                     if (m.getDoubleValue() > BoxSettingsAPI.getDouble("InTempAlertMax") || m.getDoubleValue() < BoxSettingsAPI.getDouble("InTempAlertMin")) {
                                         p.setState(Parameter.State.ALARM);
                                     } else {
-                                        p.setState(null);
+                                        p.setState(Parameter.State.OK);
                                     }
                                     break;
                                 case "VAC_SENSOR":
                                     if (m.getDoubleValue() > BoxSettingsAPI.getDouble("VACAlertMax") || m.getDoubleValue() < BoxSettingsAPI.getDouble("VACAlertMin")) {
-                                        p.setState(Parameter.State.ALARM);
+                                        if (p.getState() != Parameter.State.ALARM) {
+                                            p.setState(Parameter.State.ALARM);
+                                            log.debug("VAC not OK, disabling charge");
+                                            HashMap data = new HashMap();
+                                            data.put("uart_command", "charge=off"); //disable charging if power is NOT ok
+                                            Event reaction = new Event("internal_uart_command", data, Event.Type.USER_ACTION);
+                                            AppData.eventManager.newEvent(reaction);
+                                        }
+
                                     } else {
-                                        p.setState(null);
+                                        if (p.getState() != Parameter.State.OK) {
+                                            p.setState(Parameter.State.OK);
+                                            log.debug("VAC OK, enabling charge");
+                                            HashMap data = new HashMap();
+                                            data.put("uart_command", "charge=on"); //enable charging if power is ok
+                                            Event reaction = new Event("internal_uart_command", data, Event.Type.USER_ACTION);
+                                            AppData.eventManager.newEvent(reaction);
+                                        }
+
                                     }
 
                                     break;
                                 case "VBAT_SENSOR":
-                                    double avgBattVoltage = AppData.measurementsCache.getAvgMeasurement(p).getDoubleValue();
+                                    double avgBattVoltage = AppData.measurementsCache.getLastMeasurement(p).getDoubleValue();
+                                    int id = AppData.parametersStorage.resolveAlias("CHARGE_ENABLED");
+                                    Parameter charge = AppData.parametersStorage.getParameter(id);
+                                    if (AppData.measurementsCache.getLastMeasurement(charge).getBooleanValue()) {
+                                        avgBattVoltage -= 1.3;//если зарядка
+                                    }
+
                                     int chargePercents = 5;
-                                    if (avgBattVoltage > 500) {
-                                        chargePercents += (avgBattVoltage - 500) / 5; //при 1000 будет 100%
+                                    if (avgBattVoltage > 6.6) {
+                                        chargePercents += (avgBattVoltage - 6.6) * 119; //при 7.4В будет 100%
                                     }
                                     if (chargePercents > 100) {
                                         chargePercents = 100;
@@ -215,6 +225,12 @@ public class InstinctsModule implements Module {
                                     Event newE = new Event("calculated", eventData, Event.Type.PARAMETER_UPDATED);
 
                                     AppData.eventManager.newEvent(newE);
+
+                                    if (AppData.measurementsCache.getAvgMeasurementFrom(p, System.currentTimeMillis() - 300000).getDoubleValue() < 5.8) {
+                                        log.fatal("Battery critical!! Shutting down");
+                                        Event shutdown = new Event("shutdown", null, Event.Type.SYSTEM_EVENT);
+                                        AppData.eventManager.newEvent(shutdown);
+                                    }
                                     break;
 
                             }
