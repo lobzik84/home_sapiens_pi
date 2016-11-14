@@ -143,17 +143,17 @@ public class InstinctsModule implements Module {
 
                             case "LAMP_1":
                                 if (m.getBooleanValue()) {
-                                    uartCommand = BoxSettingsAPI.get("Lamp1Command433");
+                                    uartCommand = BoxSettingsAPI.get("Lamp1OnCommand433");
                                 } else {
-                                    uartCommand = BoxSettingsAPI.get("Lamp1Command433");
+                                    uartCommand = BoxSettingsAPI.get("Lamp1OffCommand433");
                                 }
                                 break;
 
                             case "LAMP_2":
                                 if (m.getBooleanValue()) {
-                                    uartCommand = BoxSettingsAPI.get("Lamp2Command433");
+                                    uartCommand = BoxSettingsAPI.get("Lamp2OnCommand433");
                                 } else {
-                                    uartCommand = BoxSettingsAPI.get("Lamp2Command433");
+                                    uartCommand = BoxSettingsAPI.get("Lamp2OffCommand433");
                                 }
                                 break;
 
