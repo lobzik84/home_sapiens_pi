@@ -5,8 +5,11 @@
  */
 package org.lobzik.home_sapiens.pi;
 
+import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.List;
+import org.lobzik.tools.db.mysql.DBSelect;
+import org.lobzik.tools.db.mysql.DBTools;
 
 /**
  *
@@ -35,5 +38,24 @@ import java.util.List;
         public void addAction(Action action){
             actions.add(action);
         }            
+        
+        public void setState(int state){
+            this.state = state;
+            try (Connection conn = DBTools.openConnection(BoxCommonData.dataSourceName)) {
+                String sSQL = "update conditions set state=" + this.state + " where id = " + this.id + ";";
+                DBSelect.executeStatement(sSQL, null, conn);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        
+        public List<Action> getActions(String alias){
+            List<Action> result = new ArrayList<Action>();
+            for (Action a:actions){
+                if (a.alias.equalsIgnoreCase(alias))
+                    result.add(a);
+            }
+            return result;
+        }
         
     }

@@ -9,6 +9,7 @@ import java.math.BigInteger;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,6 +20,7 @@ import org.lobzik.home_sapiens.entity.Measurement;
 import org.lobzik.home_sapiens.entity.Parameter;
 import org.lobzik.home_sapiens.pi.Action;
 import org.lobzik.home_sapiens.pi.AppData;
+import static org.lobzik.home_sapiens.pi.AppData.measurementsCache;
 import org.lobzik.home_sapiens.pi.BoxCommonData;
 import org.lobzik.home_sapiens.pi.BoxMode;
 import org.lobzik.home_sapiens.pi.BoxMode.MODE;
@@ -153,7 +155,7 @@ public class BehaviorModule implements Module {
 
     @Override
     public void handleEvent(Event e) {
-        switch (e.type) {
+        switch (e.type) {                           
             case SYSTEM_MODE_CHANGED:
                 if (BoxMode.isArmed()) {
                     log.warn("Включен режим Охрана");
@@ -163,7 +165,7 @@ public class BehaviorModule implements Module {
 
                 break;
 
-            case PARAMETER_CHANGED:
+            case PARAMETER_UPDATED:
                 switch (e.name) {
                     case "mic_noise": //just for debug of microphone module, to be removed
                         Measurement m = (Measurement) e.data.get("measurement");
@@ -178,6 +180,25 @@ public class BehaviorModule implements Module {
                         break;
 
                 }
+                
+                try{
+                    Parameter p = (Parameter)e.data.get("parameter");
+                    switch (p.getAlias()) {
+                        case "VAC_SENSOR":
+                            parameterVAC_SENSORActions(e);
+                        break;
+                        case "DOOR_SENSOR":
+                            parameterDOOR_SENSORActions(e);
+                        break;                    
+                        case "BATT_CHARGE":
+                            parameterBATT_CHARGEActions(e);
+                        break;                        
+                    }
+                }
+                catch (Exception EE){
+                log.error(EE.toString());
+                }
+                
                 break;
         }
     }
@@ -196,8 +217,12 @@ public class BehaviorModule implements Module {
                 log.warn(message);
                 break;
 
-            case ALARM:
+            case ALERT:
                 log.error(message);
+                break;
+                
+            case ALARM:
+                log.fatal(message);
                 break;
         }
     }
@@ -226,6 +251,16 @@ public class BehaviorModule implements Module {
          AppData.eventManager.newEvent(e);
     }
     
+    public static void actionWebNotify(WebNotification.Severity severity, String message, String parameterAlias){
+        
+        WebNotification wn = new WebNotification(WebNotification.Severity.ALERT, parameterAlias, message, new Date(), new Date(System.currentTimeMillis() + 1800000));
+        HashMap data = new HashMap();
+        data.put("WebNotification", wn);
+        Event reaction = new Event ("web_notification", data, Event.Type.REACTION_EVENT);
+        AppData.eventManager.newEvent(reaction);
+    }
+    
+    
     public static Condition getConditionById(List<Condition> conditions, int conditionId){
         Condition result=null;
         for(Condition c:conditions){
@@ -242,6 +277,134 @@ public class BehaviorModule implements Module {
                 result=c;
         }
         return result;
+    }
+ 
+    public static Condition getConditionByAlias(String alias){
+        Condition result=null;
+        for(Condition c:conditions){
+            if (c.alias==alias)
+                result=c;
+        }
+        return result;
+    }
+ 
+           
+    public void parameterBATT_CHARGEActions(Event e){ //Door Sensor
+        //Заряд аккумуляторов меньше 30%
+        String alias ="BAT_CHARGE_LESS_30";
+        Parameter p = (Parameter)e.data.get("parameter");
+        Measurement m = (Measurement) e.data.get("measurement");
+
+        if (m.getIntegerValue()<BoxSettingsAPI.getDouble("VBatAlertCritical")){
+            Condition c = getConditionByAlias(alias + (BoxMode.isArmed()?"_ARMED":"_IDLE"));
+            runStandardActions(c,m,p);
+            c.setState(1);
+            c = getConditionByAlias("BAT_CHARGE_NORMAL_IDLE");
+            c.setState(0);
+            c = getConditionByAlias("BAT_CHARGE_NORMAL_ARMED");
+            c.setState(0);
+        }
+        
+        //Заряд аккумуляторов < 50% и > 30%
+        alias ="BAT_CHARGE_BETWEEN_30_50";
+        if (m.getIntegerValue()>=BoxSettingsAPI.getDouble("VBatAlertCritical") && m.getIntegerValue()<BoxSettingsAPI.getDouble("VBatAlertMinor")){
+            Condition c = getConditionByAlias(alias + (BoxMode.isArmed()?"_ARMED":"_IDLE"));
+            runStandardActions(c,m,p);
+            c.setState(1);
+            c = getConditionByAlias("BAT_CHARGE_NORMAL_IDLE");
+            c.setState(0);
+            c = getConditionByAlias("BAT_CHARGE_NORMAL_ARMED");
+            c.setState(0);
+        }
+        
+        
+          
+    }
+
+    public void parameterDOOR_SENSORActions(Event e){ //Door Sensor
+        //Сработал датчик открывания двери
+        String alias ="DOOR_SENSOR_OPEN";
+        Parameter p = (Parameter)e.data.get("parameter");
+        Measurement m = (Measurement) e.data.get("measurement");
+
+        if (m.getBooleanValue()){
+            Condition c = getConditionByAlias(alias + (BoxMode.isArmed()?"_ARMED":"_IDLE"));
+            runStandardActions(c,m,p);
+            c.setState(1);
+        }
+        else
+        {
+            Condition c = getConditionByAlias(alias + (BoxMode.isArmed()?"_ARMED":"_IDLE"));
+            c.setState(0);
+        }
+    }
+    
+    public void parameterVAC_SENSORActions(Event e){ //AC Voltage
+        int VACTimeout = 5; //минут
+        Parameter p = (Parameter)e.data.get("parameter");
+        
+        //последние 5 минут нет электричества
+        String alias ="VAC_SENSOR_POWER_LOSS";
+        Measurement mMax = measurementsCache.getMaxMeasurementFrom(p, System.currentTimeMillis()-1000*60*VACTimeout);
+        Measurement mMin = measurementsCache.getMinMeasurementFrom(p, System.currentTimeMillis()-1000*60*VACTimeout);
+        if (mMax.getDoubleValue()<BoxSettingsAPI.getDouble("VACAlertMin")){
+            Condition c = getConditionByAlias(alias + (BoxMode.isArmed()?"_ARMED":"_IDLE"));
+            runStandardActions(c,mMax,p);
+            c.setState(1);
+            c = getConditionByAlias("VAC_SENSOR_POWER_RECOVERED_ARMED");
+            c.setState(0);
+            c = getConditionByAlias("VAC_SENSOR_POWER_RECOVERED_IDLE");
+            c.setState(0);
+        }
+        
+        //напряжение более 5 минут в норме после отказа
+        alias = "VAC_SENSOR_POWER_RECOVERED";
+        if (mMax.getDoubleValue() < BoxSettingsAPI.getDouble("VACAlertMax") && mMin.getDoubleValue() < BoxSettingsAPI.getDouble("VACAlertMin")){
+            Condition c = getConditionByAlias(alias + (BoxMode.isArmed()?"_ARMED":"_IDLE"));
+            runStandardActions(c,mMax,p);
+            c.setState(1);
+            c = getConditionByAlias("VAC_SENSOR_POWER_LOSS_ARMED");
+            c.setState(0);
+            c = getConditionByAlias("VAC_SENSOR_POWER_LOSS_IDLE");
+            c.setState(0);
+        }
+        
+        //Опасный для электроприборов скачок напряжения электросети
+        Measurement m = measurementsCache.getLastMeasurement(p);
+        alias = "VAC_SENSOR_UNSTABLE";
+        if (m.getDoubleValue() > BoxSettingsAPI.getDouble("VACAlertMax") || m.getDoubleValue() < BoxSettingsAPI.getDouble("VACAlertMin")){
+            Condition c = getConditionByAlias(alias + (BoxMode.isArmed()?"_ARMED":"_IDLE"));
+            runStandardActions(c,m,p);
+            c.setState(1);
+        }
+        
+
+    }
+    
+    public void runStandardActions(Condition c, Measurement m, Parameter p){
+        if (c.state<=0) {
+            for (Action a:c.actions){
+                String message = a.data.replaceAll("ДД ВР", Tools.getFormatedDate(new Date(m.getTime()), "dd.MM.yyyy HH:mm"));
+                message= message.replaceAll("<%=VALUE%>", m.toStringValue());
+                switch (a.module) {
+                    case "DisplayModule":
+                        actionDisplay(a.severity, message);
+                        break;
+                    case "Logger":
+                        actionLog(a.severity, message);
+                        break;
+                    case "ModemModule":
+                        actionSMS(a.severity, message);
+                        break;
+                    case "TunnelClientModule":
+                        actionEmail(a.severity, message);
+                        break;
+                    case "WebNotificationsModule":
+                        actionWebNotify(a.severity, message, p.getAlias());
+                        break;
+                }
+            }
+        }
     }
     
 }
