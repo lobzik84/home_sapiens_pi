@@ -232,21 +232,25 @@ public class InstinctsModule implements Module {
                             switch (alias) {
                                 case "INTERNAL_TEMP":
                                     if (m.getDoubleValue() > BoxSettingsAPI.getDouble("InTempAlertMax") || m.getDoubleValue() < BoxSettingsAPI.getDouble("InTempAlertMin")) {
-                                        p.setState(Parameter.State.ALARM);
+                                        if (p.getState() != Parameter.State.ALARM) {
+                                            p.setState(Parameter.State.ALARM);
 
-                                        WebNotification wn = new WebNotification(WebNotification.Severity.ALARM, alias, "Комнатная температура вышла за пределы!", new Date(), null);
-                                        HashMap data = new HashMap();
-                                        data.put("WebNotification", wn);
-                                        Event reaction = new Event("web_notification", data, Event.Type.REACTION_EVENT);
-                                        AppData.eventManager.newEvent(reaction);
+                                            WebNotification wn = new WebNotification(WebNotification.Severity.ALARM, alias, "Комнатная температура вышла за пределы!", new Date(), null);
+                                            HashMap data = new HashMap();
+                                            data.put("WebNotification", wn);
+                                            Event reaction = new Event("web_notification", data, Event.Type.REACTION_EVENT);
+                                            AppData.eventManager.newEvent(reaction);
+                                        }
                                     } else {
-                                        p.setState(Parameter.State.OK);
+                                        if (p.getState() != Parameter.State.OK) {
+                                            p.setState(Parameter.State.OK);
 
-                                        WebNotification wn = new WebNotification(WebNotification.Severity.OK, alias, "Комнатная температура снова в норме", new Date(), null);
-                                        HashMap data = new HashMap();
-                                        data.put("WebNotification", wn);
-                                        Event reaction = new Event("web_notification", data, Event.Type.REACTION_EVENT);
-                                        AppData.eventManager.newEvent(reaction);
+                                            WebNotification wn = new WebNotification(WebNotification.Severity.OK, alias, "Комнатная температура снова в норме", new Date(), null);
+                                            HashMap data = new HashMap();
+                                            data.put("WebNotification", wn);
+                                            Event reaction = new Event("web_notification", data, Event.Type.REACTION_EVENT);
+                                            AppData.eventManager.newEvent(reaction);
+                                        }
 
                                     }
                                     break;
@@ -262,7 +266,7 @@ public class InstinctsModule implements Module {
 
                                             WebNotification wn = new WebNotification(WebNotification.Severity.ALARM, alias, "Напряжение сети вне пределов!", new Date(), null);
                                             HashMap data2 = new HashMap();
-                                            data.put("WebNotification", wn);
+                                            data2.put("WebNotification", wn);
                                             Event reaction2 = new Event("web_notification", data2, Event.Type.REACTION_EVENT);
                                             AppData.eventManager.newEvent(reaction2);
                                         }
@@ -278,7 +282,7 @@ public class InstinctsModule implements Module {
 
                                             WebNotification wn = new WebNotification(WebNotification.Severity.OK, alias, "Напряжение сети снова в норме!", new Date(), null);
                                             HashMap data2 = new HashMap();
-                                            data.put("WebNotification", wn);
+                                            data2.put("WebNotification", wn);
                                             Event reaction2 = new Event("web_notification", data2, Event.Type.REACTION_EVENT);
                                             AppData.eventManager.newEvent(reaction2);
                                         }
