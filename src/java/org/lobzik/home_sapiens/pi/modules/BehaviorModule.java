@@ -294,8 +294,10 @@ public class BehaviorModule implements Module {
         String alias ="BAT_CHARGE_LESS_30";
         Parameter p = (Parameter)e.data.get("parameter");
         Measurement m = (Measurement) e.data.get("measurement");
-
-        if (m.getIntegerValue()<BoxSettingsAPI.getDouble("VBatAlertCritical")){
+        Parameter chargeEnabledP = AppData.parametersStorage.getParameter(AppData.parametersStorage.resolveAlias("CHARGE_ENABLED"));
+        boolean chargeEnabled = measurementsCache.getLastMeasurement(chargeEnabledP).getBooleanValue();
+        
+        if (m.getIntegerValue()<BoxSettingsAPI.getDouble("VBatAlertCritical") && !chargeEnabled){
             Condition c = getConditionByAlias(alias + (BoxMode.isArmed()?"_ARMED":"_IDLE"));
             runStandardActions(c,m,p);
             c.setState(1);
@@ -307,13 +309,24 @@ public class BehaviorModule implements Module {
         
         //Заряд аккумуляторов < 50% и > 30%
         alias ="BAT_CHARGE_BETWEEN_30_50";
-        if (m.getIntegerValue()>=BoxSettingsAPI.getDouble("VBatAlertCritical") && m.getIntegerValue()<BoxSettingsAPI.getDouble("VBatAlertMinor")){
+        if (m.getIntegerValue()>=BoxSettingsAPI.getDouble("VBatAlertCritical") && m.getIntegerValue()<BoxSettingsAPI.getDouble("VBatAlertMinor") && !chargeEnabled){
             Condition c = getConditionByAlias(alias + (BoxMode.isArmed()?"_ARMED":"_IDLE"));
             runStandardActions(c,m,p);
             c.setState(1);
             c = getConditionByAlias("BAT_CHARGE_NORMAL_IDLE");
             c.setState(0);
             c = getConditionByAlias("BAT_CHARGE_NORMAL_ARMED");
+            c.setState(0);
+        }
+        
+        if (chargeEnabled){
+            Condition c = getConditionByAlias("BAT_CHARGE_LESS_30_ARMED");
+            c.setState(0);
+            c = getConditionByAlias("BAT_CHARGE_LESS_30_IDLE");
+            c.setState(0);
+            c = getConditionByAlias("BAT_CHARGE_BETWEEN_30_50_ARMED");
+            c.setState(0);
+            c = getConditionByAlias("BAT_CHARGE_BETWEEN_30_50_IDLE");
             c.setState(0);
         }
         
