@@ -148,18 +148,20 @@ public class InternalSensorsModule extends Thread implements Module {
                 if (paramId > 0) {
                     HashMap eventData = new HashMap();
                     Parameter p = AppData.parametersStorage.getParameter(paramId);
-                    Measurement m;
+                    Measurement m = null;
                     switch (p.getType()) {
                         case BOOLEAN:
                             m = new Measurement(p, Tools.parseBoolean(val, null));
                             break;
 
                         case DOUBLE:
-                            double raw = Tools.parseDouble(val, null);
-                            if (raw == 1023) {
-                                log.warn("Suspicious value " + p.getAlias() + "=" + raw + " ADC overloaded?");
+                            if (val.length() > 0 && !val.equalsIgnoreCase("nan") && !val.equalsIgnoreCase("error")) {
+                                double raw = Tools.parseDouble(val, null);
+                                if (raw == 1023) {
+                                    log.debug("Suspicious value " + p.getAlias() + "=" + raw + " ADC overloaded?");
+                                }
+                                m = new Measurement(p, raw * p.getCalibration());
                             }
-                            m = new Measurement(p, raw * p.getCalibration());
                             break;
 
                         case INTEGER:
@@ -171,12 +173,13 @@ public class InternalSensorsModule extends Thread implements Module {
                             break;
 
                     }
+                    if (m != null) {
+                        eventData.put("parameter", p);
+                        eventData.put("measurement", m);
+                        Event e = new Event("internal sensors updated", eventData, Event.Type.PARAMETER_UPDATED);
 
-                    eventData.put("parameter", p);
-                    eventData.put("measurement", m);
-                    Event e = new Event("internal sensors updated", eventData, Event.Type.PARAMETER_UPDATED);
-
-                    AppData.eventManager.newEvent(e);
+                        AppData.eventManager.newEvent(e);
+                    }
                 }
             }
 

@@ -7,6 +7,7 @@ package org.lobzik.home_sapiens.pi.modules;
 
 import java.math.BigInteger;
 import java.sql.Connection;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,6 +22,7 @@ import org.lobzik.home_sapiens.pi.BoxMode;
 import org.lobzik.home_sapiens.pi.BoxSettingsAPI;
 import org.lobzik.home_sapiens.pi.ConnJDBCAppender;
 import org.lobzik.home_sapiens.pi.MeasurementsCache;
+import org.lobzik.home_sapiens.pi.WebNotification;
 import org.lobzik.home_sapiens.pi.event.Event;
 import org.lobzik.home_sapiens.pi.event.EventManager;
 import static org.lobzik.home_sapiens.pi.modules.ModemModule.test;
@@ -136,24 +138,80 @@ public class InstinctsModule implements Module {
                             case "SOCKET":
                                 if (m.getBooleanValue()) {
                                     uartCommand = BoxSettingsAPI.get("Socket1OnCommand433");
+                                    log.info("Включена розетка");
+                                    WebNotification wn = new WebNotification(WebNotification.Severity.INFO, alias, "Включена розетка", new Date(), null);
+                                    HashMap data = new HashMap();
+                                    data.put("WebNotification", wn);
+                                    Event reaction = new Event("web_notification", data, Event.Type.REACTION_EVENT);
+                                    AppData.eventManager.newEvent(reaction);
+
                                 } else {
                                     uartCommand = BoxSettingsAPI.get("Socket1OffCommand433");
+                                    log.info("Выключена розетка");
+                                    WebNotification wn = new WebNotification(WebNotification.Severity.INFO, alias, "Отключена розетка", new Date(), null);
+                                    HashMap data = new HashMap();
+                                    data.put("WebNotification", wn);
+                                    Event reaction = new Event("web_notification", data, Event.Type.REACTION_EVENT);
+                                    AppData.eventManager.newEvent(reaction);
                                 }
                                 break;
 
                             case "LAMP_1":
                                 if (m.getBooleanValue()) {
                                     uartCommand = BoxSettingsAPI.get("Lamp1OnCommand433");
+                                    //FOR DEBUG ONLY
+                                    Parameter pNightTime = AppData.parametersStorage.getParameter(AppData.parametersStorage.resolveAlias("NIGHTTIME"));
+                                    Measurement isDay = new Measurement(pNightTime, false);
+                                    HashMap eventData = new HashMap();
+                                    eventData.put("parameter", pNightTime);
+                                    eventData.put("measurement", isDay);
+                                    Event newE = new Event("debug", eventData, Event.Type.PARAMETER_UPDATED);
+                                    AppData.eventManager.newEvent(newE);
+                                    log.info("Включена лампа 1");
+                                    WebNotification wn = new WebNotification(WebNotification.Severity.INFO, alias, "Включена лампа 1", new Date(), null);
+                                    HashMap data = new HashMap();
+                                    data.put("WebNotification", wn);
+                                    Event reaction = new Event("web_notification", data, Event.Type.REACTION_EVENT);
+                                    AppData.eventManager.newEvent(reaction);
+
                                 } else {
                                     uartCommand = BoxSettingsAPI.get("Lamp1OffCommand433");
+
+                                    //FOR DEBUG ONLY
+                                    Parameter pNightTime = AppData.parametersStorage.getParameter(AppData.parametersStorage.resolveAlias("NIGHTTIME"));
+                                    Measurement isNight = new Measurement(pNightTime, true);
+                                    HashMap eventData = new HashMap();
+                                    eventData.put("parameter", pNightTime);
+                                    eventData.put("measurement", isNight);
+                                    Event newE = new Event("debug", eventData, Event.Type.PARAMETER_UPDATED);
+                                    AppData.eventManager.newEvent(newE);
+                                    log.info("Выключена лампа 1");
+                                    WebNotification wn = new WebNotification(WebNotification.Severity.INFO, alias, "Отключена лампа 1", new Date(), null);
+                                    HashMap data = new HashMap();
+                                    data.put("WebNotification", wn);
+                                    Event reaction = new Event("web_notification", data, Event.Type.REACTION_EVENT);
+                                    AppData.eventManager.newEvent(reaction);
+
                                 }
                                 break;
 
                             case "LAMP_2":
                                 if (m.getBooleanValue()) {
                                     uartCommand = BoxSettingsAPI.get("Lamp2OnCommand433");
+                                    log.info("Включена лампа 2");
+                                    WebNotification wn = new WebNotification(WebNotification.Severity.INFO, alias, "Включена лампа 2", new Date(), null);
+                                    HashMap data = new HashMap();
+                                    data.put("WebNotification", wn);
+                                    Event reaction = new Event("web_notification", data, Event.Type.REACTION_EVENT);
+                                    AppData.eventManager.newEvent(reaction);
                                 } else {
                                     uartCommand = BoxSettingsAPI.get("Lamp2OffCommand433");
+                                    log.info("Выключена лампа 2");
+                                    WebNotification wn = new WebNotification(WebNotification.Severity.INFO, alias, "Отключена лампа 2", new Date(), null);
+                                    HashMap data = new HashMap();
+                                    data.put("WebNotification", wn);
+                                    Event reaction = new Event("web_notification", data, Event.Type.REACTION_EVENT);
+                                    AppData.eventManager.newEvent(reaction);
                                 }
                                 break;
 
@@ -170,33 +228,59 @@ public class InstinctsModule implements Module {
                         p = (Parameter) e.data.get("parameter");
                         if (p != null) {
                             m = (Measurement) e.data.get("measurement");
-                            switch (p.getAlias()) {
+                            alias = p.getAlias();
+                            switch (alias) {
                                 case "INTERNAL_TEMP":
                                     if (m.getDoubleValue() > BoxSettingsAPI.getDouble("InTempAlertMax") || m.getDoubleValue() < BoxSettingsAPI.getDouble("InTempAlertMin")) {
                                         p.setState(Parameter.State.ALARM);
+
+                                        WebNotification wn = new WebNotification(WebNotification.Severity.ALARM, alias, "Комнатная температура вышла за пределы!", new Date(), null);
+                                        HashMap data = new HashMap();
+                                        data.put("WebNotification", wn);
+                                        Event reaction = new Event("web_notification", data, Event.Type.REACTION_EVENT);
+                                        AppData.eventManager.newEvent(reaction);
                                     } else {
                                         p.setState(Parameter.State.OK);
+
+                                        WebNotification wn = new WebNotification(WebNotification.Severity.OK, alias, "Комнатная температура снова в норме", new Date(), null);
+                                        HashMap data = new HashMap();
+                                        data.put("WebNotification", wn);
+                                        Event reaction = new Event("web_notification", data, Event.Type.REACTION_EVENT);
+                                        AppData.eventManager.newEvent(reaction);
+
                                     }
                                     break;
                                 case "VAC_SENSOR":
                                     if (m.getDoubleValue() > BoxSettingsAPI.getDouble("VACAlertMax") || m.getDoubleValue() < BoxSettingsAPI.getDouble("VACAlertMin")) {
                                         if (p.getState() != Parameter.State.ALARM) {
                                             p.setState(Parameter.State.ALARM);
-                                            log.debug("VAC not OK, disabling charge");
+                                            log.error("Напряжение сети вне пределов, отключаем зарядку");
                                             HashMap data = new HashMap();
                                             data.put("uart_command", "charge=off"); //disable charging if power is NOT ok
                                             Event reaction = new Event("internal_uart_command", data, Event.Type.USER_ACTION);
                                             AppData.eventManager.newEvent(reaction);
+
+                                            WebNotification wn = new WebNotification(WebNotification.Severity.ALARM, alias, "Напряжение сети вне пределов!", new Date(), null);
+                                            HashMap data2 = new HashMap();
+                                            data.put("WebNotification", wn);
+                                            Event reaction2 = new Event("web_notification", data2, Event.Type.REACTION_EVENT);
+                                            AppData.eventManager.newEvent(reaction2);
                                         }
 
                                     } else {
                                         if (p.getState() != Parameter.State.OK) {
                                             p.setState(Parameter.State.OK);
-                                            log.debug("VAC OK, enabling charge");
+                                            log.info("Включаем зарядку");
                                             HashMap data = new HashMap();
                                             data.put("uart_command", "charge=on"); //enable charging if power is ok
                                             Event reaction = new Event("internal_uart_command", data, Event.Type.USER_ACTION);
                                             AppData.eventManager.newEvent(reaction);
+
+                                            WebNotification wn = new WebNotification(WebNotification.Severity.OK, alias, "Напряжение сети снова в норме!", new Date(), null);
+                                            HashMap data2 = new HashMap();
+                                            data.put("WebNotification", wn);
+                                            Event reaction2 = new Event("web_notification", data2, Event.Type.REACTION_EVENT);
+                                            AppData.eventManager.newEvent(reaction2);
                                         }
 
                                     }
@@ -227,7 +311,7 @@ public class InstinctsModule implements Module {
                                     AppData.eventManager.newEvent(newE);
 
                                     if (AppData.measurementsCache.getAvgMeasurementFrom(p, System.currentTimeMillis() - 300000).getDoubleValue() < 5.8) {
-                                        log.fatal("Battery critical!! Shutting down");
+                                        log.fatal("Уровень заряда АКБ критически низок! Отключаем систему");
                                         Event shutdown = new Event("shutdown", null, Event.Type.SYSTEM_EVENT);
                                         AppData.eventManager.newEvent(shutdown);
                                     }
@@ -286,11 +370,11 @@ public class InstinctsModule implements Module {
             try (Connection conn = DBTools.openConnection(BoxCommonData.dataSourceName)) {
                 List<HashMap> resList = DBSelect.getRows(sSQL, conn);
                 if (resList.isEmpty()) {
-                    throw new Exception("CellId " + cid + " with lac " + lac + " not found in DB");
+                    throw new Exception("CellId " + cid + " with lac " + lac + " не найден в базе данных");
                 }
                 double latitude = Tools.parseDouble(resList.get(0).get("lat"), 0);
                 double longitude = Tools.parseDouble(resList.get(0).get("lon"), 0);
-                log.info("Detected location " + latitude + ", " + longitude);
+                log.info("Определено местоположение!" + latitude + ", " + longitude);
                 HashMap eventData = new HashMap();
                 eventData.put("latitude", latitude);
                 eventData.put("longitude", longitude);
@@ -299,7 +383,7 @@ public class InstinctsModule implements Module {
             }
 
         } catch (Exception e) {
-            log.error("Error getting locatuion: " + e.getMessage());
+            log.error("Не удалось определить местоположение: " + e.getMessage());
         }
     }
 

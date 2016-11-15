@@ -13,25 +13,23 @@ import org.json.JSONObject;
  * @author lobzik
  */
 public class WebNotification {
-    
+
     public Severity severity;
     public String parameterAlias;
     public String text;
     public Date startDate;
-    public Date endDate;   
-    
-    
-    public enum Severity
-    {
+    public Date endDate;
+
+    public enum Severity {
         INFO, //INFO инфо - просто оповещение, бесцветный или серый
         OK, //WARNING вернулось в норму, зелёный
         ALERT, //ERROR ошибка, плохо, но жить можно
         ALARM //FATAL критичное, красный
     };
-    
+
     public final int id;
-    
-    public WebNotification (Severity severity, String parameterAlias, String text, Date startDate, Date endDate) {
+
+    public WebNotification(Severity severity, String parameterAlias, String text, Date startDate, Date endDate) {
         id = (int) (Math.random() * 100000d);
         this.severity = severity;
         this.parameterAlias = parameterAlias;
@@ -39,16 +37,20 @@ public class WebNotification {
         this.startDate = startDate;
         this.endDate = endDate;
     }
-    
+
     public JSONObject toJSON() {
         JSONObject json = new JSONObject();
         json.put("id", id);
         json.put("severity", severity.toString());
         json.put("text", text);
         json.put("parameterAlias", parameterAlias);
-        json.put("startDate", startDate.getTime());
-        json.put("endDate", endDate.getTime());
-        
+        if (startDate != null) {
+            json.put("startDate", startDate.getTime());
+        }
+        if (endDate != null) {
+            json.put("endDate", endDate.getTime());
+        }
+
         return json;
     }
 
