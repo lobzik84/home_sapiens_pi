@@ -240,6 +240,12 @@ public class InstinctsModule implements Module {
                                             data.put("WebNotification", wn);
                                             Event reaction = new Event("web_notification", data, Event.Type.REACTION_EVENT);
                                             AppData.eventManager.newEvent(reaction);
+
+                                            WebNotification dn = new WebNotification(WebNotification.Severity.ALARM, alias, "Комнатная температура вышла за пределы!", new Date(), null, "INTERNAL_TEMP_OUT_RANGE");
+                                            HashMap data3 = new HashMap();
+                                            data3.put("DisplayNotification", dn);
+                                            Event reaction3 = new Event("display_notification", data3, Event.Type.REACTION_EVENT);
+                                            AppData.eventManager.newEvent(reaction3);
                                         }
                                     } else {
                                         if (p.getState() != Parameter.State.OK) {
@@ -250,6 +256,11 @@ public class InstinctsModule implements Module {
                                             data.put("WebNotification", wn);
                                             Event reaction = new Event("web_notification", data, Event.Type.REACTION_EVENT);
                                             AppData.eventManager.newEvent(reaction);
+
+                                            HashMap data3 = new HashMap();
+                                            data3.put("ConditionAlias", "INTERNAL_TEMP_OUT_RANGE");
+                                            Event reaction3 = new Event("delete_display_notification", data3, Event.Type.REACTION_EVENT);
+                                            AppData.eventManager.newEvent(reaction3);
                                         }
 
                                     }
@@ -269,6 +280,12 @@ public class InstinctsModule implements Module {
                                             data2.put("WebNotification", wn);
                                             Event reaction2 = new Event("web_notification", data2, Event.Type.REACTION_EVENT);
                                             AppData.eventManager.newEvent(reaction2);
+
+                                            WebNotification dn = new WebNotification(WebNotification.Severity.ALARM, alias, "Напряжение сети вне пределов!", new Date(), null, "VAC_SENSOR_OUT_RANGE");
+                                            HashMap data3 = new HashMap();
+                                            data3.put("DisplayNotification", dn);
+                                            Event reaction3 = new Event("display_notification", data3, Event.Type.REACTION_EVENT);
+                                            AppData.eventManager.newEvent(reaction3);
                                         }
 
                                     } else {
@@ -285,6 +302,12 @@ public class InstinctsModule implements Module {
                                             data2.put("WebNotification", wn);
                                             Event reaction2 = new Event("web_notification", data2, Event.Type.REACTION_EVENT);
                                             AppData.eventManager.newEvent(reaction2);
+
+                                            HashMap data3 = new HashMap();
+                                            data3.put("ConditionAlias", "VAC_SENSOR_OUT_RANGE");
+                                            Event reaction3 = new Event("delete_display_notification", data3, Event.Type.REACTION_EVENT);
+                                            AppData.eventManager.newEvent(reaction3);
+
                                         }
 
                                     }

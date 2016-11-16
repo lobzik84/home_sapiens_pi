@@ -259,6 +259,12 @@ public class JSONAPI {
         if (json.has("quant")) {
             quant = json.getLong("quant");
         }
+        List<Integer> selected = new LinkedList();
+        if (json.has("aliases")) {
+            JSONArray arr = json.getJSONArray("aliases");
+            arr.forEach(alias -> selected.add(AppData.parametersStorage.resolveAlias((String) alias)));
+        }
+
         JSONObject historyJson = new JSONObject();
         historyJson.put("test", "test");
         historyJson.put("from", from);
@@ -269,40 +275,42 @@ public class JSONAPI {
 
             List<JSONObject> historyList = new LinkedList();
             for (Integer pId : AppData.parametersStorage.getParameterIds()) {
-                Parameter p = AppData.parametersStorage.getParameter(pId);
-                if (p.getType() == Parameter.Type.DOUBLE) {
-                    //String alias = p.getAlias();
-                    String sSQL = "select  unix_timestamp(sd.date) as x,floor(unix_timestamp(sd.date)/" + quant / 1000 + ") as udate, \n"
-                            + " avg(sd.value_d) as value_d\n"
-                            + " from sensors_data sd \n"
-                            + " where sd.parameter_id=" + pId
-                            + " and unix_timestamp(sd.date) > " + from / 1000 + " \n"
-                            + " and unix_timestamp(sd.date) < " + to / 1000 + " \n"
-                            + "  and sd.value_d is not null\n"
-                            + " group by udate;";
-                    List<HashMap> history = DBSelect.getRows(sSQL, conn);
+                if (selected.isEmpty() || selected.contains(pId)) {
+                    Parameter p = AppData.parametersStorage.getParameter(pId);
+                    if (p.getType() == Parameter.Type.DOUBLE) {
+                        //String alias = p.getAlias();
+                        String sSQL = "select  unix_timestamp(sd.date) as x,floor(unix_timestamp(sd.date)/" + quant / 1000 + ") as udate, \n"
+                                + " avg(sd.value_d) as value_d\n"
+                                + " from sensors_data sd \n"
+                                + " where sd.parameter_id=" + pId
+                                + " and unix_timestamp(sd.date) > " + from / 1000 + " \n"
+                                + " and unix_timestamp(sd.date) < " + to / 1000 + " \n"
+                                + "  and sd.value_d is not null\n"
+                                + " group by udate;";
+                        List<HashMap> history = DBSelect.getRows(sSQL, conn);
 
-                    if (history.isEmpty()) {
-                        continue;
+                        if (history.isEmpty()) {
+                            continue;
+                        }
+                        // double calibration = Tools.parseDouble(p.getCalibration(), 1);
+                        JSONObject[] points = new JSONObject[history.size()];
+                        for (int i = 0; i < history.size(); i++) {
+                            HashMap h = history.get(i);
+
+                            JSONObject point = new JSONObject();
+                            point.put("x", (long) Tools.parseInt(h.get("x"), 0) * 1000l);
+                            point.put("y", (Double) h.get("value_d"));
+                            points[i] = point;
+                        }
+                        JSONArray data = new JSONArray(points);
+
+                        JSONObject parameterHistory = new JSONObject();
+                        parameterHistory.put("alias", p.getAlias());
+                        parameterHistory.put("description", p.getDescription());
+                        parameterHistory.put("data", data);
+
+                        historyList.add(parameterHistory);
                     }
-                    // double calibration = Tools.parseDouble(p.getCalibration(), 1);
-                    JSONObject[] points = new JSONObject[history.size()];
-                    for (int i = 0; i < history.size(); i++) {
-                        HashMap h = history.get(i);
-
-                        JSONObject point = new JSONObject();
-                        point.put("x", (long) Tools.parseInt(h.get("x"), 0) * 1000l);
-                        point.put("y", (Double) h.get("value_d"));
-                        points[i] = point;
-                    }
-                    JSONArray data = new JSONArray(points);
-
-                    JSONObject parameterHistory = new JSONObject();
-                    parameterHistory.put("alias", p.getAlias());
-                    parameterHistory.put("description", p.getDescription());
-                    parameterHistory.put("data", data);
-
-                    historyList.add(parameterHistory);
                 }
             }
 

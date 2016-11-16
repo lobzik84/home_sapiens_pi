@@ -19,6 +19,7 @@ public class WebNotification {
     public String text;
     public Date startDate;
     public Date endDate;
+    public String conditionAlias;
 
     public enum Severity {
         INFO, //INFO инфо - просто оповещение, бесцветный или серый
@@ -38,6 +39,17 @@ public class WebNotification {
         this.endDate = endDate;
     }
 
+    public WebNotification(Severity severity, String parameterAlias, String text, Date startDate, Date endDate, String conditionAlias) {
+        id = (int) (Math.random() * 100000d);
+        this.severity = severity;
+        this.parameterAlias = parameterAlias;
+        this.text = text;
+        this.startDate = startDate;
+        this.endDate = endDate;
+        this.conditionAlias = conditionAlias;
+    }
+
+        
     public JSONObject toJSON() {
         JSONObject json = new JSONObject();
         json.put("id", id);

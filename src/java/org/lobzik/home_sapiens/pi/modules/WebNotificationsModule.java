@@ -97,10 +97,10 @@ public class WebNotificationsModule implements Module {
                 }
                 break;
         }
-        if (changed) {
+        /*if (changed) {
             Event rereaction = new Event("web_notification_changed", null, Event.Type.REACTION_EVENT);
             AppData.eventManager.newEvent(rereaction);
-        }
+        }*/
     }
 
     public static List<WebNotification> getNotifications() {

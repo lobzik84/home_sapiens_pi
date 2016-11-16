@@ -23,6 +23,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Stack;
 import org.apache.log4j.Logger;
 import org.lobzik.home_sapiens.pi.AppData;
 import org.lobzik.home_sapiens.pi.event.Event;
@@ -55,6 +56,9 @@ public class DisplayModule implements Module {
     private static final String FBI_COMMAND = "/usr/bin/fbi";
     private static final String LN_COMMAND = "/bin/ln";
     private FbiRunner fbiRunner = null;
+
+    private static final Stack<WebNotification> notifications = new Stack();
+    private static final int MAX_STACK_SIZE = 10;
 
     private DisplayModule() { //singleton
     }
@@ -100,8 +104,32 @@ public class DisplayModule implements Module {
                 break;
 
             case REACTION_EVENT:
-                if (e.name.equals("web_notification_changed")) {
-                    draw();
+                if (e.name.equals("display_notification")) {
+                    WebNotification n = (WebNotification) e.data.get("DisplayNotification");
+                    if (n != null) {
+                        while (notifications.size() > MAX_STACK_SIZE) {
+                            notifications.remove(notifications.size() - 1);
+                        }
+                        notifications.push(n);
+                        draw();
+                    }
+                } else if (e.name.equals("delete_display_notification")) {
+                    String conditionAlias = (String)e.data.get("ConditionAlias");
+                    if (conditionAlias != null) {
+                        int index = -1;
+                        
+                        for (int i=0; i< notifications.size(); i++){
+                            WebNotification n = notifications.get(i);
+                            if (n.conditionAlias.equals(conditionAlias)) {
+                                index = i;
+                                break;
+                            }
+                        }
+                        if (index >= 0) {
+                            notifications.remove(index);
+                        }
+                        draw();
+                    }
                 }
                 break;
         }
@@ -121,6 +149,7 @@ public class DisplayModule implements Module {
                 List<WebNotification> lwn = WebNotificationsModule.getNotifications();
                 WebNotification notif = null;
                 //TODO будет Behavior - просто поставим реакцию и присвоим notif что надо
+                /*
                 for (int i = lwn.size() - 1; i >= 0; i--) {
                     WebNotification wn = lwn.get(i);
                     switch (wn.severity) {
@@ -133,6 +162,9 @@ public class DisplayModule implements Module {
                             break;
 
                     }
+                }*/
+                if (!notifications.isEmpty()) {
+                    notif = notifications.peek();
                 }
 
                 try {
