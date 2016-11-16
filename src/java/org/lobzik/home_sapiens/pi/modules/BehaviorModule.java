@@ -95,7 +95,7 @@ public class BehaviorModule implements Module {
                     HashMap ud = userData.get(0);
                     mobileNumber = Tools.getStringValue(ud.get("login"), "");
                     email = Tools.getStringValue(ud.get("email"), "");
-                    mobileNumber=mobileNumber.replaceAll("(", "").replaceAll(")", "").replaceAll("-", "");
+                    //mobileNumber=mobileNumber.replaceAll("(", "").replaceAll(")", "").replaceAll("-", "");
                }
                     
             } catch (Exception ee) {

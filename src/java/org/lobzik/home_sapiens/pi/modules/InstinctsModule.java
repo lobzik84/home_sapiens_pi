@@ -294,7 +294,8 @@ public class InstinctsModule implements Module {
                                     double avgBattVoltage = AppData.measurementsCache.getLastMeasurement(p).getDoubleValue();
                                     int id = AppData.parametersStorage.resolveAlias("CHARGE_ENABLED");
                                     Parameter charge = AppData.parametersStorage.getParameter(id);
-                                    if (AppData.measurementsCache.getLastMeasurement(charge).getBooleanValue()) {
+                                    //if ()
+                                    if (AppData.measurementsCache.getLastMeasurement(charge) != null && AppData.measurementsCache.getLastMeasurement(charge).getBooleanValue()) {
                                         avgBattVoltage -= 1.3;//если зарядка
                                     }
 

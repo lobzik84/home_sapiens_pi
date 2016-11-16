@@ -5,9 +5,12 @@
  */
 package org.lobzik.home_sapiens.pi.modules;
 
+import java.awt.AlphaComposite;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.Image;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -18,7 +21,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import org.apache.log4j.Logger;
@@ -30,6 +32,7 @@ import org.lobzik.home_sapiens.pi.event.Event;
  * @author lobzik
  */
 import javax.imageio.ImageIO;
+
 import org.apache.log4j.Appender;
 import org.lobzik.home_sapiens.pi.BoxCommonData;
 import org.lobzik.home_sapiens.pi.ConnJDBCAppender;
@@ -77,7 +80,7 @@ public class DisplayModule implements Module {
             draw();
             EventManager.subscribeForEventType(this, Event.Type.TIMER_EVENT);
             EventManager.subscribeForEventType(this, Event.Type.SYSTEM_EVENT);
-            
+            EventManager.subscribeForEventType(this, Event.Type.REACTION_EVENT);
             fbiRunner = new FbiRunner();
             fbiRunner.start();
 
@@ -88,17 +91,21 @@ public class DisplayModule implements Module {
 
     @Override
     public void handleEvent(Event e) {
-        if ((e.type == Event.Type.TIMER_EVENT || e.type == Event.Type.SYSTEM_EVENT) && e.name.equals("update_display")) {
-            draw();
-            //TODO мама, это только для отладки
-            /*
-            WebNotification wn = new WebNotification(WebNotification.Severity.ALERT, "INTERNAL_TEMP", "Быстрый рост температуры", new Date(System.currentTimeMillis() - 1800000), new Date());
-            HashMap data = new HashMap();
-            data.put("WebNotification", wn);
-            Event reaction = new Event ("web_notification", data, Event.Type.REACTION_EVENT);
-            AppData.eventManager.newEvent(reaction);
-*/
+        switch (e.type) {
+            case TIMER_EVENT:
+            case SYSTEM_EVENT:
+                if (e.name.equals("update_display")) {
+                    draw();
+                }
+                break;
+
+            case REACTION_EVENT:
+                if (e.name.equals("web_notification_changed")) {
+                    draw();
+                }
+                break;
         }
+
     }
 
     private void draw() {
@@ -106,39 +113,94 @@ public class DisplayModule implements Module {
             log.debug("Drawing img for screen");
             Graphics g = null;
             BufferedImage img = null;
-            BufferedImage temperatureImg = null;
-
-            try {
-                img = ImageIO.read(new File(AppData.getGraphicsWorkDir().getAbsolutePath() + File.separator + "screen.jpg"));
-                temperatureImg = ImageIO.read(new File(AppData.getGraphicsWorkDir().getAbsolutePath() + File.separator + "temperature.png"));
-            } catch (IOException e) {
-            }
-
-            g = img.getGraphics();
-            g.setColor(new Color(0, 0, 0));
-
-            g.setFont(new Font("Tahoma", Font.PLAIN, 110));
-            Date d = new Date();
+            Image iconImg = null;
             if (BoxCommonData.TEST_MODE) {
                 g.drawString("TEST", 100, 180);
 
             } else {
-                g.drawString(Tools.getFormatedDate(d, "HH:mm"), 100, 180);
-                
-                
-                //alert
-                g.setColor(new Color(243, 67, 54));
-                g.fillRect(0, 251, 480, 320);
-                //g.drawLine(20, 20, 360, 20);
+                List<WebNotification> lwn = WebNotificationsModule.getNotifications();
+                WebNotification notif = null;
+                //TODO будет Behavior - просто поставим реакцию и присвоим notif что надо
+                for (int i = lwn.size() - 1; i >= 0; i--) {
+                    WebNotification wn = lwn.get(i);
+                    switch (wn.severity) {
+                        case ALARM:
+                        case ALERT:
+                            if (notif == null) {
+                                notif = wn;
+                            }
+
+                            break;
+
+                    }
+                }
+
+                try {
+                    img = ImageIO.read(new File(AppData.getGraphicsWorkDir().getAbsolutePath() + File.separator + "screen.jpg"));
+                    if (notif != null) {
+                        switch (notif.parameterAlias) {
+
+                            case "CHARGE":
+                            case "DOOR_SENSOR":
+                            case "GAS_SENSOR":
+                            case "INTERNAL_HUMIDITY":
+                            case "INTERNAL_TEMP":
+                            case "PIR_SENSOR":
+                            case "VAC_SENSOR":
+                            case "WET_SENSOR":
+
+                                iconImg = ImageIO.read(new File(AppData.getGraphicsWorkDir().getAbsolutePath() + File.separator + notif.parameterAlias + ".png"));
+                                //File iconFile = new File(AppData.getGraphicsWorkDir().getAbsolutePath() + File.separator + notif.parameterAlias + ".svg");
+                                //iconImg = transcodeSVGDocument(iconFile.toURI().toURL(), 21, 30);
+                                break;
+
+                        }
+
+                        if (iconImg == null) {
+                            iconImg = ImageIO.read(new File(AppData.getGraphicsWorkDir().getAbsolutePath() + File.separator + "default_icon.png"));
+                        }
+                    }
+                } catch (IOException e) {
+                }
+
+                g = img.getGraphics();
+                int timeY = 215;
+                if (notif != null) {
+                    //alert
+                    switch (notif.severity) {
+                        case ALARM:
+                            g.setColor(new Color(244, 67, 54));
+                            break;
+                        case ALERT:
+                            g.setColor(new Color(255, 152, 1));
+                            break;
+                        default:
+                            g.setColor(new Color(96, 125, 39));
+                            break;
+                    }
+
+                    g.fillRect(0, 251, 480, 320);
+                    g.setColor(new Color(0, 0, 0));
+
+                    if (iconImg != null) {
+                        //Image iconResized = createResizedCopy(iconImg, 21, 30, true);
+                        g.drawImage(iconImg, 25, 270, 21, 30, null);
+                        // g.dispose();
+                        //g.drawImage(iconResized, 25, 270, null);
+                    }
+
+                    g.setColor(new Color(255, 255, 255));
+                    g.setFont(new Font("Tahoma", Font.PLAIN, 18));
+                    g.drawString(Tools.getFormatedDate(notif.startDate, "HH:mm"), 55, 290);
+                    g.drawString(notif.text, 125, 290);
+
+                    timeY = 180;
+                }
+                //TIME
                 g.setColor(new Color(0, 0, 0));
-
-                g.drawImage(temperatureImg, 25, 270, null);
-
-                g.setColor(new Color(255, 255, 255));
-                g.setFont(new Font("Tahoma", Font.PLAIN, 20));
-                g.drawString(Tools.getFormatedDate(d, "HH:mm"), 55, 290);
+                g.setFont(new Font("Tahoma", Font.PLAIN, 110));
+                g.drawString(Tools.getFormatedDate(new Date(), "HH:mm"), 100, timeY);
             }
-
 
             File file = new File(AppData.getGraphicsWorkDir().getAbsolutePath() + File.separator + TMP_FILE);
             FileOutputStream fos = new FileOutputStream(file);
@@ -164,6 +226,57 @@ public class DisplayModule implements Module {
 
     public static void finish() {
         instance.fbiRunner.finish();
+    }
+
+    /*
+    public static Image transcodeSVGDocument( URL url, int x, int y ){
+    // Create a PNG transcoder.
+    Transcoder t = new PNGTranscoder();
+
+    // Set the transcoding hints.
+    t.addTranscodingHint( PNGTranscoder.KEY_WIDTH,  new Float(x) );
+    t.addTranscodingHint( PNGTranscoder.KEY_HEIGHT, new Float(y) );
+
+    // Create the transcoder input.
+    TranscoderInput input = new TranscoderInput( url.toString() );
+
+    ByteArrayOutputStream ostream = null;
+    try {
+        // Create the transcoder output.
+        ostream = new ByteArrayOutputStream();
+        TranscoderOutput output = new TranscoderOutput( ostream );
+
+        // Save the image.
+        t.transcode( input, output );
+
+        // Flush and close the stream.
+        ostream.flush();
+        ostream.close();
+    } catch( Exception ex ){
+        ex.printStackTrace();
+    }
+
+    // Convert the byte stream into an image.
+    byte[] imgData = ostream.toByteArray();
+    Image img = Toolkit.getDefaultToolkit().createImage( imgData );
+
+    // Return the newly rendered image.
+    return img;
+}
+     */
+    private static BufferedImage createResizedCopy(Image originalImage,
+            int scaledWidth, int scaledHeight,
+            boolean preserveAlpha) {
+        System.out.println("resizing...");
+        int imageType = preserveAlpha ? BufferedImage.TYPE_INT_RGB : BufferedImage.TYPE_INT_ARGB;
+        BufferedImage scaledBI = new BufferedImage(scaledWidth, scaledHeight, imageType);
+        Graphics2D g = scaledBI.createGraphics();
+        if (preserveAlpha) {
+            g.setComposite(AlphaComposite.Src);
+        }
+        g.drawImage(originalImage, 0, 0, scaledWidth, scaledHeight, null);
+        g.dispose();
+        return scaledBI;
     }
 
     public static class FbiRunner extends Thread {

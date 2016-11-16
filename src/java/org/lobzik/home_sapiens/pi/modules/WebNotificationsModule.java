@@ -62,7 +62,9 @@ public class WebNotificationsModule implements Module {
 
     @Override
     public void handleEvent(Event e) {
+        boolean changed = false;
         switch (e.type) {
+            
             case REACTION_EVENT:
                 if (e.name.equals("web_notification")) {
                     WebNotification wn = (WebNotification) e.data.get("WebNotification");
@@ -71,6 +73,7 @@ public class WebNotificationsModule implements Module {
                             notifications.remove(0); //удаляем старые
                         }
                         notifications.add(wn);
+                        changed = true;
                     }
                 }
                 break;
@@ -88,12 +91,16 @@ public class WebNotificationsModule implements Module {
                     }
                     if (index >= 0) {
                         notifications.remove(index);
+                        changed = true;
                     }
 
                 }
                 break;
         }
-
+        if (changed) {
+            Event rereaction = new Event("web_notification_changed", null, Event.Type.REACTION_EVENT);
+            AppData.eventManager.newEvent(rereaction);
+        }
     }
 
     public static List<WebNotification> getNotifications() {
