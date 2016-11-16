@@ -138,7 +138,7 @@ public class InstinctsModule implements Module {
                             case "SOCKET":
                                 if (m.getBooleanValue()) {
                                     uartCommand = BoxSettingsAPI.get("Socket1OnCommand433");
-                                    log.info("Включена розетка");
+                                    log.info("ALIAS:" + alias + ": Включена розетка");
                                     WebNotification wn = new WebNotification(WebNotification.Severity.INFO, alias, "Включена розетка", new Date(), null);
                                     HashMap data = new HashMap();
                                     data.put("WebNotification", wn);
@@ -147,7 +147,7 @@ public class InstinctsModule implements Module {
 
                                 } else {
                                     uartCommand = BoxSettingsAPI.get("Socket1OffCommand433");
-                                    log.info("Выключена розетка");
+                                    log.info("ALIAS:" + alias + ": Выключена розетка");
                                     WebNotification wn = new WebNotification(WebNotification.Severity.INFO, alias, "Отключена розетка", new Date(), null);
                                     HashMap data = new HashMap();
                                     data.put("WebNotification", wn);
@@ -167,7 +167,7 @@ public class InstinctsModule implements Module {
                                     eventData.put("measurement", isDay);
                                     Event newE = new Event("debug", eventData, Event.Type.PARAMETER_UPDATED);
                                     AppData.eventManager.newEvent(newE);
-                                    log.info("Включена лампа 1");
+                                    log.info("ALIAS:" + alias + ": Включена лампа 1");
                                     WebNotification wn = new WebNotification(WebNotification.Severity.INFO, alias, "Включена лампа 1", new Date(), null);
                                     HashMap data = new HashMap();
                                     data.put("WebNotification", wn);
@@ -185,7 +185,7 @@ public class InstinctsModule implements Module {
                                     eventData.put("measurement", isNight);
                                     Event newE = new Event("debug", eventData, Event.Type.PARAMETER_UPDATED);
                                     AppData.eventManager.newEvent(newE);
-                                    log.info("Выключена лампа 1");
+                                    log.info("ALIAS:" + alias + ": Выключена лампа 1");
                                     WebNotification wn = new WebNotification(WebNotification.Severity.INFO, alias, "Отключена лампа 1", new Date(), null);
                                     HashMap data = new HashMap();
                                     data.put("WebNotification", wn);
@@ -198,7 +198,7 @@ public class InstinctsModule implements Module {
                             case "LAMP_2":
                                 if (m.getBooleanValue()) {
                                     uartCommand = BoxSettingsAPI.get("Lamp2OnCommand433");
-                                    log.info("Включена лампа 2");
+                                    log.info("ALIAS:" + alias + ": Включена лампа 2");
                                     WebNotification wn = new WebNotification(WebNotification.Severity.INFO, alias, "Включена лампа 2", new Date(), null);
                                     HashMap data = new HashMap();
                                     data.put("WebNotification", wn);
@@ -206,7 +206,7 @@ public class InstinctsModule implements Module {
                                     AppData.eventManager.newEvent(reaction);
                                 } else {
                                     uartCommand = BoxSettingsAPI.get("Lamp2OffCommand433");
-                                    log.info("Выключена лампа 2");
+                                    log.info("ALIAS:" + alias + ": Выключена лампа 2");
                                     WebNotification wn = new WebNotification(WebNotification.Severity.INFO, alias, "Отключена лампа 2", new Date(), null);
                                     HashMap data = new HashMap();
                                     data.put("WebNotification", wn);
@@ -258,7 +258,7 @@ public class InstinctsModule implements Module {
                                     if (m.getDoubleValue() > BoxSettingsAPI.getDouble("VACAlertMax") || m.getDoubleValue() < BoxSettingsAPI.getDouble("VACAlertMin")) {
                                         if (p.getState() != Parameter.State.ALARM) {
                                             p.setState(Parameter.State.ALARM);
-                                            log.error("Напряжение сети вне пределов, отключаем зарядку");
+                                            log.error("ALIAS:" + alias + ": Напряжение сети вне пределов, отключаем зарядку");
                                             HashMap data = new HashMap();
                                             data.put("uart_command", "charge=off"); //disable charging if power is NOT ok
                                             Event reaction = new Event("internal_uart_command", data, Event.Type.USER_ACTION);
@@ -274,7 +274,7 @@ public class InstinctsModule implements Module {
                                     } else {
                                         if (p.getState() != Parameter.State.OK) {
                                             p.setState(Parameter.State.OK);
-                                            log.info("Включаем зарядку");
+                                            log.info("ALIAS:" + alias + ": Включаем зарядку");
                                             HashMap data = new HashMap();
                                             data.put("uart_command", "charge=on"); //enable charging if power is ok
                                             Event reaction = new Event("internal_uart_command", data, Event.Type.USER_ACTION);
@@ -316,7 +316,7 @@ public class InstinctsModule implements Module {
                                     AppData.eventManager.newEvent(newE);
 
                                     if (AppData.measurementsCache.getAvgMeasurementFrom(p, System.currentTimeMillis() - 300000).getDoubleValue() < 5.8) {
-                                        log.fatal("Уровень заряда АКБ критически низок! Отключаем систему");
+                                        log.fatal("ALIAS:" + alias + ": Уровень заряда АКБ критически низок! Отключаем систему");
                                         Event shutdown = new Event("shutdown", null, Event.Type.SYSTEM_EVENT);
                                         AppData.eventManager.newEvent(shutdown);
                                     }

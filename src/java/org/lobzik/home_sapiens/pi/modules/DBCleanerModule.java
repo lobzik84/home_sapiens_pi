@@ -30,7 +30,7 @@ public class DBCleanerModule extends Thread implements Module {
     private static boolean run = true;
     private static boolean clearingInProgress = false;
     private static final int DAYS_TO_STORE_RAW_SENSORS_DATA = 5;
-    private static final int DAYS_TO_STORE_DEBUG_MSG = 1;
+    private static final int DAYS_TO_STORE_LOG_MSG = 5;
 
     private DBCleanerModule() { //singleton
     }
@@ -81,7 +81,7 @@ public class DBCleanerModule extends Thread implements Module {
     private void doClearing() {
         try {
             conn = DBTools.openConnection(BoxCommonData.dataSourceName);
-            DBSelect.executeStatement("delete from logs where level = 'DEBUG' and datediff(curdate(), dated) > " + DAYS_TO_STORE_DEBUG_MSG, null, conn);
+            DBSelect.executeStatement("delete from logs where datediff(curdate(), dated) > " + DAYS_TO_STORE_LOG_MSG, null, conn);
             log.info("Log table cleared");
 
             for (Integer paramId : AppData.parametersStorage.getParameterIds()) {

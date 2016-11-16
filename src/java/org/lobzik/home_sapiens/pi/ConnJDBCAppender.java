@@ -17,6 +17,7 @@ import javax.sql.DataSource;
 
 import org.apache.log4j.Appender;
 import org.apache.log4j.AsyncAppender;
+import org.apache.log4j.Level;
 import org.apache.log4j.PatternLayout;
 import org.apache.log4j.jdbc.JDBCAppender;
 import org.lobzik.tools.db.mysql.DBTools;
@@ -52,6 +53,7 @@ public class ConnJDBCAppender extends JDBCAppender
 		AsyncAppender asyncAppender = new AsyncAppender();
   		asyncAppender.setBufferSize(1000);
   		asyncAppender.addAppender(jdbcAppender);
+                asyncAppender.setThreshold(Level.INFO);
   		return asyncAppender;
 	}
 }

@@ -285,7 +285,7 @@ public class JSONAPI {
                     if (history.isEmpty()) {
                         continue;
                     }
-                   // double calibration = Tools.parseDouble(p.getCalibration(), 1);
+                    // double calibration = Tools.parseDouble(p.getCalibration(), 1);
                     JSONObject[] points = new JSONObject[history.size()];
                     for (int i = 0; i < history.size(); i++) {
                         HashMap h = history.get(i);
@@ -414,12 +414,23 @@ public class JSONAPI {
                     default:
                         logRecord.put("severity", "INFO");
                         break;
-                        
+
                 }
                 logRecord.put("id", (int) h.get("id"));
 
                 logRecord.put("date", ((Date) h.get("dated")).getTime());
-                logRecord.put("text", (String) h.get("message"));
+                String message = (String) h.get("message");
+                String alias = "DEFAULT";
+                if (message.startsWith("ALIAS:")) {
+                    message = message.substring(6);
+                    int in = message.indexOf(": ");
+                    if (in > 0) {
+                        alias = message.substring(0, in);
+                        message = message.substring(in + 2);
+                    }
+                }
+                logRecord.put("alias", alias);
+                logRecord.put("text", message);
                 logRecords[i] = logRecord;
             }
             JSONArray recs = new JSONArray(logRecords);
