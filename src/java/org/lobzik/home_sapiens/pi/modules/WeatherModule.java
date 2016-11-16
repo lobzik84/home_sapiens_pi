@@ -5,8 +5,14 @@
  */
 package org.lobzik.home_sapiens.pi.modules;
 
+import com.luckycatlabs.sunrisesunset.SunriseSunsetCalculator;
+import com.luckycatlabs.sunrisesunset.dto.Location;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import org.apache.log4j.Appender;
 import org.apache.log4j.Logger;
 import org.lobzik.home_sapiens.entity.Measurement;
@@ -33,6 +39,8 @@ public class WeatherModule extends Thread implements Module {
     private static final long MAXTIMEDIFF = 24 * 3600 * 1000l; //forecast older then 1 day is not valid
     private static double latitude = 55.784884;
     private static double longitude = 37.613116; //default city is the most default
+    private static Calendar sunrise = null;
+    private static Calendar sunset = null;
 
     private WeatherModule() { //singleton
     }
@@ -56,6 +64,15 @@ public class WeatherModule extends Thread implements Module {
     public void run() {
         setName(this.getClass().getSimpleName() + "-Thread");
         log.info("Starting " + getName());
+        //defaults
+        sunrise = new GregorianCalendar();
+        sunrise.set(Calendar.HOUR, 8);
+        sunrise.set(Calendar.MINUTE, 0);
+
+        sunset = new GregorianCalendar();
+        sunset.set(Calendar.HOUR, 21);
+        sunset.set(Calendar.MINUTE, 0);
+
         EventManager.subscribeForEventType(this, Event.Type.TIMER_EVENT);
         EventManager.subscribeForEventType(this, Event.Type.SYSTEM_EVENT);
         while (run) {
@@ -67,6 +84,13 @@ public class WeatherModule extends Thread implements Module {
             }
             if (run) {
                 try {
+                    Location location = new Location(latitude + "", longitude + "");
+                    SunriseSunsetCalculator calculator = new SunriseSunsetCalculator(location, Locale.getDefault().getDisplayName());
+
+                    sunrise = calculator.getOfficialSunriseCalendarForDate(Calendar.getInstance());
+                    sunset = calculator.getOfficialSunsetCalendarForDate(Calendar.getInstance());
+                    log.debug("Daytime is " + Tools.getFormatedDate(sunrise.getTime(), "HH:mm") + " - " + Tools.getFormatedDate(sunset.getTime(), "HH:mm"));
+
                     List<Forecast> forecast = WeatherGetter.getWeatherInfo(latitude, longitude).getList();
                     if (!forecast.isEmpty()) {
                         Forecast mostActual = null;
@@ -116,7 +140,7 @@ public class WeatherModule extends Thread implements Module {
                             paramId = AppData.parametersStorage.resolveAlias("CLOUDS");
                             if (paramId > 0) {
                                 Parameter p = AppData.parametersStorage.getParameter(paramId);
-                                Measurement m = new Measurement(p, (double)mostActual.getClouds(), mostActual.getTime().getTime());
+                                Measurement m = new Measurement(p, (double) mostActual.getClouds(), mostActual.getTime().getTime());
                                 if (!test) {
                                     HashMap eventData = new HashMap();
                                     eventData.put("parameter", p);
@@ -151,6 +175,28 @@ public class WeatherModule extends Thread implements Module {
             log.debug("Getting forecast");
             notifyThread();
         }
+        if (e.type == Event.Type.TIMER_EVENT && e.name.equals("update_display")) {//раз в минуту
+            if (System.currentTimeMillis() > sunrise.getTimeInMillis() && System.currentTimeMillis() < sunset.getTimeInMillis()) {
+                //DAYTIME
+                Parameter pNightTime = AppData.parametersStorage.getParameter(AppData.parametersStorage.resolveAlias("NIGHTTIME"));
+                Measurement isDay = new Measurement(pNightTime, false);
+                HashMap eventData = new HashMap();
+                eventData.put("parameter", pNightTime);
+                eventData.put("measurement", isDay);
+                Event newE = new Event("daytime", eventData, Event.Type.PARAMETER_UPDATED);
+                AppData.eventManager.newEvent(newE);
+            } else {
+                //NIGHTTIME
+                Parameter pNightTime = AppData.parametersStorage.getParameter(AppData.parametersStorage.resolveAlias("NIGHTTIME"));
+                Measurement isNight = new Measurement(pNightTime, true);
+                HashMap eventData = new HashMap();
+                eventData.put("parameter", pNightTime);
+                eventData.put("measurement", isNight);
+                Event newE = new Event("nighttime", eventData, Event.Type.PARAMETER_UPDATED);
+                AppData.eventManager.newEvent(newE);
+            }
+        }
+
     }
 
     private void notifyThread() {
