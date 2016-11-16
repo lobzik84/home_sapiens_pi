@@ -495,6 +495,7 @@ public class JSONServlet extends HttpServlet {
         String newLogin = json.getString("new_login");
         String newSalt = json.getString("new_salt");
         String newVerifier = json.getString("new_verifier");
+        String newKeyfile = json.getString("new_keyfile");
 
         json = new JSONObject();
         if (M_client.equals(Mstr)) {
@@ -505,6 +506,19 @@ public class JSONServlet extends HttpServlet {
 
                 List<HashMap> resList = DBSelect.getRows(sSQL, params, conn);
                 if (resList.size() > 0) {
+                    if (newLogin.length() < 3) {
+                        throw new Exception("too short login");
+                    }
+                    if (newSalt.length() < 3) {
+                        throw new Exception("too short salt");
+                    }
+                    if (newVerifier.length() < 3) {
+                        throw new Exception("too short verifier");
+                    }
+                    if (newKeyfile.length() < 3) {
+                        throw new Exception("too short keyfile");
+                    }
+
                     M = sha256(A.toString(16) + M.toString(16) + S.toString(16));
                     int userId = Tools.parseInt(resList.get(0).get("id"), 0);
                     String publicKey = (String) resList.get(0).get("public_key");
@@ -525,10 +539,13 @@ public class JSONServlet extends HttpServlet {
                     userMap.put("login", newLogin);
                     userMap.put("salt", newSalt);
                     userMap.put("verifier", newVerifier);
+                    userMap.put("keyfile", newKeyfile);
                     userMap.put("synced", 0);
                     DBTools.updateRow("users", userMap, conn);
                     json.put("result", "success");
                     json.put("message", "User updated");
+                    Event e = new Event("upload_unsynced_users_to_server", new HashMap(), Event.Type.SYSTEM_EVENT);
+                    AppData.eventManager.newEvent(e);
                 }
 
             } catch (Exception e) {
