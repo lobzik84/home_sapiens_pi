@@ -193,6 +193,9 @@ public class BehaviorModule implements Module {
                         case "BATT_CHARGE":
                             parameterBATT_CHARGEActions(e);
                         break;                        
+                        case "BATT_TEMP":
+                            parameterBATT_TEMPActions(e);
+                        break;  
                     }
                 }
                 catch (Exception EE){
@@ -234,7 +237,6 @@ public class BehaviorModule implements Module {
         Event e = new Event("send_sms", data, Event.Type.USER_ACTION);
         AppData.eventManager.newEvent(e);
     }
-
         
     public static void actionEmail(WebNotification.Severity severity, String message){
          HashMap data = new HashMap();
@@ -259,7 +261,6 @@ public class BehaviorModule implements Module {
         Event reaction = new Event ("web_notification", data, Event.Type.REACTION_EVENT);
         AppData.eventManager.newEvent(reaction);
     }
-    
     
     public static Condition getConditionById(List<Condition> conditions, int conditionId){
         Condition result=null;
@@ -287,8 +288,60 @@ public class BehaviorModule implements Module {
         }
         return result;
     }
- 
-           
+       
+    public void parameterBATT_TEMPActions(Event e){ //Door Sensor
+        //Заряд аккумуляторов меньше 30%
+        String alias ="BAT_CHARGE_LESS_30";
+        Parameter p = (Parameter)e.data.get("parameter");
+        Measurement m = (Measurement) e.data.get("measurement");
+        Parameter chargeEnabledP = AppData.parametersStorage.getParameter(AppData.parametersStorage.resolveAlias("CHARGE_ENABLED"));
+        boolean chargeEnabled = measurementsCache.getLastMeasurement(chargeEnabledP).getBooleanValue();
+        
+        if (m.getIntegerValue()<BoxSettingsAPI.getDouble("VBatAlertCritical") && !chargeEnabled){
+            Condition c = getConditionByAlias(alias + (BoxMode.isArmed()?"_ARMED":"_IDLE"));
+            runStandardActions(c,m,p);
+            c.setState(1);
+            c = getConditionByAlias("BAT_CHARGE_NORMAL_IDLE");
+            c.setState(0);
+            c = getConditionByAlias("BAT_CHARGE_NORMAL_ARMED");
+            c.setState(0);
+            
+            /*action TODO	
+            Записать полный бэкап на сервер
+            Выключить одну камеру
+            Выключить экран
+            отправить историю всех событий на email хозяина 
+            */
+        
+        }
+        
+        //Заряд аккумуляторов < 50% и > 30%
+        alias ="BAT_CHARGE_BETWEEN_30_50";
+        if (m.getIntegerValue()>=BoxSettingsAPI.getDouble("VBatAlertCritical") && m.getIntegerValue()<BoxSettingsAPI.getDouble("VBatAlertMinor") && !chargeEnabled){
+            Condition c = getConditionByAlias(alias + (BoxMode.isArmed()?"_ARMED":"_IDLE"));
+            runStandardActions(c,m,p);
+            c.setState(1);
+            c = getConditionByAlias("BAT_CHARGE_NORMAL_IDLE");
+            c.setState(0);
+            c = getConditionByAlias("BAT_CHARGE_NORMAL_ARMED");
+            c.setState(0);
+        }
+        
+        if (chargeEnabled){
+            Condition c = getConditionByAlias("BAT_CHARGE_LESS_30_ARMED");
+            c.setState(0);
+            c = getConditionByAlias("BAT_CHARGE_LESS_30_IDLE");
+            c.setState(0);
+            c = getConditionByAlias("BAT_CHARGE_BETWEEN_30_50_ARMED");
+            c.setState(0);
+            c = getConditionByAlias("BAT_CHARGE_BETWEEN_30_50_IDLE");
+            c.setState(0);
+        }
+        
+        
+          
+    }
+    
     public void parameterBATT_CHARGEActions(Event e){ //Door Sensor
         //Заряд аккумуляторов меньше 30%
         String alias ="BAT_CHARGE_LESS_30";
@@ -421,3 +474,4 @@ public class BehaviorModule implements Module {
     }
     
 }
+
