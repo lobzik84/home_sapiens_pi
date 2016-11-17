@@ -176,7 +176,12 @@ public class WeatherModule extends Thread implements Module {
             notifyThread();
         }
         if (e.type == Event.Type.TIMER_EVENT && e.name.equals("update_display")) {//раз в минуту
-            if (System.currentTimeMillis() > sunrise.getTimeInMillis() && System.currentTimeMillis() < sunset.getTimeInMillis()) {
+            Calendar current = new GregorianCalendar();
+            int dayMinutes = current.get(Calendar.HOUR_OF_DAY) * 60 + current.get(Calendar.MINUTE);
+            int riseMins = sunrise.get(Calendar.HOUR_OF_DAY) * 60 + sunrise.get(Calendar.MINUTE);
+            int setMins = sunset.get(Calendar.HOUR_OF_DAY) * 60 + sunset.get(Calendar.MINUTE);
+            
+            if (dayMinutes > riseMins && dayMinutes < setMins) {
                 //DAYTIME
                 Parameter pNightTime = AppData.parametersStorage.getParameter(AppData.parametersStorage.resolveAlias("NIGHTTIME"));
                 Measurement isDay = new Measurement(pNightTime, false);
