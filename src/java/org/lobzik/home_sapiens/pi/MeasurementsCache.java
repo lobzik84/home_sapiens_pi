@@ -37,7 +37,7 @@ public class MeasurementsCache {
         return instance;
 
     }
-    
+
     public void add(Measurement m) {
         Parameter p = m.getParameter();
         List<Measurement> history = cache.get(p);
@@ -48,12 +48,14 @@ public class MeasurementsCache {
         cache.put(p, history);
     }
 
-    public Measurement getLastMeasurement (Parameter p) {
+    public Measurement getLastMeasurement(Parameter p) {
         List<Measurement> history = cache.get(p);
-        if (history.size() < 1) return null;
-        return history.get(history.size()-1);
+        if (history.size() < 1) {
+            return null;
+        }
+        return history.get(history.size() - 1);
     }
-    
+
     public Measurement getAvgMeasurement(Parameter p) {
         return getAvgMeasurementFrom(p, 0l);
     }
@@ -76,21 +78,43 @@ public class MeasurementsCache {
         }
         long lastMeasurement = 0l;
         int occurencies = 0;
-        double sum = 0d;
-
-        for (Measurement m : history) {
-            if (m.getTime() > millis && m.getDoubleValue() != null) {
-                occurencies++;
-                if (m.getTime() > lastMeasurement) {
-                    lastMeasurement = m.getTime(); //get last measure time, average value, calculetd for last measure 
+        Measurement avg = null;
+        switch (p.getType()) {
+            case DOUBLE:
+                double sum = 0d;
+                for (Measurement m : history) {
+                    if (m.getTime() > millis && m.getDoubleValue() != null) {
+                        occurencies++;
+                        if (m.getTime() > lastMeasurement) {
+                            lastMeasurement = m.getTime(); //get last measure time, average value, calculetd for last measure 
+                        }
+                        sum += m.getDoubleValue();
+                    }
                 }
-                sum += m.getDoubleValue();
-            }
+                if (occurencies == 0) {
+                    return null;
+                }
+                avg = new Measurement(p, sum / occurencies, lastMeasurement);
+                break;
+
+            case INTEGER:
+                int sumI = 0;
+                for (Measurement m : history) {
+                    if (m.getTime() > millis && m.getIntegerValue() != null) {
+                        occurencies++;
+                        if (m.getTime() > lastMeasurement) {
+                            lastMeasurement = m.getTime(); //get last measure time, average value, calculetd for last measure 
+                        }
+                        sumI += m.getIntegerValue();
+                    }
+                }
+                if (occurencies == 0) {
+                    return null;
+                }
+                avg = new Measurement(p, (int) (sumI / occurencies), lastMeasurement);
+                break;
         }
-        if (occurencies == 0) {
-            return null;
-        }
-        Measurement avg = new Measurement(p, sum / occurencies, lastMeasurement);
+
         return avg;
     }
 
@@ -102,15 +126,31 @@ public class MeasurementsCache {
         if (history.isEmpty()) {
             return null;
         }
-        Measurement max = history.get(0);
-
-        for (Measurement m : history) {
-            if (m.getTime() > millis && m.getDoubleValue() != null) {
-                if (m.getDoubleValue() > max.getDoubleValue()) {
-                    max = m;
+        Measurement max = null;
+        switch (p.getType()) {
+            case DOUBLE:
+                max = new Measurement(p, Double.MIN_VALUE);
+                for (Measurement m : history) {
+                    if (m.getTime() > millis && m.getDoubleValue() != null) {
+                        if (m.getDoubleValue() > max.getDoubleValue()) {
+                            max = new Measurement(p, m.getDoubleValue(), m.getTime());
+                        }
+                    }
                 }
-            }
+                break;
+
+            case INTEGER:
+                max = new Measurement(p, Integer.MIN_VALUE);
+                for (Measurement m : history) {
+                    if (m.getTime() > millis && m.getIntegerValue() != null) {
+                        if (m.getIntegerValue() > max.getIntegerValue()) {
+                            max = new Measurement(p, m.getIntegerValue(), m.getTime());
+                        }
+                    }
+                }
+                break;
         }
+
         return max;
     }
 
@@ -122,15 +162,32 @@ public class MeasurementsCache {
         if (history.isEmpty()) {
             return null;
         }
-        Measurement min = history.get(0);
 
-        for (Measurement m : history) {
-            if (m.getTime() > millis && m.getDoubleValue() != null) {
-                if (m.getDoubleValue() < min.getDoubleValue()) {
-                    min = m;
+        Measurement min = null;
+        switch (p.getType()) {
+            case DOUBLE:
+                min = new Measurement(p, Double.MAX_VALUE);
+                for (Measurement m : history) {
+                    if (m.getTime() > millis && m.getDoubleValue() != null) {
+                        if (m.getDoubleValue() < min.getDoubleValue()) {
+                            min = new Measurement(p, m.getDoubleValue(), m.getTime());
+                        }
+                    }
                 }
-            }
+                break;
+
+            case INTEGER:
+                min = new Measurement(p, Integer.MAX_VALUE);
+                for (Measurement m : history) {
+                    if (m.getTime() > millis && m.getIntegerValue() != null) {
+                        if (m.getIntegerValue() < min.getIntegerValue()) {
+                            min = new Measurement(p, m.getIntegerValue(), m.getTime());
+                        }
+                    }
+                }
+                break;
         }
+
         return min;
     }
 
@@ -144,9 +201,10 @@ public class MeasurementsCache {
         }
         int count = 0;
         Boolean prev = history.get(0).getBooleanValue();
-        for (Measurement m : history) { 
-            if (m.getBooleanValue().equals(true) && prev.equals(false))
+        for (Measurement m : history) {
+            if (m.getBooleanValue().equals(true) && prev.equals(false)) {
                 count++;
+            }
             prev = m.getBooleanValue();
         }
         return count;
