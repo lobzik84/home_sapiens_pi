@@ -45,6 +45,8 @@ import org.lobzik.tools.db.mysql.DBTools;
  */
 public class JSONAPI {
 
+    private static long lastParametersWriteTime = 0;
+
     public static void doEncryptedUserCommand(JSONObject json, RSAPrivateKey boxKey, RSAPublicKey userPublicKey) throws Exception {
         String commandName = json.getString("command_name");
         HashMap commandData = new HashMap();
@@ -138,15 +140,20 @@ public class JSONAPI {
             JSONObject parJson = new JSONObject();
             parJson.put("par_type", p.getType().toString());
             Measurement m = mc.getLastMeasurement(p);
+            if (p.getType() == Parameter.Type.BOOLEAN) {
+                Integer transferCounts = AppData.measurementsCache.getTransferTrueCountFrom(p, lastParametersWriteTime);
+                parJson.put("transfer_counts", transferCounts);
+            }
             parJson.put("last_value", m.toStringValue());
-            parJson.put("last_date", m.getTime());
+            //parJson.put("last_date", m.getTime());//нафиг не нужно
             if (p.getState() != null && p.getState() != Parameter.State.OK) {
                 parJson.put("state", p.getState().toString());
             }
 
             paramsJson.put(p.getAlias() + "", parJson);
         }
-
+        lastParametersWriteTime = System.currentTimeMillis();
+        
         paramsJson.put("mode", BoxMode.string());
         paramsJson.put("box_time", System.currentTimeMillis());
 
@@ -266,7 +273,7 @@ public class JSONAPI {
         }
 
         JSONObject historyJson = new JSONObject();
-        historyJson.put("test", "test");
+        //historyJson.put("test", "test");
         historyJson.put("from", from);
         historyJson.put("to", to);
         historyJson.put("quant", quant);
@@ -274,10 +281,13 @@ public class JSONAPI {
         try (Connection conn = DBTools.openConnection(BoxCommonData.dataSourceName)) {
 
             List<JSONObject> historyList = new LinkedList();
+            List<JSONObject> parametersList = new LinkedList();
             for (Integer pId : AppData.parametersStorage.getParameterIds()) {
                 if (selected.isEmpty() || selected.contains(pId)) {
                     Parameter p = AppData.parametersStorage.getParameter(pId);
+
                     if (p.getType() == Parameter.Type.DOUBLE) {
+                        JSONObject parameterData = new JSONObject();
                         //String alias = p.getAlias();
                         String sSQL = "select  unix_timestamp(sd.date) as x,floor(unix_timestamp(sd.date)/" + quant / 1000 + ") as udate, \n"
                                 + " avg(sd.value_d) as value_d\n"
@@ -293,6 +303,13 @@ public class JSONAPI {
                             continue;
                         }
                         // double calibration = Tools.parseDouble(p.getCalibration(), 1);
+                        parameterData.put("alias", p.getAlias());
+                        parameterData.put("name", p.getName());
+                        parameterData.put("pattern", p.getPattern());
+                        parameterData.put("description", p.getDescription());
+                        //what else?
+                        parametersList.add(parameterData);
+
                         JSONObject[] points = new JSONObject[history.size()];
                         for (int i = 0; i < history.size(); i++) {
                             HashMap h = history.get(i);
@@ -320,6 +337,13 @@ public class JSONAPI {
             }
             JSONArray historyListJson = new JSONArray(histories);
 
+            JSONObject[] parameters = new JSONObject[parametersList.size()];
+            for (int i = 0; i < parametersList.size(); i++) {
+                parameters[i] = parametersList.get(i);
+            }
+            JSONArray legengListJson = new JSONArray(parameters);
+
+            historyJson.put("legend", legengListJson);
             historyJson.put("list", historyListJson);
 
         } catch (Exception e) {
@@ -403,7 +427,7 @@ public class JSONAPI {
                 default:
                     break;
             }
-            sSQL += " order by l.dated limit 100;";
+            sSQL += " order by l.dated desc limit 100;";
             List<HashMap> logs = DBSelect.getRows(sSQL, conn);
             JSONObject[] logRecords = new JSONObject[logs.size()];
             for (int i = 0; i < logs.size(); i++) {
