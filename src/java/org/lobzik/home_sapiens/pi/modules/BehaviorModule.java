@@ -93,13 +93,12 @@ public class BehaviorModule implements Module {
                 List<HashMap> userData = DBSelect.getRows(sSQL, conn);
                 if (userData.size() > 0) {
                     HashMap ud = userData.get(0);
-                    mobileNumber = Tools.getStringValue(ud.get("login"), "");
+                    mobileNumber = Tools.getStringValue(ud.get("login"), "").replace("(", "").replace(")", "").replaceAll("-", "");
                     email = Tools.getStringValue(ud.get("email"), "");
-                    //mobileNumber=mobileNumber.replaceAll("(", "").replaceAll(")", "").replaceAll("-", "");
                }
                     
             } catch (Exception ee) {
-            ee.printStackTrace();
+                ee.printStackTrace();
             }
             
             try {
@@ -115,7 +114,7 @@ public class BehaviorModule implements Module {
                                 Tools.getStringValue(c.get("name"), ""), 
                                 MODE.valueOf(Tools.getStringValue(c.get("box_mode"), "")), 
                                 Tools.parseInt(c.get("state"), 0));
-                    conditions.add(cond);
+                                conditions.add(cond);
                     }
                }
                     
@@ -246,11 +245,28 @@ public class BehaviorModule implements Module {
          AppData.eventManager.newEvent(e);
     }
 
-    public static void actionDisplay(WebNotification.Severity severity, String message){
-         HashMap data = new HashMap();
+    public static void actionDisplay(WebNotification.Severity severity, String message, Parameter p, Condition c, Action a){
+         
+        /*
+        HashMap data = new HashMap();
          data.put("message", message);
          Event e = new Event("update_display", data, Event.Type.SYSTEM_EVENT);
          AppData.eventManager.newEvent(e);
+         */
+         
+        WebNotification dn = new WebNotification(a.severity, p.getAlias(), message, new Date(), null, c.getAlias());
+        HashMap data3 = new HashMap();
+        data3.put("DisplayNotification", dn);
+        data3.put("ConditionAlias", c.getAlias());
+        Event reaction3 = new Event((c.state==0?"delete_":"") + "display_notification", data3, Event.Type.REACTION_EVENT);
+        AppData.eventManager.newEvent(reaction3);
+
+        /*
+        HashMap data3 = new HashMap();
+        data3.put("ConditionAlias", "VAC_SENSOR_OUT_RANGE");
+        Event reaction3 = new Event("delete_display_notification", data3, Event.Type.REACTION_EVENT);
+        AppData.eventManager.newEvent(reaction3);
+       */ 
     }
     
     public static void actionWebNotify(WebNotification.Severity severity, String message, String parameterAlias){
@@ -299,8 +315,8 @@ public class BehaviorModule implements Module {
         
         if (m.getIntegerValue()<BoxSettingsAPI.getDouble("VBatAlertCritical") && !chargeEnabled){
             Condition c = getConditionByAlias(alias + (BoxMode.isArmed()?"_ARMED":"_IDLE"));
-            runStandardActions(c,m,p);
             c.setState(1);
+            runStandardActions(c,m,p);
             c = getConditionByAlias("BAT_CHARGE_NORMAL_IDLE");
             c.setState(0);
             c = getConditionByAlias("BAT_CHARGE_NORMAL_ARMED");
@@ -319,8 +335,8 @@ public class BehaviorModule implements Module {
         alias ="BAT_CHARGE_BETWEEN_30_50";
         if (m.getIntegerValue()>=BoxSettingsAPI.getDouble("VBatAlertCritical") && m.getIntegerValue()<BoxSettingsAPI.getDouble("VBatAlertMinor") && !chargeEnabled){
             Condition c = getConditionByAlias(alias + (BoxMode.isArmed()?"_ARMED":"_IDLE"));
-            runStandardActions(c,m,p);
             c.setState(1);
+            runStandardActions(c,m,p);
             c = getConditionByAlias("BAT_CHARGE_NORMAL_IDLE");
             c.setState(0);
             c = getConditionByAlias("BAT_CHARGE_NORMAL_ARMED");
@@ -352,8 +368,8 @@ public class BehaviorModule implements Module {
         
         if (m.getIntegerValue()<BoxSettingsAPI.getDouble("VBatAlertCritical") && !chargeEnabled){
             Condition c = getConditionByAlias(alias + (BoxMode.isArmed()?"_ARMED":"_IDLE"));
-            runStandardActions(c,m,p);
             c.setState(1);
+            runStandardActions(c,m,p);
             c = getConditionByAlias("BAT_CHARGE_NORMAL_IDLE");
             c.setState(0);
             c = getConditionByAlias("BAT_CHARGE_NORMAL_ARMED");
@@ -364,8 +380,8 @@ public class BehaviorModule implements Module {
         alias ="BAT_CHARGE_BETWEEN_30_50";
         if (m.getIntegerValue()>=BoxSettingsAPI.getDouble("VBatAlertCritical") && m.getIntegerValue()<BoxSettingsAPI.getDouble("VBatAlertMinor") && !chargeEnabled){
             Condition c = getConditionByAlias(alias + (BoxMode.isArmed()?"_ARMED":"_IDLE"));
-            runStandardActions(c,m,p);
             c.setState(1);
+            runStandardActions(c,m,p);
             c = getConditionByAlias("BAT_CHARGE_NORMAL_IDLE");
             c.setState(0);
             c = getConditionByAlias("BAT_CHARGE_NORMAL_ARMED");
@@ -395,8 +411,8 @@ public class BehaviorModule implements Module {
 
         if (m.getBooleanValue()){
             Condition c = getConditionByAlias(alias + (BoxMode.isArmed()?"_ARMED":"_IDLE"));
-            runStandardActions(c,m,p);
             c.setState(1);
+            runStandardActions(c,m,p);
         }
         else
         {
@@ -415,8 +431,8 @@ public class BehaviorModule implements Module {
         Measurement mMin = measurementsCache.getMinMeasurementFrom(p, System.currentTimeMillis()-1000*60*VACTimeout);
         if (mMax.getDoubleValue()<BoxSettingsAPI.getDouble("VACAlertMin")){
             Condition c = getConditionByAlias(alias + (BoxMode.isArmed()?"_ARMED":"_IDLE"));
-            runStandardActions(c,mMax,p);
             c.setState(1);
+            runStandardActions(c,mMax,p);
             c = getConditionByAlias("VAC_SENSOR_POWER_RECOVERED_ARMED");
             c.setState(0);
             c = getConditionByAlias("VAC_SENSOR_POWER_RECOVERED_IDLE");
@@ -427,8 +443,8 @@ public class BehaviorModule implements Module {
         alias = "VAC_SENSOR_POWER_RECOVERED";
         if (mMax.getDoubleValue() < BoxSettingsAPI.getDouble("VACAlertMax") && mMin.getDoubleValue() < BoxSettingsAPI.getDouble("VACAlertMin")){
             Condition c = getConditionByAlias(alias + (BoxMode.isArmed()?"_ARMED":"_IDLE"));
-            runStandardActions(c,mMax,p);
             c.setState(1);
+            runStandardActions(c,mMax,p);
             c = getConditionByAlias("VAC_SENSOR_POWER_LOSS_ARMED");
             c.setState(0);
             c = getConditionByAlias("VAC_SENSOR_POWER_LOSS_IDLE");
@@ -440,11 +456,9 @@ public class BehaviorModule implements Module {
         alias = "VAC_SENSOR_UNSTABLE";
         if (m.getDoubleValue() > BoxSettingsAPI.getDouble("VACAlertMax") || m.getDoubleValue() < BoxSettingsAPI.getDouble("VACAlertMin")){
             Condition c = getConditionByAlias(alias + (BoxMode.isArmed()?"_ARMED":"_IDLE"));
-            runStandardActions(c,m,p);
             c.setState(1);
+            runStandardActions(c,m,p);
         }
-        
-
     }
     
     public void runStandardActions(Condition c, Measurement m, Parameter p){
@@ -454,7 +468,7 @@ public class BehaviorModule implements Module {
                 message= message.replaceAll("<%=VALUE%>", m.toStringValue());
                 switch (a.module) {
                     case "DisplayModule":
-                        actionDisplay(a.severity, message);
+                        actionDisplay(a.severity, message, p, c, a);
                         break;
                     case "Logger":
                         actionLog(a.severity, message);
