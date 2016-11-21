@@ -221,4 +221,9 @@ public class MeasurementsCache {
         }
         return count;
     }
+    
+    public List<Measurement> getHistory(Parameter p) {
+        List<Measurement> history = cache.get(p);
+        return history;
+    }
 }

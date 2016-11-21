@@ -159,14 +159,7 @@ public class InstinctsModule implements Module {
                             case "LAMP_1":
                                 if (m.getBooleanValue()) {
                                     uartCommand = BoxSettingsAPI.get("Lamp1OnCommand433");
-                                    //FOR DEBUG ONLY
-                                    Parameter pNightTime = AppData.parametersStorage.getParameter(AppData.parametersStorage.resolveAlias("NIGHTTIME"));
-                                    Measurement isDay = new Measurement(pNightTime, false);
-                                    HashMap eventData = new HashMap();
-                                    eventData.put("parameter", pNightTime);
-                                    eventData.put("measurement", isDay);
-                                    Event newE = new Event("debug", eventData, Event.Type.PARAMETER_UPDATED);
-                                    AppData.eventManager.newEvent(newE);
+
                                     log.info("ALIAS:" + alias + ": Включена лампа 1");
                                     WebNotification wn = new WebNotification(WebNotification.Severity.INFO, alias, "Включена лампа 1", new Date(), null);
                                     HashMap data = new HashMap();
@@ -177,14 +170,6 @@ public class InstinctsModule implements Module {
                                 } else {
                                     uartCommand = BoxSettingsAPI.get("Lamp1OffCommand433");
 
-                                    //FOR DEBUG ONLY
-                                    Parameter pNightTime = AppData.parametersStorage.getParameter(AppData.parametersStorage.resolveAlias("NIGHTTIME"));
-                                    Measurement isNight = new Measurement(pNightTime, true);
-                                    HashMap eventData = new HashMap();
-                                    eventData.put("parameter", pNightTime);
-                                    eventData.put("measurement", isNight);
-                                    Event newE = new Event("debug", eventData, Event.Type.PARAMETER_UPDATED);
-                                    AppData.eventManager.newEvent(newE);
                                     log.info("ALIAS:" + alias + ": Выключена лампа 1");
                                     WebNotification wn = new WebNotification(WebNotification.Severity.INFO, alias, "Отключена лампа 1", new Date(), null);
                                     HashMap data = new HashMap();
@@ -313,37 +298,6 @@ public class InstinctsModule implements Module {
                                     }
 
                                     break;
-                                case "VBAT_SENSOR":
-                                    double avgBattVoltage = AppData.measurementsCache.getLastMeasurement(p).getDoubleValue();
-                                    int id = AppData.parametersStorage.resolveAlias("CHARGE_ENABLED");
-                                    Parameter charge = AppData.parametersStorage.getParameter(id);
-                                    //if ()
-                                    if (AppData.measurementsCache.getLastMeasurement(charge) != null && AppData.measurementsCache.getLastMeasurement(charge).getBooleanValue()) {
-                                        avgBattVoltage -= 1.3;//если зарядка
-                                    }
-
-                                    int chargePercents = 5;
-                                    if (avgBattVoltage > 6.6) {
-                                        chargePercents += (avgBattVoltage - 6.6) * 119; //при 7.4В будет 100%
-                                    }
-                                    if (chargePercents > 100) {
-                                        chargePercents = 100;
-                                    }
-                                    Parameter chargeP = AppData.parametersStorage.getParameter(AppData.parametersStorage.resolveAlias("BATT_CHARGE"));
-                                    Measurement chargeM = new Measurement(chargeP, chargePercents);
-                                    HashMap eventData = new HashMap();
-                                    eventData.put("parameter", chargeP);
-                                    eventData.put("measurement", chargeM);
-                                    Event newE = new Event("calculated", eventData, Event.Type.PARAMETER_UPDATED);
-
-                                    AppData.eventManager.newEvent(newE);
-
-                                    if (AppData.measurementsCache.getAvgMeasurementFrom(p, System.currentTimeMillis() - 300000).getDoubleValue() < 5.8) {
-                                        log.fatal("ALIAS:" + alias + ": Уровень заряда АКБ критически низок! Отключаем систему");
-                                        Event shutdown = new Event("shutdown", null, Event.Type.SYSTEM_EVENT);
-                                        AppData.eventManager.newEvent(shutdown);
-                                    }
-                                    break;
 
                             }
                         }
@@ -381,6 +335,66 @@ public class InstinctsModule implements Module {
                     }
                 }
                 break;
+
+            case PARAMETER_UPDATED:
+                Parameter p = (Parameter) e.data.get("parameter");
+                if (p != null) {
+                    Measurement m = (Measurement) e.data.get("measurement");
+                    String alias = p.getAlias();
+                    switch (alias) {
+                        case "VBAT_SENSOR":
+                            int id = AppData.parametersStorage.resolveAlias("CHARGE_ENABLED");
+                            Parameter charger = AppData.parametersStorage.getParameter(id);
+                            double vbatSumm = 0;
+                            int counts = 0;
+                            List<Measurement> battHistory = AppData.measurementsCache.getHistory(p);
+                            List<Measurement> chargerHistory = AppData.measurementsCache.getHistory(charger);
+                            for (Measurement vbatMeasure: battHistory) {
+                                if (vbatMeasure.getTime() < System.currentTimeMillis() - 75000) { //75 sec avg
+                                    continue;//TOO OLD ;(
+                                }
+                                //if (AppData.measurementsCache.getLastMeasurement(charge) != null && AppData.measurementsCache.getLastMeasurement(charge).getBooleanValue())
+                                //search for charger mesaurement
+                                for (Measurement chargerMeasure: chargerHistory) {
+                                    if (Math.abs(chargerMeasure.getTime() - vbatMeasure.getTime()) < 1000) {
+                                        //this is nearest 
+                                        counts++;
+                                        if (chargerMeasure.getBooleanValue()) {
+                                            vbatSumm += vbatMeasure.getDoubleValue() - 1.7;
+                                        } else {
+                                            vbatSumm += vbatMeasure.getDoubleValue();
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            double avgBattVoltage = vbatSumm / counts;
+
+                            int chargePercents = 5;
+                            if (avgBattVoltage > 5.8) {
+                                chargePercents += (avgBattVoltage - 5.8) * 95; //при 6.8 В будет 100%
+                            }
+                            if (chargePercents > 100) {
+                                chargePercents = 100;
+                            }
+                            Parameter chargeP = AppData.parametersStorage.getParameter(AppData.parametersStorage.resolveAlias("BATT_CHARGE"));
+                            Measurement chargeM = new Measurement(chargeP, chargePercents);
+                            HashMap eventData = new HashMap();
+                            eventData.put("parameter", chargeP);
+                            eventData.put("measurement", chargeM);
+                            Event newE = new Event("calculated", eventData, Event.Type.PARAMETER_UPDATED);
+
+                            AppData.eventManager.newEvent(newE);
+
+                            if (AppData.measurementsCache.getAvgMeasurementFrom(p, System.currentTimeMillis() - 300000).getDoubleValue() < 5.8) {
+                                log.fatal("ALIAS:" + alias + ": Уровень заряда АКБ критически низок! Отключаем систему");
+                                Event shutdown = new Event("shutdown", null, Event.Type.SYSTEM_EVENT);
+                                AppData.eventManager.newEvent(shutdown);
+                            }
+                            break;
+                    }
+                    break;
+                }
         }
     }
 
