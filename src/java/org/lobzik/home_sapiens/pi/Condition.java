@@ -54,7 +54,7 @@ import org.lobzik.tools.db.mysql.DBTools;
             
             try {
             for(Action a:actions){
-                if(a.module.equalsIgnoreCase("DisplayModule")){
+                if(a.module.equalsIgnoreCase("DisplayModule") && state==0){
                     WebNotification dn = new WebNotification(a.severity, AppData.parametersStorage.getParameter(this.parameterId).getAlias(), a.data, new Date(), null, this.getAlias());
                     HashMap data3 = new HashMap();
                     data3.put("DisplayNotification", dn);

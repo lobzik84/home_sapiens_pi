@@ -129,9 +129,12 @@ public class MeasurementsCache {
         Measurement max = null;
         switch (p.getType()) {
             case DOUBLE:
-                max = new Measurement(p, Double.MIN_VALUE);
+                //max = new Measurement(p, Double.MIN_VALUE);
                 for (Measurement m : history) {
                     if (m.getTime() > millis && m.getDoubleValue() != null) {
+                        if (max==null){
+                            max = new Measurement(p, m.getDoubleValue(), m.getTime());
+                        }                      
                         if (m.getDoubleValue() > max.getDoubleValue()) {
                             max = new Measurement(p, m.getDoubleValue(), m.getTime());
                         }
@@ -140,9 +143,12 @@ public class MeasurementsCache {
                 break;
 
             case INTEGER:
-                max = new Measurement(p, Integer.MIN_VALUE);
+                //max = new Measurement(p, Integer.MIN_VALUE);
                 for (Measurement m : history) {
                     if (m.getTime() > millis && m.getIntegerValue() != null) {
+                        if (max==null){
+                            max = new Measurement(p, m.getIntegerValue(), m.getTime());
+                        }  
                         if (m.getIntegerValue() > max.getIntegerValue()) {
                             max = new Measurement(p, m.getIntegerValue(), m.getTime());
                         }
@@ -166,9 +172,12 @@ public class MeasurementsCache {
         Measurement min = null;
         switch (p.getType()) {
             case DOUBLE:
-                min = new Measurement(p, Double.MAX_VALUE);
+                //min = new Measurement(p, Double.MAX_VALUE);
                 for (Measurement m : history) {
                     if (m.getTime() > millis && m.getDoubleValue() != null) {
+                        if (min==null){
+                            min = new Measurement(p, m.getDoubleValue(), m.getTime());
+                        }                          
                         if (m.getDoubleValue() < min.getDoubleValue()) {
                             min = new Measurement(p, m.getDoubleValue(), m.getTime());
                         }
@@ -180,6 +189,9 @@ public class MeasurementsCache {
                 min = new Measurement(p, Integer.MAX_VALUE);
                 for (Measurement m : history) {
                     if (m.getTime() > millis && m.getIntegerValue() != null) {
+                        if (min==null){
+                            min = new Measurement(p, m.getIntegerValue(), m.getTime());
+                        }                          
                         if (m.getIntegerValue() < min.getIntegerValue()) {
                             min = new Measurement(p, m.getIntegerValue(), m.getTime());
                         }

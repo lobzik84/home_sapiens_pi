@@ -309,54 +309,23 @@ public class BehaviorModule implements Module {
         return result;
     }
 
-    public void parameterBATT_TEMPActions(Event e) { //Door Sensor
-        //Заряд аккумуляторов меньше 30%
-        String alias = "BAT_CHARGE_LESS_30";
+    public void parameterBATT_TEMPActions(Event e) { //Перегрев аккумулятора
+        //Перегрев аккумулятора
+        String alias = "BATT_TEMP_OVERHEAT";
         Parameter p = (Parameter) e.data.get("parameter");
         Measurement m = (Measurement) e.data.get("measurement");
         Parameter chargeEnabledP = AppData.parametersStorage.getParameter(AppData.parametersStorage.resolveAlias("CHARGE_ENABLED"));
-        boolean chargeEnabled = measurementsCache.getLastMeasurement(chargeEnabledP).getBooleanValue();
+        //boolean chargeEnabled = measurementsCache.getLastMeasurement(chargeEnabledP).getBooleanValue();
 
-        if (m.getIntegerValue() < BoxSettingsAPI.getDouble("VBatAlertCritical") && !chargeEnabled) {
+        if (m.getDoubleValue() > BoxSettingsAPI.getDouble("VBatTempAlertMax")) {
             Condition c = getConditionByAlias(alias + (BoxMode.isArmed() ? "_ARMED" : "_IDLE"));
             c.setState(1);
             runStandardActions(c, m, p);
-            c = getConditionByAlias("BAT_CHARGE_NORMAL_IDLE");
-            c.setState(0);
-            c = getConditionByAlias("BAT_CHARGE_NORMAL_ARMED");
-            c.setState(0);
-
-            /*action TODO	
-            Записать полный бэкап на сервер
-            Выключить одну камеру
-            Выключить экран
-            отправить историю всех событий на email хозяина 
-             */
         }
-
-        //Заряд аккумуляторов < 50% и > 30%
-        alias = "BAT_CHARGE_BETWEEN_30_50";
-        if (m.getIntegerValue() >= BoxSettingsAPI.getDouble("VBatAlertCritical") && m.getIntegerValue() < BoxSettingsAPI.getDouble("VBatAlertMinor") && !chargeEnabled) {
+        else{
             Condition c = getConditionByAlias(alias + (BoxMode.isArmed() ? "_ARMED" : "_IDLE"));
-            c.setState(1);
-            runStandardActions(c, m, p);
-            c = getConditionByAlias("BAT_CHARGE_NORMAL_IDLE");
-            c.setState(0);
-            c = getConditionByAlias("BAT_CHARGE_NORMAL_ARMED");
-            c.setState(0);
+            c.setState(0); 
         }
-
-        if (chargeEnabled) {
-            Condition c = getConditionByAlias("BAT_CHARGE_LESS_30_ARMED");
-            c.setState(0);
-            c = getConditionByAlias("BAT_CHARGE_LESS_30_IDLE");
-            c.setState(0);
-            c = getConditionByAlias("BAT_CHARGE_BETWEEN_30_50_ARMED");
-            c.setState(0);
-            c = getConditionByAlias("BAT_CHARGE_BETWEEN_30_50_IDLE");
-            c.setState(0);
-        }
-
     }
 
     public void parameterBATT_CHARGEActions(Event e) { //Door Sensor
@@ -426,28 +395,31 @@ public class BehaviorModule implements Module {
         String alias = "VAC_SENSOR_POWER_LOSS";
         Measurement mMax = measurementsCache.getMaxMeasurementFrom(p, System.currentTimeMillis() - 1000 * 60 * VACTimeout);
         Measurement mMin = measurementsCache.getMinMeasurementFrom(p, System.currentTimeMillis() - 1000 * 60 * VACTimeout);
-        if (mMax.getDoubleValue() < BoxSettingsAPI.getDouble("VACAlertMin")) {
-            Condition c = getConditionByAlias(alias + (BoxMode.isArmed() ? "_ARMED" : "_IDLE"));
-            c.setState(1);
-            runStandardActions(c, mMax, p);
-            c = getConditionByAlias("VAC_SENSOR_POWER_RECOVERED_ARMED");
-            c.setState(0);
-            c = getConditionByAlias("VAC_SENSOR_POWER_RECOVERED_IDLE");
-            c.setState(0);
+        if (mMax!=null && mMin!=null){
+            if (mMax.getDoubleValue() < BoxSettingsAPI.getDouble("VACAlertMin")) {
+                Condition c = getConditionByAlias(alias + (BoxMode.isArmed() ? "_ARMED" : "_IDLE"));
+                c.setState(1);
+                runStandardActions(c, mMax, p);
+                c = getConditionByAlias("VAC_SENSOR_POWER_RECOVERED_ARMED");
+                c.setState(0);
+                c = getConditionByAlias("VAC_SENSOR_POWER_RECOVERED_IDLE");
+                c.setState(0);
+            }
         }
 
         //напряжение более 5 минут в норме после отказа
         alias = "VAC_SENSOR_POWER_RECOVERED";
-        if (mMax.getDoubleValue() < BoxSettingsAPI.getDouble("VACAlertMax") && mMin.getDoubleValue() > BoxSettingsAPI.getDouble("VACAlertMin")) {
-            Condition c = getConditionByAlias(alias + (BoxMode.isArmed() ? "_ARMED" : "_IDLE"));
-            c.setState(1);
-            runStandardActions(c, mMax, p);
-            c = getConditionByAlias("VAC_SENSOR_POWER_LOSS_ARMED");
-            c.setState(0);
-            c = getConditionByAlias("VAC_SENSOR_POWER_LOSS_IDLE");
-            c.setState(0);
+        if (mMax!=null && mMin!=null){
+            if (mMax.getDoubleValue() < BoxSettingsAPI.getDouble("VACAlertMax") && mMin.getDoubleValue() > BoxSettingsAPI.getDouble("VACAlertMin")) {
+                Condition c = getConditionByAlias(alias + (BoxMode.isArmed() ? "_ARMED" : "_IDLE"));
+                c.setState(1);
+                runStandardActions(c, mMax, p);
+                c = getConditionByAlias("VAC_SENSOR_POWER_LOSS_ARMED");
+                c.setState(0);
+                c = getConditionByAlias("VAC_SENSOR_POWER_LOSS_IDLE");
+                c.setState(0);
+            }
         }
-
         //Опасный для электроприборов скачок напряжения электросети
         Measurement m = measurementsCache.getLastMeasurement(p);
         alias = "VAC_SENSOR_UNSTABLE";
