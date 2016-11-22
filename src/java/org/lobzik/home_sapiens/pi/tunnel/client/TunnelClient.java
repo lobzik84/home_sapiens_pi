@@ -156,7 +156,7 @@ public class TunnelClient {
                         case "command":
                             if (userId > 0) {
                                 usersKey = AppData.usersPublicKeysCache.getKey(userId);
-                                JSONAPI.doEncryptedUserCommand(json, BoxCommonData.PRIVATE_KEY, usersKey);
+                                JSONAPI.doEncryptedUserCommand(json, BoxCommonData.PRIVATE_KEY, usersKey, userId);
                             }
                             JSONObject reply = new JSONObject();//JSONAPI.getEncryptedParametersJSON(usersKey);
                             reply.put("result", "success");

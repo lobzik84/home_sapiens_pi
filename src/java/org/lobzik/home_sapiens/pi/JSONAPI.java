@@ -47,7 +47,7 @@ public class JSONAPI {
 
     private static long lastParametersWriteTime = 0;
 
-    public static void doEncryptedUserCommand(JSONObject json, RSAPrivateKey boxKey, RSAPublicKey userPublicKey) throws Exception {
+    public static void doEncryptedUserCommand(JSONObject json, RSAPrivateKey boxKey, RSAPublicKey userPublicKey, int userId) throws Exception {
         String commandName = json.getString("command_name");
         HashMap commandData = new HashMap();
         //JSONObject jsonData = json.getJSONObject("command_data");
@@ -83,6 +83,23 @@ public class JSONAPI {
                 Map<String, String> smap = new HashMap();
                 for (String key : settingsJson.keySet()) {
                     smap.put(key, settingsJson.getString(key));
+                    if (key.equals("NotificationsEmail")) {
+                        if (!settingsJson.getString(key).equals(BoxSettingsAPI.get("NotificationsEmail"))) {
+                            //обновился емейл - костыль, а что делать
+                            HashMap userMap = new HashMap();
+                            userMap.put("id", userId);
+                            userMap.put("synced", 0);
+                            userMap.put("email", settingsJson.getString(key));
+                            try (Connection conn = DBTools.openConnection(BoxCommonData.dataSourceName)) {
+                                DBTools.updateRow("users", userMap, conn);
+                                Event e = new Event("upload_unsynced_users_to_server", new HashMap(), Event.Type.SYSTEM_EVENT);
+                                AppData.eventManager.newEvent(e);
+                            } catch (Exception e) {
+
+                            }
+
+                        }
+                    }
                 }
                 BoxSettingsAPI.set(smap);
                 break;
@@ -153,7 +170,7 @@ public class JSONAPI {
             paramsJson.put(p.getAlias() + "", parJson);
         }
         lastParametersWriteTime = System.currentTimeMillis();
-        
+
         paramsJson.put("mode", BoxMode.string());
         paramsJson.put("box_time", System.currentTimeMillis());
 

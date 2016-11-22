@@ -177,6 +177,7 @@ public class WeatherModule extends Thread implements Module {
         }
         if (e.type == Event.Type.TIMER_EVENT && e.name.equals("update_display")) {//раз в минуту
             Calendar current = new GregorianCalendar();
+            current.setTimeZone(sunrise.getTimeZone());
             int dayMinutes = current.get(Calendar.HOUR_OF_DAY) * 60 + current.get(Calendar.MINUTE);
             int riseMins = sunrise.get(Calendar.HOUR_OF_DAY) * 60 + sunrise.get(Calendar.MINUTE);
             int setMins = sunset.get(Calendar.HOUR_OF_DAY) * 60 + sunset.get(Calendar.MINUTE);
