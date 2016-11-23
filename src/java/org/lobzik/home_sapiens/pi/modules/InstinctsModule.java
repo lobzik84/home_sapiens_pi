@@ -350,7 +350,7 @@ public class InstinctsModule implements Module {
                             List<Measurement> battHistory = AppData.measurementsCache.getHistory(p);
                             List<Measurement> chargerHistory = AppData.measurementsCache.getHistory(charger);
                             for (Measurement vbatMeasure: battHistory) {
-                                if (vbatMeasure.getTime() < System.currentTimeMillis() - 75000) { //75 sec avg
+                                if (vbatMeasure.getTime() < System.currentTimeMillis() - 105000) { //105 sec avg
                                     continue;//TOO OLD ;(
                                 }
                                 //if (AppData.measurementsCache.getLastMeasurement(charge) != null && AppData.measurementsCache.getLastMeasurement(charge).getBooleanValue())
@@ -360,7 +360,7 @@ public class InstinctsModule implements Module {
                                         //this is nearest 
                                         counts++;
                                         if (chargerMeasure.getBooleanValue()) {
-                                            vbatSumm += vbatMeasure.getDoubleValue() - 1.7;
+                                            vbatSumm += vbatMeasure.getDoubleValue() - 1.85;
                                         } else {
                                             vbatSumm += vbatMeasure.getDoubleValue();
                                         }

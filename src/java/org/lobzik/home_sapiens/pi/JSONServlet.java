@@ -135,7 +135,7 @@ public class JSONServlet extends HttpServlet {
 
                     case "command":
                         if (userId > 0) {
-                            doUserCommand(request, response);
+                            doUserCommand(userId, request, response);
                             //replyWithParameters(request, response);
 
                         } else {
@@ -562,7 +562,7 @@ public class JSONServlet extends HttpServlet {
         response.getWriter().print(json.toString());
     }
 
-    private void doUserCommand(HttpServletRequest request, HttpServletResponse response) throws Exception {
+    private void doUserCommand(int userId, HttpServletRequest request, HttpServletResponse response) throws Exception {
         JSONObject json = (JSONObject) request.getAttribute("json");
         UsersSession session = null;
         if (json.has("session_key")) {
@@ -572,7 +572,7 @@ public class JSONServlet extends HttpServlet {
         if (session == null) {
             return;
         }
-        JSONAPI.doEncryptedUserCommand(json, BoxCommonData.PRIVATE_KEY, (RSAPublicKey) session.get("UsersPublicKey"));
+        JSONAPI.doEncryptedUserCommand(json, BoxCommonData.PRIVATE_KEY, (RSAPublicKey) session.get("UsersPublicKey"), userId);
         JSONObject reply = new JSONObject();
         reply.put("result", "success");
         reply.put("session_key", json.getString("session_key"));
