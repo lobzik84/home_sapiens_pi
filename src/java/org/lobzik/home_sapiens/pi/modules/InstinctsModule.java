@@ -250,54 +250,6 @@ public class InstinctsModule implements Module {
 
                                     }
                                     break;
-                                case "VAC_SENSOR":
-                                    if (m.getDoubleValue() > BoxSettingsAPI.getDouble("VACAlertMax") || m.getDoubleValue() < BoxSettingsAPI.getDouble("VACAlertMin")) {
-                                        if (p.getState() != Parameter.State.ALARM) {
-                                            p.setState(Parameter.State.ALARM);
-                                            log.error("ALIAS:" + alias + ": Напряжение сети вне пределов, отключаем зарядку");
-                                            HashMap data = new HashMap();
-                                            data.put("uart_command", "charge=off"); //disable charging if power is NOT ok
-                                            Event reaction = new Event("internal_uart_command", data, Event.Type.USER_ACTION);
-                                            AppData.eventManager.newEvent(reaction);
-
-                                            WebNotification wn = new WebNotification(WebNotification.Severity.ALARM, alias, "Напряжение сети вне пределов!", new Date(), null);
-                                            HashMap data2 = new HashMap();
-                                            data2.put("WebNotification", wn);
-                                            Event reaction2 = new Event("web_notification", data2, Event.Type.REACTION_EVENT);
-                                            AppData.eventManager.newEvent(reaction2);
-
-                                            WebNotification dn = new WebNotification(WebNotification.Severity.ALARM, alias, "Напряжение сети вне пределов!", new Date(), null, "VAC_SENSOR_OUT_RANGE");
-                                            HashMap data3 = new HashMap();
-                                            data3.put("DisplayNotification", dn);
-                                            Event reaction3 = new Event("display_notification", data3, Event.Type.REACTION_EVENT);
-                                            AppData.eventManager.newEvent(reaction3);
-                                        }
-
-                                    } else {
-                                        if (p.getState() != Parameter.State.OK) {
-                                            p.setState(Parameter.State.OK);
-                                            log.info("ALIAS:" + alias + ": Включаем зарядку");
-                                            HashMap data = new HashMap();
-                                            data.put("uart_command", "charge=on"); //enable charging if power is ok
-                                            Event reaction = new Event("internal_uart_command", data, Event.Type.USER_ACTION);
-                                            AppData.eventManager.newEvent(reaction);
-
-                                            WebNotification wn = new WebNotification(WebNotification.Severity.OK, alias, "Напряжение сети снова в норме!", new Date(), null);
-                                            HashMap data2 = new HashMap();
-                                            data2.put("WebNotification", wn);
-                                            Event reaction2 = new Event("web_notification", data2, Event.Type.REACTION_EVENT);
-                                            AppData.eventManager.newEvent(reaction2);
-
-                                            HashMap data3 = new HashMap();
-                                            data3.put("ConditionAlias", "VAC_SENSOR_OUT_RANGE");
-                                            Event reaction3 = new Event("delete_display_notification", data3, Event.Type.REACTION_EVENT);
-                                            AppData.eventManager.newEvent(reaction3);
-
-                                        }
-
-                                    }
-
-                                    break;
 
                             }
                         }
@@ -349,13 +301,13 @@ public class InstinctsModule implements Module {
                             int counts = 0;
                             List<Measurement> battHistory = AppData.measurementsCache.getHistory(p);
                             List<Measurement> chargerHistory = AppData.measurementsCache.getHistory(charger);
-                            for (Measurement vbatMeasure: battHistory) {
+                            for (Measurement vbatMeasure : battHistory) {
                                 if (vbatMeasure.getTime() < System.currentTimeMillis() - 105000) { //105 sec avg
                                     continue;//TOO OLD ;(
                                 }
                                 //if (AppData.measurementsCache.getLastMeasurement(charge) != null && AppData.measurementsCache.getLastMeasurement(charge).getBooleanValue())
                                 //search for charger mesaurement
-                                for (Measurement chargerMeasure: chargerHistory) {
+                                for (Measurement chargerMeasure : chargerHistory) {
                                     if (Math.abs(chargerMeasure.getTime() - vbatMeasure.getTime()) < 1000) {
                                         //this is nearest 
                                         counts++;
@@ -367,7 +319,7 @@ public class InstinctsModule implements Module {
                                     }
                                 }
                             }
-                            
+
                             double avgBattVoltage = vbatSumm / counts;
 
                             int chargePercents = 5;
@@ -391,6 +343,55 @@ public class InstinctsModule implements Module {
                                 Event shutdown = new Event("shutdown", null, Event.Type.SYSTEM_EVENT);
                                 AppData.eventManager.newEvent(shutdown);
                             }
+                            break;
+
+                        case "VAC_SENSOR":
+                            if (m.getDoubleValue() > BoxSettingsAPI.getDouble("VACAlertMax") || m.getDoubleValue() < BoxSettingsAPI.getDouble("VACAlertMin")) {
+                                if (p.getState() != Parameter.State.ALARM) {
+                                    p.setState(Parameter.State.ALARM);
+                                    log.error("ALIAS:" + alias + ": Напряжение сети вне пределов, отключаем зарядку");
+                                    HashMap data = new HashMap();
+                                    data.put("uart_command", "charge=off"); //disable charging if power is NOT ok
+                                    Event reaction = new Event("internal_uart_command", data, Event.Type.USER_ACTION);
+                                    AppData.eventManager.newEvent(reaction);
+
+                                    WebNotification wn = new WebNotification(WebNotification.Severity.ALARM, alias, "Напряжение сети вне пределов!", new Date(), null);
+                                    HashMap data2 = new HashMap();
+                                    data2.put("WebNotification", wn);
+                                    Event reaction2 = new Event("web_notification", data2, Event.Type.REACTION_EVENT);
+                                    AppData.eventManager.newEvent(reaction2);
+
+                                    WebNotification dn = new WebNotification(WebNotification.Severity.ALARM, alias, "Напряжение сети вне пределов!", new Date(), null, "VAC_SENSOR_OUT_RANGE");
+                                    HashMap data3 = new HashMap();
+                                    data3.put("DisplayNotification", dn);
+                                    Event reaction3 = new Event("display_notification", data3, Event.Type.REACTION_EVENT);
+                                    AppData.eventManager.newEvent(reaction3);
+                                }
+
+                            } else {
+                                if (p.getState() != Parameter.State.OK) {
+                                    p.setState(Parameter.State.OK);
+                                    log.info("ALIAS:" + alias + ": Включаем зарядку");
+                                    HashMap data = new HashMap();
+                                    data.put("uart_command", "charge=on"); //enable charging if power is ok
+                                    Event reaction = new Event("internal_uart_command", data, Event.Type.USER_ACTION);
+                                    AppData.eventManager.newEvent(reaction);
+
+                                    WebNotification wn = new WebNotification(WebNotification.Severity.OK, alias, "Напряжение сети снова в норме!", new Date(), null);
+                                    HashMap data2 = new HashMap();
+                                    data2.put("WebNotification", wn);
+                                    Event reaction2 = new Event("web_notification", data2, Event.Type.REACTION_EVENT);
+                                    AppData.eventManager.newEvent(reaction2);
+
+                                    HashMap data3 = new HashMap();
+                                    data3.put("ConditionAlias", "VAC_SENSOR_OUT_RANGE");
+                                    Event reaction3 = new Event("delete_display_notification", data3, Event.Type.REACTION_EVENT);
+                                    AppData.eventManager.newEvent(reaction3);
+
+                                }
+
+                            }
+
                             break;
                     }
                     break;
