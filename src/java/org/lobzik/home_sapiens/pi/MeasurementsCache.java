@@ -212,9 +212,12 @@ public class MeasurementsCache {
             return 0;
         }
         int count = 0;
-        Boolean prev = history.get(0).getBooleanValue();
+        Boolean prev = null;//history.get(0).getBooleanValue();
         for (Measurement m : history) {
-            if (m.getBooleanValue().equals(true) && prev.equals(false)) {
+            if (m.getTime() > millis && prev == null){
+                prev = m.getBooleanValue();
+            }
+            if (m.getTime() > millis && m.getBooleanValue().equals(true) && prev.equals(false)) {
                 count++;
             }
             prev = m.getBooleanValue();
