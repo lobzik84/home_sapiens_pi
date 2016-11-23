@@ -78,7 +78,7 @@ public class TunnelClientModule extends Thread implements Module {
                     client = new TunnelClient(BoxCommonData.TUNNEL_SERVER_URL, log);
                 } catch (Exception e) {
                     log.error("Error while ws connecting: " + e.getMessage());
-                    e.printStackTrace();
+                    //e.printStackTrace();
                 }
             }
             synchronized (this) {

@@ -146,23 +146,15 @@ public class DisplayModule implements Module {
                 g.drawString("TEST", 100, 180);
 
             } else {
-                List<WebNotification> lwn = WebNotificationsModule.getNotifications();
+                int rssi = -117;
+                boolean nightTime = false;
+                Double outsideTempNow = null;
+                Double outsideTempNext = null; //если null - не рисуем
+                Integer cloudsNow = null;
+                Integer cloudsNext = null;
+                
                 WebNotification notif = null;
-                //TODO будет Behavior - просто поставим реакцию и присвоим notif что надо
-                /*
-                for (int i = lwn.size() - 1; i >= 0; i--) {
-                    WebNotification wn = lwn.get(i);
-                    switch (wn.severity) {
-                        case ALARM:
-                        case ALERT:
-                            if (notif == null) {
-                                notif = wn;
-                            }
 
-                            break;
-
-                    }
-                }*/
                 if (!notifications.isEmpty()) {
                     notif = notifications.peek();
                 }

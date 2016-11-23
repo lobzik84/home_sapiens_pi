@@ -33,7 +33,8 @@ public class SystemModule implements Module {
     private static final String PREFIX = "/usr/bin/sudo";
     private static final String SHUTDOWN_COMMAND = "halt";
     private static final String SHUTDOWN_SUFFIX = "-p";
-
+    private static final int SHUTDOWN_TIMEOUT = 30; //seconds for halt procedure
+    
     private SystemModule() { //singleton
     }
 
@@ -71,7 +72,7 @@ public class SystemModule implements Module {
                     public void run() {
                         try {
                             HashMap data = new HashMap();
-                            data.put("uart_command", "poweroff=45"); //timer for 45 secs
+                            data.put("uart_command", "poweroff=" + SHUTDOWN_TIMEOUT); //timer for SHUTDOWN_TIMEOUT secs
                             Event e = new Event("internal_uart_command", data, Event.Type.USER_ACTION);
                             AppData.eventManager.lockForEvent(e, this);
                             log.info("Now shutting down");

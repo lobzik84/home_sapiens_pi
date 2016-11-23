@@ -61,9 +61,10 @@ public class AppListener implements ServletContextListener {
             ActualDataStorageModule.getInstance().start();
             InstinctsModule.getInstance().start();
             InternalSensorsModule.getInstance().start();
+            DisplayModule.getInstance().start();
             
             if (!BoxCommonData.TEST_MODE) {
-                DisplayModule.getInstance().start();
+
                 WebNotificationsModule.getInstance().start();
                 DBDataWriterModule.getInstance().start();
                 TimerModule.getInstance().start();
