@@ -114,11 +114,11 @@ public class DisplayModule implements Module {
                         draw();
                     }
                 } else if (e.name.equals("delete_display_notification")) {
-                    String conditionAlias = (String)e.data.get("ConditionAlias");
+                    String conditionAlias = (String) e.data.get("ConditionAlias");
                     if (conditionAlias != null) {
                         int index = -1;
-                        
-                        for (int i=0; i< notifications.size(); i++){
+
+                        for (int i = 0; i < notifications.size(); i++) {
                             WebNotification n = notifications.get(i);
                             if (n.conditionAlias.equals(conditionAlias)) {
                                 index = i;
@@ -146,12 +146,42 @@ public class DisplayModule implements Module {
                 g.drawString("TEST", 100, 180);
 
             } else {
-                int rssi = -117;
-                boolean nightTime = false;
-                Double outsideTempNow = null;
-                Double outsideTempNext = null; //если null - не рисуем
-                Integer cloudsNow = null;
-                Integer cloudsNext = null;
+                int rssi = -75;//сигнал сети, дБ. <100 нет фишек, 100<rssi<90 одна фишка, 90<rssi<80 две фишки, 80<rssi<70 три фишки, >70 четыре фишки
+                boolean nightTime = false; //ночью true, при этом ночной фон и иконки погоды ночные!
+                Double outsideTempNow = null;//если null - не рисуем
+                Integer cloudsNow = null;//если null - не рисуем
+                Double rainNow = null;
+                
+                Double outsideTempNext = null; //если null - не рисуем,это прогноз на +12 часов
+                Integer cloudsNext = null;//если null - не рисуем, это прогноз на +12 часов
+                Double rainNext = null;
+                String modemMode = "4G";//Режим сети. приедет от модема
+                String[] nextForecastFor = {"вечером", "завтра"}; //если текущее время до 12.00 дня - пишем прогноз на "вечер", если после - на "завтра". для случая, когда рисуем прогноз на вечер - берём ночные иконки!
+                
+                //как выбрать иконку для погоды? всего 7 вариантов png
+                /*
+                    if ((dataJSON.NIGHTTIME && dataJSON.NIGHTTIME.last_value === 'true') || hour > 21 || hour < 8) {
+      weatherClass = 'weather-night';
+      title = `Ясно, температура на улице ${outsideTemperature}`;
+      if (medium) {
+        weatherClass = 'weather-night-cloudly';
+        title = `Ночь, слабо облачно, температура на улице ${outsideTemperature}`;
+      } else if (hard) {
+        weatherClass = 'weather-cloudly';
+        title = `Облачно, температура на улице ${outsideTemperature}`;
+      }
+    } else if (medium) {
+      weatherClass = 'weather-sun-cloudly';
+      title = `День, слабо облачно, температура на улице ${outsideTemperature}`;
+    } else if (hard) {
+      weatherClass = 'weather-cloudly';
+      title = `Облачно, температура на улице ${outsideTemperature}`;
+    }
+    if (rain) {
+      weatherClass = dataJSON.OUTSIDE_TEMP.last_value < 0 ? 'weather-snow' : 'weather-rain';
+    }
+                */
+                
                 
                 WebNotification notif = null;
 
@@ -160,7 +190,12 @@ public class DisplayModule implements Module {
                 }
 
                 try {
-                    img = ImageIO.read(new File(AppData.getGraphicsWorkDir().getAbsolutePath() + File.separator + "screen.jpg"));
+                    if (nightTime) {
+                        img = ImageIO.read(new File(AppData.getGraphicsWorkDir().getAbsolutePath() + File.separator + "background_night.jpg"));
+                    } else {
+                        img = ImageIO.read(new File(AppData.getGraphicsWorkDir().getAbsolutePath() + File.separator + "background_day.jpg"));
+                    }
+
                     if (notif != null) {
                         switch (notif.parameterAlias) {
 
@@ -174,8 +209,7 @@ public class DisplayModule implements Module {
                             case "WET_SENSOR":
 
                                 iconImg = ImageIO.read(new File(AppData.getGraphicsWorkDir().getAbsolutePath() + File.separator + notif.parameterAlias + ".png"));
-                                //File iconFile = new File(AppData.getGraphicsWorkDir().getAbsolutePath() + File.separator + notif.parameterAlias + ".svg");
-                                //iconImg = transcodeSVGDocument(iconFile.toURI().toURL(), 21, 30);
+
                                 break;
 
                         }
@@ -188,7 +222,7 @@ public class DisplayModule implements Module {
                 }
 
                 g = img.getGraphics();
-                int timeY = 215;
+
                 if (notif != null) {
                     //alert
                     switch (notif.severity) {
@@ -207,23 +241,22 @@ public class DisplayModule implements Module {
                     g.setColor(new Color(0, 0, 0));
 
                     if (iconImg != null) {
-                        //Image iconResized = createResizedCopy(iconImg, 21, 30, true);
+
                         g.drawImage(iconImg, 25, 270, 21, 30, null);
-                        // g.dispose();
-                        //g.drawImage(iconResized, 25, 270, null);
+
                     }
 
                     g.setColor(new Color(255, 255, 255));
-                    g.setFont(new Font("Tahoma", Font.PLAIN, 18));
+                    g.setFont(new Font("Roboto Regular", Font.PLAIN, 18));
                     g.drawString(Tools.getFormatedDate(notif.startDate, "HH:mm"), 55, 290);
                     g.drawString(notif.text, 125, 290);
 
-                    timeY = 180;
+
                 }
                 //TIME
-                g.setColor(new Color(0, 0, 0));
-                g.setFont(new Font("Tahoma", Font.PLAIN, 110));
-                g.drawString(Tools.getFormatedDate(new Date(), "HH:mm"), 100, timeY);
+                g.setColor(new Color(255, 255, 255));
+                g.setFont(new Font("Roboto Regular", Font.PLAIN, 61));
+                g.drawString(Tools.getFormatedDate(new Date(), "HH:mm"), 15, 107);
             }
 
             File file = new File(AppData.getGraphicsWorkDir().getAbsolutePath() + File.separator + TMP_FILE);
