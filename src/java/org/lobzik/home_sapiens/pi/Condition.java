@@ -10,7 +10,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
-import org.lobzik.home_sapiens.entity.Parameter;
+
 import org.lobzik.home_sapiens.pi.event.Event;
 import org.lobzik.tools.db.mysql.DBSelect;
 import org.lobzik.tools.db.mysql.DBTools;
@@ -25,16 +25,14 @@ import org.lobzik.tools.db.mysql.DBTools;
         public int parameterId;
         public String alias;
         public String name;
-        public BoxMode.MODE boxMode;
         public int state;
         public List<Action> actions;
         
-        public Condition(int id, int parameterId, String alias, String name, BoxMode.MODE boxMode, int state) {
+        public Condition(int id, int parameterId, String alias, String name, int state) {
             this.id = id;
             this.parameterId = parameterId;
             this.alias = alias;
             this.name = name;
-            this.boxMode = boxMode;
             this.state = state;
             actions = new ArrayList<Action>();
         }

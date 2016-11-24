@@ -436,10 +436,10 @@ public class JSONAPI {
                     sSQL += " and l.level in ('FATAL', 'ERROR') \n";
                     break;
                 case "OK":
-                    sSQL += " and l.level in ('FATAL', 'ERROR', 'WARNING') \n";
+                    sSQL += " and l.level in ('FATAL', 'ERROR', 'WARN') \n";
                     break;
                 case "INFO":
-                    sSQL += " and l.level in ('FATAL', 'ERROR', 'WARNING', 'INFO') \n";
+                    sSQL += " and l.level in ('FATAL', 'ERROR', 'WARN', 'INFO') \n";
                     break;
                 default:
                     break;
@@ -457,7 +457,7 @@ public class JSONAPI {
                     case "ERROR":
                         logRecord.put("severity", "ALERT");
                         break;
-                    case "WARNING":
+                    case "WARN":
                         logRecord.put("severity", "OK");
                         break;
                     default:

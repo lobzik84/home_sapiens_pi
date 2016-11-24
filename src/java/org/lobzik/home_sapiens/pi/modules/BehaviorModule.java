@@ -5,15 +5,11 @@
  */
 package org.lobzik.home_sapiens.pi.modules;
 
-import java.math.BigInteger;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import org.apache.log4j.Appender;
 import org.apache.log4j.Logger;
 import org.lobzik.home_sapiens.entity.Measurement;
@@ -27,11 +23,9 @@ import org.lobzik.home_sapiens.pi.BoxMode.MODE;
 import org.lobzik.home_sapiens.pi.BoxSettingsAPI;
 import org.lobzik.home_sapiens.pi.Condition;
 import org.lobzik.home_sapiens.pi.ConnJDBCAppender;
-import org.lobzik.home_sapiens.pi.MeasurementsCache;
 import org.lobzik.home_sapiens.pi.WebNotification;
 import org.lobzik.home_sapiens.pi.event.Event;
 import org.lobzik.home_sapiens.pi.event.EventManager;
-import static org.lobzik.home_sapiens.pi.modules.ModemModule.STATUS_NEW;
 //import static org.lobzik.home_sapiens.pi.modules.ModemModule.test;
 import org.lobzik.tools.Tools;
 import org.lobzik.tools.db.mysql.DBSelect;
@@ -108,7 +102,6 @@ public class BehaviorModule implements Module {
                                 Tools.parseInt(c.get("parameter_id"), 0),
                                 Tools.getStringValue(c.get("alias"), ""),
                                 Tools.getStringValue(c.get("name"), ""),
-                                MODE.valueOf(Tools.getStringValue(c.get("box_mode"), "")),
                                 Tools.parseInt(c.get("state"), 0));
                         conditions.add(cond);
                     }
@@ -130,7 +123,8 @@ public class BehaviorModule implements Module {
                                     Tools.getStringValue(a.get("alias"), ""),
                                     Tools.getStringValue(a.get("module"), ""),
                                     Tools.getStringValue(a.get("data"), ""),
-                                    WebNotification.Severity.valueOf(Tools.getStringValue(a.get("severity"), ""))
+                                    WebNotification.Severity.valueOf(Tools.getStringValue(a.get("severity"), "")),
+                                    a.get("box_mode") != null ? BoxMode.MODE.valueOf(Tools.getStringValue(a.get("box_mode"), "")) : null
                             );
                             Condition cond = getConditionById(conditions, conditionId);
 
@@ -222,7 +216,13 @@ public class BehaviorModule implements Module {
 
     }
 
-    public static void actionLog(WebNotification.Severity severity, String message) {
+    public static void actionLog(WebNotification.Severity severity, String mess, String alias) {
+        String message;
+        if (alias != null && alias.length() > 0) {
+            message = "ALIAS:" + alias + ": " + mess;
+        } else {
+            message = mess;
+        }
         switch (severity) {
             case INFO:
                 log.info(message);
@@ -260,12 +260,6 @@ public class BehaviorModule implements Module {
 
     public static void actionDisplay(WebNotification.Severity severity, String message, Parameter p, Condition c, Action a) {
 
-        /*
-        HashMap data = new HashMap();
-         data.put("message", message);
-         Event e = new Event("update_display", data, Event.Type.SYSTEM_EVENT);
-         AppData.eventManager.newEvent(e);
-         */
         WebNotification dn = new WebNotification(a.severity, p.getAlias(), message, new Date(), null, c.getAlias());
         HashMap data3 = new HashMap();
         data3.put("DisplayNotification", dn);
@@ -273,17 +267,11 @@ public class BehaviorModule implements Module {
         Event reaction3 = new Event((c.state == 0 ? "delete_" : "") + "display_notification", data3, Event.Type.REACTION_EVENT);
         AppData.eventManager.newEvent(reaction3);
 
-        /*
-        HashMap data3 = new HashMap();
-        data3.put("ConditionAlias", "VAC_SENSOR_OUT_RANGE");
-        Event reaction3 = new Event("delete_display_notification", data3, Event.Type.REACTION_EVENT);
-        AppData.eventManager.newEvent(reaction3);
-         */
     }
 
     public static void actionWebNotify(WebNotification.Severity severity, String message, String parameterAlias) {
 
-        WebNotification wn = new WebNotification(WebNotification.Severity.ALERT, parameterAlias, message, new Date(), new Date(System.currentTimeMillis() + 1800000));
+        WebNotification wn = new WebNotification(severity, parameterAlias, message, new Date(), new Date(System.currentTimeMillis() + 1800000));
         HashMap data = new HashMap();
         data.put("WebNotification", wn);
         Event reaction = new Event("web_notification", data, Event.Type.REACTION_EVENT);
@@ -300,10 +288,10 @@ public class BehaviorModule implements Module {
         return result;
     }
 
-    public static Condition getConditionByParameterAndState(List<Condition> conditions, int parameterId, MODE mode) {
+    public static Condition getConditionByParameterAndState(List<Condition> conditions, int parameterId) {
         Condition result = null;
         for (Condition c : conditions) {
-            if (c.parameterId == parameterId && c.boxMode == mode) {
+            if (c.parameterId == parameterId) {
                 result = c;
             }
         }
@@ -322,59 +310,78 @@ public class BehaviorModule implements Module {
 
     public void parameterMIC_NOISEActions(Event e) { //Датчик движения
 
-        String alias = null;
         Parameter p = (Parameter) e.data.get("parameter");
         Measurement m = (Measurement) e.data.get("measurement");
         //работает более 10 сек.
-        alias = "MIC_NOISE_ALARM";
+        Condition c = getConditionByAlias("MIC_NOISE_ALARM");
         int VACTimeout = 10; //секунд
         int transferTrueCount = measurementsCache.getTransferTrueCountFrom(p, System.currentTimeMillis() - 1000 * VACTimeout);
 
         if (m.getBooleanValue() && transferTrueCount != 0) {
-            Condition c = getConditionByAlias(alias + (BoxMode.isArmed() ? "_ARMED" : "_IDLE"));
             if (c.state == 0) {
+                if (BoxMode.isArmed()) {
+                    p.setState(Parameter.State.ALARM);
+                }
                 c.setState(1);
                 runStandardActions(c, m, p);
             }
-            c = getConditionByAlias("MIC_NOISE_CLEARED" + (BoxMode.isArmed() ? "_ARMED" : "_IDLE"));
-            c.setState(0);
-        } else {
-            Condition c = getConditionByAlias(alias + (BoxMode.isArmed() ? "_ARMED" : "_IDLE"));
+
+            c = getConditionByAlias("MIC_NOISE_CLEARED");
             if (c.state == 1) {
                 c.setState(0);
-                c = getConditionByAlias("MIC_NOISE_CLEARED" + (BoxMode.isArmed() ? "_ARMED" : "_IDLE"));
+                runStandardActions(c, m, p);
+            }
+
+        } else {
+            if (c.state == 1) {
+                if (BoxMode.isArmed()) {
+                    p.setState(Parameter.State.OK);
+                }
+                c.setState(0);
+                runStandardActions(c, m, p);
+
+                c = getConditionByAlias("MIC_NOISE_CLEARED");
                 if (c.state == 0) {
                     c.setState(1);
                     runStandardActions(c, m, p);
                 }
             }
         }
-
     }
 
     public void parameterPIR_SENSORActions(Event e) { //Датчик движения
 
-        String alias = null;
         Parameter p = (Parameter) e.data.get("parameter");
         Measurement m = (Measurement) e.data.get("measurement");
         //работает более 15 сек.
-        alias = "PIR_SENSOR_ALARM";
+        Condition c = getConditionByAlias("PIR_SENSOR_ALARM");
         int PIRTimeout = 15; //секунд
         int transferTrueCount = measurementsCache.getTransferTrueCountFrom(p, System.currentTimeMillis() - 1000 * PIRTimeout);
 
         if (m.getBooleanValue() && transferTrueCount != 0) {
-            Condition c = getConditionByAlias(alias + (BoxMode.isArmed() ? "_ARMED" : "_IDLE"));
             if (c.state == 0) {
+                if (BoxMode.isArmed()) {
+                    p.setState(Parameter.State.ALARM);
+                }
                 c.setState(1);
                 runStandardActions(c, m, p);
             }
-            c = getConditionByAlias("PIR_SENSOR_CLEARED" + (BoxMode.isArmed() ? "_ARMED" : "_IDLE"));
-            c.setState(0);
-        } else {
-            Condition c = getConditionByAlias(alias + (BoxMode.isArmed() ? "_ARMED" : "_IDLE"));
+
+            c = getConditionByAlias("PIR_SENSOR_CLEARED");
             if (c.state == 1) {
                 c.setState(0);
-                c = getConditionByAlias("PIR_SENSOR_CLEARED" + (BoxMode.isArmed() ? "_ARMED" : "_IDLE"));
+                runStandardActions(c, m, p);
+            }
+
+        } else {
+            if (c.state == 1) {
+                if (BoxMode.isArmed()) {
+                    p.setState(Parameter.State.OK);
+                }
+                c.setState(0);
+                runStandardActions(c, m, p);
+
+                c = getConditionByAlias("PIR_SENSOR_CLEARED");
                 if (c.state == 0) {
                     c.setState(1);
                     runStandardActions(c, m, p);
@@ -386,25 +393,38 @@ public class BehaviorModule implements Module {
 
     public void parameterGAS_SENSORActions(Event e) { //Gas Sensor
         //Сработал датчик газа
-        String alias = "GAS_SENSOR_ALARM";
+        Condition c = getConditionByAlias("GAS_SENSOR_ALARM");
         Parameter p = (Parameter) e.data.get("parameter");
         Measurement m = (Measurement) e.data.get("measurement");
 
         if (m.getBooleanValue()) {
-            Condition c = getConditionByAlias(alias + (BoxMode.isArmed() ? "_ARMED" : "_IDLE"));
             if (c.state == 0) {
+                if (BoxMode.isArmed()) {
+                    p.setState(Parameter.State.ALARM);
+                }
                 c.setState(1);
                 runStandardActions(c, m, p);
             }
-            c = getConditionByAlias("GAS_SENSOR_CLEARED" + (BoxMode.isArmed() ? "_ARMED" : "_IDLE"));
-            c.setState(0);
-        } else {
-            Condition c = getConditionByAlias(alias + (BoxMode.isArmed() ? "_ARMED" : "_IDLE"));
-            c.setState(0);
-            c = getConditionByAlias("GAS_SENSOR_CLEARED" + (BoxMode.isArmed() ? "_ARMED" : "_IDLE"));
-            if (c.state == 0) {
-                c.setState(1);
+
+            c = getConditionByAlias("GAS_SENSOR_CLEARED");
+            if (c.state == 1) {
+                c.setState(0);
                 runStandardActions(c, m, p);
+            }
+
+        } else {
+            if (c.state == 1) {
+                if (BoxMode.isArmed()) {
+                    p.setState(Parameter.State.OK);
+                }
+                c.setState(0);
+                runStandardActions(c, m, p);
+
+                c = getConditionByAlias("GAS_SENSOR_CLEARED");
+                if (c.state == 0) {
+                    c.setState(1);
+                    runStandardActions(c, m, p);
+                }
             }
         }
     }
@@ -422,18 +442,18 @@ public class BehaviorModule implements Module {
         Measurement mMin = measurementsCache.getMinMeasurementFrom(p, System.currentTimeMillis() - 1000 * 60 * VACTimeout);
         if (mMax != null && mMin != null) {
             if ((mMax.getDoubleValue() < BoxSettingsAPI.getDouble("InHumAlertMin")) || (mMin.getDoubleValue() > BoxSettingsAPI.getDouble("InHumAlertMax"))) {
-                Condition c = getConditionByAlias(alias + (BoxMode.isArmed() ? "_ARMED" : "_IDLE"));
+                Condition c = getConditionByAlias(alias);
                 if (c.state == 0) {
                     c.setState(1);
                     runStandardActions(c, m, p);
                 }
-                c = getConditionByAlias("INTERNAL_HUMIDITY_BACK_TO_NORMAL" + (BoxMode.isArmed() ? "_ARMED" : "_IDLE"));
+                c = getConditionByAlias("INTERNAL_HUMIDITY_BACK_TO_NORMAL");
                 c.setState(0);
             } else {
-                Condition c = getConditionByAlias(alias + (BoxMode.isArmed() ? "_ARMED" : "_IDLE"));
+                Condition c = getConditionByAlias(alias);
                 if (c.state == 1) {
                     c.setState(0);
-                    c = getConditionByAlias("INTERNAL_HUMIDITY_BACK_TO_NORMAL" + (BoxMode.isArmed() ? "_ARMED" : "_IDLE"));
+                    c = getConditionByAlias("INTERNAL_HUMIDITY_BACK_TO_NORMAL");
                     if (c.state == 0) {
                         c.setState(1);
                         runStandardActions(c, m, p);
@@ -445,8 +465,8 @@ public class BehaviorModule implements Module {
     }
 
     public void parameterINTERNAL_TEMPActions(Event e) { //Датчик температуры
-
-        String alias = null;
+//явно всё плохо, надо внимательно разбираться
+        /*   String alias = null;
         Parameter p = (Parameter) e.data.get("parameter");
         Measurement m = (Measurement) e.data.get("measurement");
 
@@ -455,15 +475,15 @@ public class BehaviorModule implements Module {
         alias = "INTERNAL_TEMP_SENSOR_FAILURE";
         Measurement mMin = measurementsCache.getMinMeasurementFrom(p, System.currentTimeMillis() - 1000 * 60 * VACTimeout);
         if (mMin == null) {
-            Condition c = getConditionByAlias(alias + (BoxMode.isArmed() ? "_ARMED" : "_IDLE"));
+            Condition c = getConditionByAlias(alias);
             if (c.state == 0) {
                 c.setState(1);
                 runStandardActions(c, m, p);
             }
-            c = getConditionByAlias("VAC_SENSOR_POWER_RECOVERED" + (BoxMode.isArmed() ? "_ARMED" : "_IDLE"));
+            c = getConditionByAlias("VAC_SENSOR_POWER_RECOVERED");
             c.setState(0);
         } else {
-            Condition c = getConditionByAlias(alias + (BoxMode.isArmed() ? "_ARMED" : "_IDLE"));
+            Condition c = getConditionByAlias(alias);
             c.setState(0);
         }
         //очистка
@@ -474,7 +494,7 @@ public class BehaviorModule implements Module {
             if (getConditionByAlias(alias + "_IDLE").state == 1) {
                 getConditionByAlias(alias + "_IDLE").state = 0;
             }
-            Condition c = getConditionByAlias("VAC_SENSOR_POWER_RECOVERED" + (BoxMode.isArmed() ? "_ARMED" : "_IDLE"));
+            Condition c = getConditionByAlias("VAC_SENSOR_POWER_RECOVERED");
             if (c.state == 0) {
                 c.setState(1);
                 runStandardActions(c, m, p);
@@ -491,16 +511,16 @@ public class BehaviorModule implements Module {
         mMin = measurementsCache.getMinMeasurementFrom(p, System.currentTimeMillis() - 1000 * 60 * VACTimeout);
         if (mMax != null && mMin != null) {
             if ((mMax.getDoubleValue() - mMin.getDoubleValue() > 5) && (mMax.getTime() < mMin.getTime())) {
-                Condition c = getConditionByAlias(alias + (BoxMode.isArmed() ? "_ARMED" : "_IDLE"));
+                Condition c = getConditionByAlias(alias);
                 if (c.state == 0) {
                     c.setState(1);
                     runStandardActions(c, m, p);
                 }
             } else {
-                Condition c = getConditionByAlias(alias + (BoxMode.isArmed() ? "_ARMED" : "_IDLE"));
+                Condition c = getConditionByAlias(alias);
                 if (c.state == 1) {
                     c.setState(0);
-                    c = getConditionByAlias("VAC_SENSOR_POWER_RECOVERED" + (BoxMode.isArmed() ? "_ARMED" : "_IDLE"));
+                    c = getConditionByAlias("VAC_SENSOR_POWER_RECOVERED");
                     if (c.state == 0) {
                         c.setState(1);
                         runStandardActions(c, m, p);
@@ -516,16 +536,16 @@ public class BehaviorModule implements Module {
         mMin = measurementsCache.getMinMeasurementFrom(p, System.currentTimeMillis() - 1000 * 60 * VACTimeout);
         if (mMax != null && mMin != null) {
             if ((mMax.getDoubleValue() - mMin.getDoubleValue() > 5) && (mMax.getTime() > mMin.getTime())) {
-                Condition c = getConditionByAlias(alias + (BoxMode.isArmed() ? "_ARMED" : "_IDLE"));
+                Condition c = getConditionByAlias(alias);
                 if (c.state == 0) {
                     c.setState(1);
                     runStandardActions(c, m, p);
                 }
             } else {
-                Condition c = getConditionByAlias(alias + (BoxMode.isArmed() ? "_ARMED" : "_IDLE"));
+                Condition c = getConditionByAlias(alias);
                 if (c.state == 1) {
                     c.setState(0);
-                    c = getConditionByAlias("VAC_SENSOR_POWER_RECOVERED" + (BoxMode.isArmed() ? "_ARMED" : "_IDLE"));
+                    c = getConditionByAlias("VAC_SENSOR_POWER_RECOVERED");
                     if (c.state == 0) {
                         c.setState(1);
                         runStandardActions(c, m, p);
@@ -541,16 +561,16 @@ public class BehaviorModule implements Module {
         mMin = measurementsCache.getMinMeasurementFrom(p, System.currentTimeMillis() - 1000 * 60 * VACTimeout);
         if (mMax != null && mMin != null) {
             if ((mMax.getDoubleValue() < BoxSettingsAPI.getDouble("InTempAlertMin")) || (mMin.getDoubleValue() > BoxSettingsAPI.getDouble("InTempAlertMax"))) {
-                Condition c = getConditionByAlias(alias + (BoxMode.isArmed() ? "_ARMED" : "_IDLE"));
+                Condition c = getConditionByAlias(alias);
                 if (c.state == 0) {
                     c.setState(1);
                     runStandardActions(c, m, p);
                 }
             } else {
-                Condition c = getConditionByAlias(alias + (BoxMode.isArmed() ? "_ARMED" : "_IDLE"));
+                Condition c = getConditionByAlias(alias);
                 if (c.state == 1) {
                     c.setState(0);
-                    c = getConditionByAlias("VAC_SENSOR_POWER_RECOVERED" + (BoxMode.isArmed() ? "_ARMED" : "_IDLE"));
+                    c = getConditionByAlias("VAC_SENSOR_POWER_RECOVERED");
                     if (c.state == 0) {
                         c.setState(1);
                         runStandardActions(c, m, p);
@@ -558,7 +578,7 @@ public class BehaviorModule implements Module {
                 }
             }
         }
-
+         */
     }
 
     public void parameterBATT_TEMPActions(Event e) { //Перегрев аккумулятора
@@ -570,13 +590,13 @@ public class BehaviorModule implements Module {
         //boolean chargeEnabled = measurementsCache.getLastMeasurement(chargeEnabledP).getBooleanValue();
 
         if (m.getDoubleValue() > BoxSettingsAPI.getDouble("VBatTempAlertMax")) {
-            Condition c = getConditionByAlias(alias + (BoxMode.isArmed() ? "_ARMED" : "_IDLE"));
+            Condition c = getConditionByAlias(alias);
             if (c.state == 0) {
                 c.setState(1);
                 runStandardActions(c, m, p);
             }
         } else {
-            Condition c = getConditionByAlias(alias + (BoxMode.isArmed() ? "_ARMED" : "_IDLE"));
+            Condition c = getConditionByAlias(alias);
             c.setState(0);
         }
     }
@@ -590,40 +610,35 @@ public class BehaviorModule implements Module {
         boolean chargeEnabled = measurementsCache.getLastMeasurement(chargeEnabledP).getBooleanValue();
 
         if (m.getIntegerValue() < BoxSettingsAPI.getDouble("VBatAlertCritical") && !chargeEnabled) {
-            Condition c = getConditionByAlias(alias + (BoxMode.isArmed() ? "_ARMED" : "_IDLE"));
+            Condition c = getConditionByAlias(alias);
             if (c.state == 0) {
                 c.setState(1);
                 runStandardActions(c, m, p);
             }
-            c = getConditionByAlias("BAT_CHARGE_NORMAL_IDLE");
+            c = getConditionByAlias("BAT_CHARGE_NORMAL");
             c.setState(0);
-            c = getConditionByAlias("BAT_CHARGE_NORMAL_ARMED");
-            c.setState(0);
+
         }
 
         //Заряд аккумуляторов < 50% и > 30%
         alias = "BAT_CHARGE_BETWEEN_30_50";
         if (m.getIntegerValue() >= BoxSettingsAPI.getDouble("VBatAlertCritical") && m.getIntegerValue() < BoxSettingsAPI.getDouble("VBatAlertMinor") && !chargeEnabled) {
-            Condition c = getConditionByAlias(alias + (BoxMode.isArmed() ? "_ARMED" : "_IDLE"));
+            Condition c = getConditionByAlias(alias);
             if (c.state == 0) {
                 c.setState(1);
                 runStandardActions(c, m, p);
             }
-            c = getConditionByAlias("BAT_CHARGE_NORMAL_IDLE");
+            c = getConditionByAlias("BAT_CHARGE_NORMAL");
             c.setState(0);
-            c = getConditionByAlias("BAT_CHARGE_NORMAL_ARMED");
-            c.setState(0);
+
         }
 
         if (chargeEnabled) {
-            Condition c = getConditionByAlias("BAT_CHARGE_LESS_30_ARMED");
+            Condition c = getConditionByAlias("BAT_CHARGE_LESS_30");
             c.setState(0);
-            c = getConditionByAlias("BAT_CHARGE_LESS_30_IDLE");
+            c = getConditionByAlias("BAT_CHARGE_BETWEEN_30_50");
             c.setState(0);
-            c = getConditionByAlias("BAT_CHARGE_BETWEEN_30_50_ARMED");
-            c.setState(0);
-            c = getConditionByAlias("BAT_CHARGE_BETWEEN_30_50_IDLE");
-            c.setState(0);
+
         }
 
     }
@@ -635,13 +650,17 @@ public class BehaviorModule implements Module {
         Measurement m = (Measurement) e.data.get("measurement");
 
         if (m.getBooleanValue()) {
-            Condition c = getConditionByAlias(alias + (BoxMode.isArmed() ? "_ARMED" : "_IDLE"));
+            Condition c = getConditionByAlias(alias);
             if (c.state == 0) {
+                if (BoxMode.isArmed()) {
+                    p.setState(Parameter.State.OK);
+                }
                 c.setState(1);
                 runStandardActions(c, m, p);
             }
         } else {
-            Condition c = getConditionByAlias(alias + (BoxMode.isArmed() ? "_ARMED" : "_IDLE"));
+            Condition c = getConditionByAlias(alias);
+            p.setState(Parameter.State.OK);
             c.setState(0);
         }
     }
@@ -656,14 +675,20 @@ public class BehaviorModule implements Module {
         Measurement mMin = measurementsCache.getMinMeasurementFrom(p, System.currentTimeMillis() - 1000 * 60 * VACTimeout);
         if (mMax != null && mMin != null) {
             if (mMax.getDoubleValue() < BoxSettingsAPI.getDouble("VACAlertMin")) {
-                Condition c = getConditionByAlias(alias + (BoxMode.isArmed() ? "_ARMED" : "_IDLE"));
+                Condition c = getConditionByAlias(alias);
                 if (c.state == 0) {
+                    p.setState(Parameter.State.ALARM);
                     c.setState(1);
                     runStandardActions(c, mMax, p);
-                    c = getConditionByAlias("VAC_SENSOR_POWER_RECOVERED_ARMED");
+                    c = getConditionByAlias("VAC_SENSOR_POWER_RECOVERED");
                     c.setState(0);
-                    c = getConditionByAlias("VAC_SENSOR_POWER_RECOVERED_IDLE");
+                    
+                }
+            } else {
+                Condition c = getConditionByAlias(alias);
+                if (c.state == 1) {
                     c.setState(0);
+                    runStandardActions(c, mMax, p);
                 }
             }
         }
@@ -672,40 +697,47 @@ public class BehaviorModule implements Module {
         alias = "VAC_SENSOR_POWER_RECOVERED";
         if (mMax != null && mMin != null) {
             if (mMax.getDoubleValue() < BoxSettingsAPI.getDouble("VACAlertMax") && mMin.getDoubleValue() > BoxSettingsAPI.getDouble("VACAlertMin")) {
-                Condition c = getConditionByAlias(alias + (BoxMode.isArmed() ? "_ARMED" : "_IDLE"));
-                                if (c.state == 0) {
-                c.setState(1);
-                runStandardActions(c, mMax, p);
-                c = getConditionByAlias("VAC_SENSOR_POWER_LOSS_ARMED");
-                c.setState(0);
-                c = getConditionByAlias("VAC_SENSOR_POWER_LOSS_IDLE");
-                c.setState(0);
-                                }
+                Condition c = getConditionByAlias(alias);
+                if (c.state == 0) {
+                    p.setState(Parameter.State.OK);
+                    c.setState(1);
+                    runStandardActions(c, mMax, p);
+                    c = getConditionByAlias("VAC_SENSOR_POWER_LOSS");
+                    c.setState(0);
+                }
             }
         }
         //Опасный для электроприборов скачок напряжения электросети
         Measurement m = measurementsCache.getLastMeasurement(p);
         alias = "VAC_SENSOR_UNSTABLE";
         if (m.getDoubleValue() > BoxSettingsAPI.getDouble("VACAlertMax") || m.getDoubleValue() < BoxSettingsAPI.getDouble("VACAlertMin")) {
-            Condition c = getConditionByAlias(alias + (BoxMode.isArmed() ? "_ARMED" : "_IDLE"));
-                            if (c.state == 0) {
-            c.setState(1);
-            runStandardActions(c, m, p);
-                            }
+            Condition c = getConditionByAlias(alias);
+            if (c.state == 0) {
+                c.setState(1); //здесь отключать зарядку и ставить p.setState(Parameter.State.ALARM);
+                runStandardActions(c, m, p);
+            }
+        } else {
+            Condition c = getConditionByAlias(alias);
+            if (c.state == 1) {
+                c.setState(0);//здесь включать зарядку и ставить p.setState(Parameter.State.OK);
+                runStandardActions(c, m, p);
+            }
         }
     }
 
     public void runStandardActions(Condition c, Measurement m, Parameter p) {
         if (c.state > 0) {
             for (Action a : c.actions) {
-                String message = a.data.replaceAll("ДД ВР", Tools.getFormatedDate(new Date(m.getTime()), "dd.MM.yyyy HH:mm"));
-                message = message.replaceAll("<%=VALUE%>", m.toStringValue());
+                if (a.boxMode != null && !a.boxMode.toString().equals(BoxMode.string())) {
+                    continue;
+                }
+                String message = a.data.replaceAll("%VALUE%", m.toStringValue());
                 switch (a.module) {
                     case "DisplayModule":
                         actionDisplay(a.severity, message, p, c, a);
                         break;
                     case "Logger":
-                        actionLog(a.severity, message);
+                        actionLog(a.severity, message, p.getAlias());
                         break;
                     case "ModemModule":
                         actionSMS(a.severity, message);

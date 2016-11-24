@@ -5,8 +5,6 @@
  */
 package org.lobzik.home_sapiens.pi;
 
-import org.lobzik.home_sapiens.pi.modules.BehaviorModule;
-
 /**
  *
  * @author Nikolas
@@ -17,12 +15,14 @@ import org.lobzik.home_sapiens.pi.modules.BehaviorModule;
         public String module;
         public String data;
         public WebNotification.Severity severity;
+        public BoxMode.MODE boxMode;
         
-        public Action(int id, String alias, String module, String data, WebNotification.Severity severity){
+        public Action(int id, String alias, String module, String data, WebNotification.Severity severity, BoxMode.MODE boxMode){
             this.id = id;
             this.alias = alias;
             this.module = module;
             this.data = data;
             this.severity = severity;
+            this.boxMode = boxMode;
         }
     }
