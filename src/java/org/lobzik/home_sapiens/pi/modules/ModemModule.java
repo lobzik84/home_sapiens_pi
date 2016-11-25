@@ -25,7 +25,10 @@ import org.lobzik.home_sapiens.entity.Measurement;
 import org.lobzik.home_sapiens.entity.Parameter;
 import org.lobzik.home_sapiens.pi.AppData;
 import org.lobzik.home_sapiens.pi.BoxCommonData;
+import org.lobzik.home_sapiens.pi.BoxSettingsAPI;
 import org.lobzik.home_sapiens.pi.ConnJDBCAppender;
+import org.lobzik.home_sapiens.pi.behavior.Notification;
+import org.lobzik.home_sapiens.pi.UsersPublicKeysCache;
 import org.lobzik.home_sapiens.pi.event.EventManager;
 import org.lobzik.tools.Tools;
 import org.lobzik.tools.db.mysql.DBSelect;
@@ -91,7 +94,7 @@ public class ModemModule extends Thread implements Module {
         log.info("Starting " + getName() + " on " + BoxCommonData.MODEM_INFO_PORT);
         EventManager.subscribeForEventType(this, Event.Type.TIMER_EVENT);
         EventManager.subscribeForEventType(this, Event.Type.USER_ACTION);
-
+        EventManager.subscribeForEventType(this, Event.Type.BEHAVIOR_EVENT);
         try {
             if (test) {
                 conn = DriverManager.getConnection("jdbc:mysql://localhost:3306/hs?useUnicode=true&amp;characterEncoding=utf8&user=hsuser&password=hspass");
@@ -289,7 +292,20 @@ public class ModemModule extends Thread implements Module {
 
                 }
                 break;
-
+                
+            case BEHAVIOR_EVENT:
+                if (e.name.equals("send_sms")) {
+                    boolean doSendSms = Tools.parseBoolean(BoxSettingsAPI.get("SMSNotifications"), false);
+                    Notification n = (Notification) e.data.get("Notification");
+                    if (n != null && doSendSms) {
+                        for (String login : UsersPublicKeysCache.getInstance().getLogins()) {
+                            String number = login.replace("(", "").replace(")", "").replaceAll("-", "");
+                            log.debug("Sending sms ");
+                            sendMessage(number, n.text);
+                        }
+                    }
+                }
+                break;
         }
     }
 

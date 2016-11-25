@@ -51,7 +51,9 @@ public class EventManager extends Thread {
                         List<Module> subscribersList = subscribers.get(e.type);
                         //System.out.println("Event type " + e.type + ", notifying " + subscribersList.size() + " subscribers");
                         for (Module m : subscribersList) {
-                            m.handleEvent(e);
+                            if (e.recipient == null || e.recipient.equals(m.getModuleName())) {
+                                m.handleEvent(e);
+                            }
                             //System.out.println("Notifying " + m.getModuleName());
 
                         }

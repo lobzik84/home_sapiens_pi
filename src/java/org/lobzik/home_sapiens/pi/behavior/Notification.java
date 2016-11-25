@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package org.lobzik.home_sapiens.pi;
+package org.lobzik.home_sapiens.pi.behavior;
 
 import java.util.Date;
 import org.json.JSONObject;
@@ -12,7 +12,7 @@ import org.json.JSONObject;
  *
  * @author lobzik
  */
-public class WebNotification {
+public class Notification {
 
     public Severity severity;
     public String parameterAlias;
@@ -20,7 +20,8 @@ public class WebNotification {
     public Date startDate;
     public Date endDate;
     public String conditionAlias;
-
+    public Integer conditionState;
+    
     public enum Severity {
         INFO, //INFO инфо - просто оповещение, бесцветный или серый
         OK, //WARNING вернулось в норму, зелёный
@@ -30,7 +31,7 @@ public class WebNotification {
 
     public final int id;
 
-    public WebNotification(Severity severity, String parameterAlias, String text, Date startDate, Date endDate) {
+    public Notification(Severity severity, String parameterAlias, String text, Date startDate, Date endDate) {
         id = (int) (Math.random() * 100000d);
         this.severity = severity;
         this.parameterAlias = parameterAlias;
@@ -39,7 +40,7 @@ public class WebNotification {
         this.endDate = endDate;
     }
 
-    public WebNotification(Severity severity, String parameterAlias, String text, Date startDate, Date endDate, String conditionAlias) {
+    public Notification(Severity severity, String parameterAlias, String text, Date startDate, Date endDate, String conditionAlias, Integer conditionState) {
         id = (int) (Math.random() * 100000d);
         this.severity = severity;
         this.parameterAlias = parameterAlias;
@@ -47,6 +48,7 @@ public class WebNotification {
         this.startDate = startDate;
         this.endDate = endDate;
         this.conditionAlias = conditionAlias;
+        this.conditionState = conditionState;
     }
 
         

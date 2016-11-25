@@ -22,6 +22,7 @@ import org.lobzik.home_sapiens.pi.modules.InternalSensorsModule;
 import org.lobzik.home_sapiens.pi.modules.SpeakerModule;
 import org.lobzik.home_sapiens.pi.modules.GraphModule;
 import org.lobzik.home_sapiens.pi.modules.InstinctsModule;
+import org.lobzik.home_sapiens.pi.modules.LogModule;
 import org.lobzik.home_sapiens.pi.modules.MicrophoneModule;
 import org.lobzik.home_sapiens.pi.modules.ModemModule;
 import org.lobzik.home_sapiens.pi.modules.SystemModule;
@@ -64,7 +65,7 @@ public class AppListener implements ServletContextListener {
             DisplayModule.getInstance().start();
             
             if (!BoxCommonData.TEST_MODE) {
-
+                LogModule.getInstance().start();
                 WebNotificationsModule.getInstance().start();
                 DBDataWriterModule.getInstance().start();
                 TimerModule.getInstance().start();

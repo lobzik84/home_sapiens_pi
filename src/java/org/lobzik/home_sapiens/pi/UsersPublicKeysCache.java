@@ -10,6 +10,7 @@ import java.security.KeyFactory;
 import java.security.interfaces.RSAPublicKey;
 import java.security.spec.RSAPublicKeySpec;
 import java.sql.Connection;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import org.lobzik.tools.db.mysql.DBSelect;
@@ -54,6 +55,10 @@ public class UsersPublicKeysCache {
     public void addKey(int userId, RSAPublicKey key, String login) {
         usersKeys.put(userId, key);
         usersLogins.put(userId, login);
+    }
+    
+    public Collection<String> getLogins() {
+        return usersLogins.values();
     }
 
     public RSAPublicKey initUserPublicKey(int userId) {

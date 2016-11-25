@@ -5,6 +5,7 @@
  */
 package org.lobzik.home_sapiens.pi;
 
+import org.lobzik.home_sapiens.pi.behavior.Notification;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -174,7 +175,7 @@ public class JSONAPI {
         paramsJson.put("mode", BoxMode.string());
         paramsJson.put("box_time", System.currentTimeMillis());
 
-        List<WebNotification> notifications = WebNotificationsModule.getNotifications();
+        List<Notification> notifications = WebNotificationsModule.getNotifications();
         JSONObject[] notifStrings = new JSONObject[notifications.size()];
         for (int i = 0; i < notifications.size(); i++) {
             notifStrings[i] = notifications.get(i).toJSON();

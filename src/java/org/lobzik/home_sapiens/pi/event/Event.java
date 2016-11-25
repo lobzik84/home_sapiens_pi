@@ -18,6 +18,7 @@ public class Event {
     public String name;
     public Map data;
     public Type type;
+    public String recipient = null;//null means for all, broadcast event
     
     public enum Type
     {   
@@ -29,7 +30,7 @@ public class Event {
         SYSTEM_MODE_CHANGED,
         TIMER_EVENT,
         SYSTEM_EVENT,
-        REACTION_EVENT
+        BEHAVIOR_EVENT
     };
     
     public Event(String name, Map data, Event.Type type ) {
@@ -37,6 +38,14 @@ public class Event {
         this.name = name;
         this.data = data;
         this.type = type;
+    }
+    
+    public Event(String name, Map data, Event.Type type, String recipient ) {
+        this.date = new Date();
+        this.name = name;
+        this.data = data;
+        this.type = type;
+        this.recipient = recipient;
     }
     
     public Event.Type getType() {

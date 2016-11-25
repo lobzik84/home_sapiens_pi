@@ -14,7 +14,9 @@ import org.apache.log4j.Logger;
 import org.json.JSONObject;
 import org.lobzik.home_sapiens.pi.AppData;
 import org.lobzik.home_sapiens.pi.BoxCommonData;
+import org.lobzik.home_sapiens.pi.BoxSettingsAPI;
 import org.lobzik.home_sapiens.pi.ConnJDBCAppender;
+import org.lobzik.home_sapiens.pi.behavior.Notification;
 import org.lobzik.home_sapiens.pi.event.Event;
 import org.lobzik.home_sapiens.pi.event.EventManager;
 import org.lobzik.home_sapiens.pi.tunnel.client.TunnelClient;
@@ -66,7 +68,7 @@ public class TunnelClientModule extends Thread implements Module {
         setName(this.getClass().getSimpleName() + "-Thread");
         log.info("Starting " + getName());
         EventManager.subscribeForEventType(this, Event.Type.SYSTEM_EVENT);
-        EventManager.subscribeForEventType(this, Event.Type.REACTION_EVENT);
+        EventManager.subscribeForEventType(this, Event.Type.BEHAVIOR_EVENT);
         while (run) {
             if (client == null || !client.isConnected() || System.currentTimeMillis() - client.getLastDataRecieved() > 3 * WS_CHECK_PERIOD) {
                 if (client != null && client.isConnected()) {
@@ -143,7 +145,7 @@ public class TunnelClientModule extends Thread implements Module {
                         break;
                 }
                 break;
-            case REACTION_EVENT:
+            case BEHAVIOR_EVENT:
                 if (e.name.equals("send_email")) {
                     if (client != null && client.isConnected()) {
                         try {
@@ -159,8 +161,26 @@ public class TunnelClientModule extends Thread implements Module {
                             log.debug("Error on send msg: " + ee.getMessage());
                         }
                     }
-                    break;
-                }
+                    
+                } else if (e.name.equals("send_email_notification")) {
+                    String email = BoxSettingsAPI.get("NotificationsEmail");
+                    if (client != null && client.isConnected() && email != null && email.indexOf("@") > 0) {
+                        try {
+                            Notification n = (Notification)e.data.get("Notification");
+                            JSONObject json = new JSONObject();
+                            json.put("box_id", BoxCommonData.BOX_ID);
+                            json.put("action", "send_email");
+                            json.put("mail_to", email);
+                            json.put("mail_text", n.text); //TODO render JSP template
+                            json.put("mail_subject", "Управдом "+ BoxSettingsAPI.get("BoxName") +": " + n.severity.toString());
+                            log.debug("Sending email to " +  email);
+                            client.sendMessage(json);
+                        } catch (Exception ee) {
+                            log.debug("Error on send msg: " + ee.getMessage());
+                        }
+                    }
+                    
+                } 
                 break;
         }
 

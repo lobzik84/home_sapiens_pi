@@ -3,15 +3,13 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package org.lobzik.home_sapiens.pi;
+package org.lobzik.home_sapiens.pi.behavior;
 
 import java.sql.Connection;
 import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
+import org.lobzik.home_sapiens.pi.BoxCommonData;
 
-import org.lobzik.home_sapiens.pi.event.Event;
 import org.lobzik.tools.db.mysql.DBSelect;
 import org.lobzik.tools.db.mysql.DBTools;
 
@@ -48,22 +46,6 @@ import org.lobzik.tools.db.mysql.DBTools;
                 String sSQL = "update conditions set state=" + this.state + " where id = " + this.id + ";";
                 DBSelect.executeStatement(sSQL, null, conn);
             } catch (Exception e) {
-                e.printStackTrace();
-            }
-            
-            try {
-            for(Action a:actions){
-                if(a.module.equalsIgnoreCase("DisplayModule") && state==0 && oldState==1){
-                    WebNotification dn = new WebNotification(a.severity, AppData.parametersStorage.getParameter(this.parameterId).getAlias(), a.data, new Date(), null, this.getAlias());
-                    HashMap data3 = new HashMap();
-                    data3.put("DisplayNotification", dn);
-                    data3.put("ConditionAlias", this.getAlias());
-                    Event reaction3 = new Event("delete_display_notification", data3, Event.Type.REACTION_EVENT);
-                    AppData.eventManager.newEvent(reaction3);
-                }
-            }
-            }
-            catch (Exception e) {
                 e.printStackTrace();
             }
         }

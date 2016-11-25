@@ -22,7 +22,7 @@ import org.lobzik.home_sapiens.pi.BoxMode;
 import org.lobzik.home_sapiens.pi.BoxSettingsAPI;
 import org.lobzik.home_sapiens.pi.ConnJDBCAppender;
 import org.lobzik.home_sapiens.pi.MeasurementsCache;
-import org.lobzik.home_sapiens.pi.WebNotification;
+import org.lobzik.home_sapiens.pi.behavior.Notification;
 import org.lobzik.home_sapiens.pi.event.Event;
 import org.lobzik.home_sapiens.pi.event.EventManager;
 import static org.lobzik.home_sapiens.pi.modules.ModemModule.test;

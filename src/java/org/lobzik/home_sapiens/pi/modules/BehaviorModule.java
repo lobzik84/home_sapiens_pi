@@ -14,19 +14,17 @@ import org.apache.log4j.Appender;
 import org.apache.log4j.Logger;
 import org.lobzik.home_sapiens.entity.Measurement;
 import org.lobzik.home_sapiens.entity.Parameter;
-import org.lobzik.home_sapiens.pi.Action;
+import org.lobzik.home_sapiens.pi.behavior.Action;
 import org.lobzik.home_sapiens.pi.AppData;
 import static org.lobzik.home_sapiens.pi.AppData.measurementsCache;
 import org.lobzik.home_sapiens.pi.BoxCommonData;
 import org.lobzik.home_sapiens.pi.BoxMode;
-import org.lobzik.home_sapiens.pi.BoxMode.MODE;
 import org.lobzik.home_sapiens.pi.BoxSettingsAPI;
-import org.lobzik.home_sapiens.pi.Condition;
+import org.lobzik.home_sapiens.pi.behavior.Condition;
 import org.lobzik.home_sapiens.pi.ConnJDBCAppender;
-import org.lobzik.home_sapiens.pi.WebNotification;
+import org.lobzik.home_sapiens.pi.behavior.Notification;
 import org.lobzik.home_sapiens.pi.event.Event;
 import org.lobzik.home_sapiens.pi.event.EventManager;
-//import static org.lobzik.home_sapiens.pi.modules.ModemModule.test;
 import org.lobzik.tools.Tools;
 import org.lobzik.tools.db.mysql.DBSelect;
 import org.lobzik.tools.db.mysql.DBTools;
@@ -41,9 +39,6 @@ public class BehaviorModule implements Module {
     public final String MODULE_NAME = this.getClass().getSimpleName();
     private static Logger log = null;
     private static BehaviorModule instance = null;
-    private static Connection conn = null;
-    private static String mobileNumber = null;
-    private static String email = null;
     private static List<Condition> conditions = null;
 
     private BehaviorModule() { //singleton
@@ -76,22 +71,7 @@ public class BehaviorModule implements Module {
             EventManager.subscribeForEventType(this, Event.Type.PARAMETER_CHANGED);
             EventManager.subscribeForEventType(this, Event.Type.USER_ACTION);
 
-            conn = DBTools.openConnection(BoxCommonData.dataSourceName);
-
-            try {
-                String sSQL = "SELECT * FROM users";
-                List<HashMap> userData = DBSelect.getRows(sSQL, conn);
-                if (userData.size() > 0) {
-                    HashMap ud = userData.get(0);
-                    mobileNumber = Tools.getStringValue(ud.get("login"), "").replace("(", "").replace(")", "").replaceAll("-", "");
-                    email = Tools.getStringValue(ud.get("email"), "");
-                }
-
-            } catch (Exception ee) {
-                ee.printStackTrace();
-            }
-
-            try {
+            try (Connection conn = DBTools.openConnection(BoxCommonData.dataSourceName)) {
                 String sSQL = "SELECT * FROM conditions";
                 List<HashMap> conditionsList = DBSelect.getRows(sSQL, conn);
                 conditions = new ArrayList();
@@ -111,8 +91,8 @@ public class BehaviorModule implements Module {
                 ee.printStackTrace();
             }
 
-            try {
-                String sSQL = "SELECT * FROM actions order by condition_id";
+            try (Connection conn = DBTools.openConnection(BoxCommonData.dataSourceName)) {
+                String sSQL = "SELECT * FROM actions where enabled=1 order by condition_id";
                 List<HashMap> actionsList = DBSelect.getRows(sSQL, conn);
                 if (actionsList.size() > 0) {
                     for (HashMap a : actionsList) {
@@ -122,9 +102,11 @@ public class BehaviorModule implements Module {
                                     Tools.parseInt(a.get("id"), 0),
                                     Tools.getStringValue(a.get("alias"), ""),
                                     Tools.getStringValue(a.get("module"), ""),
-                                    Tools.getStringValue(a.get("data"), ""),
-                                    WebNotification.Severity.valueOf(Tools.getStringValue(a.get("severity"), "")),
-                                    a.get("box_mode") != null ? BoxMode.MODE.valueOf(Tools.getStringValue(a.get("box_mode"), "")) : null
+                                    (String) a.get("event_name"),
+                                    (String) a.get("notification_text"),
+                                    Notification.Severity.valueOf(Tools.getStringValue(a.get("severity"), "")),
+                                    a.get("box_mode") != null ? BoxMode.MODE.valueOf(Tools.getStringValue(a.get("box_mode"), "")) : null,
+                                    (Integer) a.get("condition_state")
                             );
                             Condition cond = getConditionById(conditions, conditionId);
 
@@ -146,28 +128,27 @@ public class BehaviorModule implements Module {
         switch (e.type) {
             case SYSTEM_MODE_CHANGED:
                 if (BoxMode.isArmed()) {
-                    log.warn("Включен режим Охрана");
+                    HashMap data = new HashMap();
+
+                    Notification n = new Notification(Notification.Severity.INFO, null, "Включен режим Охрана", new Date(), null);
+                    data.put("Notification", n);
+
+                    Event reaction = new Event("log_record", data, Event.Type.BEHAVIOR_EVENT, "LogModule");
+                    AppData.eventManager.newEvent(reaction);
                 } else if (BoxMode.isIdle()) {
-                    log.warn("Включен режим Хозяин Дома");
+                    HashMap data = new HashMap();
+
+                    Notification n = new Notification(Notification.Severity.INFO, null, "Включен режим Хозяин Дома", new Date(), null);
+                    data.put("Notification", n);
+
+                    Event reaction = new Event("log_record", data, Event.Type.BEHAVIOR_EVENT, "LogModule");
+                    AppData.eventManager.newEvent(reaction);
+
                 }
 
                 break;
 
             case PARAMETER_UPDATED:
-                /*switch (e.name) {
-                    case "mic_noise": //just for debug of microphone module, to be removed
-                        Measurement m = (Measurement) e.data.get("measurement");
-                        HashMap data = new HashMap();
-                        if (m.getBooleanValue()) {
-                            data.put("uart_command", "led1=on");
-                        } else {
-                            data.put("uart_command", "led1=off");
-                        }
-                        Event reaction = new Event("internal_uart_command", data, Event.Type.USER_ACTION);
-                        AppData.eventManager.newEvent(reaction);
-                        break;
-
-                }*/
 
                 try {
 
@@ -216,68 +197,6 @@ public class BehaviorModule implements Module {
 
     }
 
-    public static void actionLog(WebNotification.Severity severity, String mess, String alias) {
-        String message;
-        if (alias != null && alias.length() > 0) {
-            message = "ALIAS:" + alias + ": " + mess;
-        } else {
-            message = mess;
-        }
-        switch (severity) {
-            case INFO:
-                log.info(message);
-                break;
-
-            case OK:
-                log.warn(message);
-                break;
-
-            case ALERT:
-                log.error(message);
-                break;
-
-            case ALARM:
-                log.fatal(message);
-                break;
-        }
-    }
-
-    public static void actionSMS(WebNotification.Severity severity, String message) {
-        HashMap data = new HashMap();
-        data.put("message", message);
-        data.put("recipient", mobileNumber);
-        Event e = new Event("send_sms", data, Event.Type.USER_ACTION);
-        AppData.eventManager.newEvent(e);
-    }
-
-    public static void actionEmail(WebNotification.Severity severity, String message) {
-        HashMap data = new HashMap();
-        data.put("message", message);
-        data.put("recipient", email);
-        Event e = new Event("send_email", data, Event.Type.USER_ACTION);
-        AppData.eventManager.newEvent(e);
-    }
-
-    public static void actionDisplay(WebNotification.Severity severity, String message, Parameter p, Condition c, Action a) {
-
-        WebNotification dn = new WebNotification(a.severity, p.getAlias(), message, new Date(), null, c.getAlias());
-        HashMap data3 = new HashMap();
-        data3.put("DisplayNotification", dn);
-        data3.put("ConditionAlias", c.getAlias());
-        Event reaction3 = new Event((c.state == 0 ? "delete_" : "") + "display_notification", data3, Event.Type.REACTION_EVENT);
-        AppData.eventManager.newEvent(reaction3);
-
-    }
-
-    public static void actionWebNotify(WebNotification.Severity severity, String message, String parameterAlias) {
-
-        WebNotification wn = new WebNotification(severity, parameterAlias, message, new Date(), new Date(System.currentTimeMillis() + 1800000));
-        HashMap data = new HashMap();
-        data.put("WebNotification", wn);
-        Event reaction = new Event("web_notification", data, Event.Type.REACTION_EVENT);
-        AppData.eventManager.newEvent(reaction);
-    }
-
     public static Condition getConditionById(List<Condition> conditions, int conditionId) {
         Condition result = null;
         for (Condition c : conditions) {
@@ -318,34 +237,15 @@ public class BehaviorModule implements Module {
         int transferTrueCount = measurementsCache.getTransferTrueCountFrom(p, System.currentTimeMillis() - 1000 * VACTimeout);
 
         if (m.getBooleanValue() && transferTrueCount != 0) {
-            if (c.state == 0) {
-                if (BoxMode.isArmed()) {
-                    p.setState(Parameter.State.ALARM);
-                }
-                c.setState(1);
-                runStandardActions(c, m, p);
+            if (BoxMode.isArmed()) {
+                p.setState(Parameter.State.ALARM);
             }
-
-            c = getConditionByAlias("MIC_NOISE_CLEARED");
-            if (c.state == 1) {
-                c.setState(0);
-                runStandardActions(c, m, p);
-            }
-
+            triggerState(1, c, m, p);
         } else {
-            if (c.state == 1) {
-                if (BoxMode.isArmed()) {
-                    p.setState(Parameter.State.OK);
-                }
-                c.setState(0);
-                runStandardActions(c, m, p);
-
-                c = getConditionByAlias("MIC_NOISE_CLEARED");
-                if (c.state == 0) {
-                    c.setState(1);
-                    runStandardActions(c, m, p);
-                }
-            }
+            p.setState(Parameter.State.OK);
+        }
+        if (!m.getBooleanValue() && transferTrueCount == 0) {
+            triggerState(0, c, m, p);
         }
     }
 
@@ -359,34 +259,15 @@ public class BehaviorModule implements Module {
         int transferTrueCount = measurementsCache.getTransferTrueCountFrom(p, System.currentTimeMillis() - 1000 * PIRTimeout);
 
         if (m.getBooleanValue() && transferTrueCount != 0) {
-            if (c.state == 0) {
-                if (BoxMode.isArmed()) {
-                    p.setState(Parameter.State.ALARM);
-                }
-                c.setState(1);
-                runStandardActions(c, m, p);
+            if (BoxMode.isArmed()) {
+                p.setState(Parameter.State.ALARM);
             }
-
-            c = getConditionByAlias("PIR_SENSOR_CLEARED");
-            if (c.state == 1) {
-                c.setState(0);
-                runStandardActions(c, m, p);
-            }
-
+            triggerState(1, c, m, p);
         } else {
-            if (c.state == 1) {
-                if (BoxMode.isArmed()) {
-                    p.setState(Parameter.State.OK);
-                }
-                c.setState(0);
-                runStandardActions(c, m, p);
-
-                c = getConditionByAlias("PIR_SENSOR_CLEARED");
-                if (c.state == 0) {
-                    c.setState(1);
-                    runStandardActions(c, m, p);
-                }
-            }
+            p.setState(Parameter.State.OK);
+        }
+        if (!m.getBooleanValue() && transferTrueCount == 0) {
+            triggerState(0, c, m, p);
         }
 
     }
@@ -398,39 +279,16 @@ public class BehaviorModule implements Module {
         Measurement m = (Measurement) e.data.get("measurement");
 
         if (m.getBooleanValue()) {
-            if (c.state == 0) {
-                if (BoxMode.isArmed()) {
-                    p.setState(Parameter.State.ALARM);
-                }
-                c.setState(1);
-                runStandardActions(c, m, p);
-            }
-
-            c = getConditionByAlias("GAS_SENSOR_CLEARED");
-            if (c.state == 1) {
-                c.setState(0);
-                runStandardActions(c, m, p);
-            }
-
+            p.setState(Parameter.State.ALARM);
+            triggerState(1, c, m, p);
         } else {
-            if (c.state == 1) {
-                if (BoxMode.isArmed()) {
-                    p.setState(Parameter.State.OK);
-                }
-                c.setState(0);
-                runStandardActions(c, m, p);
-
-                c = getConditionByAlias("GAS_SENSOR_CLEARED");
-                if (c.state == 0) {
-                    c.setState(1);
-                    runStandardActions(c, m, p);
-                }
-            }
+            p.setState(Parameter.State.OK);
+            triggerState(0, c, m, p);
         }
     }
 
     public void parameterINTERNAL_HUMIDITYActions(Event e) { //Датчик влажности
-
+/*
         String alias = null;
         Parameter p = (Parameter) e.data.get("parameter");
         Measurement m = (Measurement) e.data.get("measurement");
@@ -461,7 +319,7 @@ public class BehaviorModule implements Module {
                 }
             }
         }
-
+         */
     }
 
     public void parameterINTERNAL_TEMPActions(Event e) { //Датчик температуры
@@ -583,6 +441,7 @@ public class BehaviorModule implements Module {
 
     public void parameterBATT_TEMPActions(Event e) { //Перегрев аккумулятора
         //Перегрев аккумулятора
+        /*
         String alias = "BATT_TEMP_OVERHEAT";
         Parameter p = (Parameter) e.data.get("parameter");
         Measurement m = (Measurement) e.data.get("measurement");
@@ -598,11 +457,11 @@ public class BehaviorModule implements Module {
         } else {
             Condition c = getConditionByAlias(alias);
             c.setState(0);
-        }
+        }*/
     }
 
     public void parameterBATT_CHARGEActions(Event e) { //Door Sensor
-        //Заряд аккумуляторов меньше 30%
+        /* //Заряд аккумуляторов меньше 30%
         String alias = "BAT_CHARGE_LESS_30";
         Parameter p = (Parameter) e.data.get("parameter");
         Measurement m = (Measurement) e.data.get("measurement");
@@ -640,116 +499,88 @@ public class BehaviorModule implements Module {
             c.setState(0);
 
         }
-
+         */
     }
 
     public void parameterDOOR_SENSORActions(Event e) { //Door Sensor
         //Сработал датчик открывания двери
-        String alias = "DOOR_SENSOR_OPEN";
+        Condition c = getConditionByAlias("DOOR_SENSOR_OPEN");
         Parameter p = (Parameter) e.data.get("parameter");
         Measurement m = (Measurement) e.data.get("measurement");
 
         if (m.getBooleanValue()) {
-            Condition c = getConditionByAlias(alias);
-            if (c.state == 0) {
-                if (BoxMode.isArmed()) {
-                    p.setState(Parameter.State.OK);
-                }
-                c.setState(1);
-                runStandardActions(c, m, p);
+            if (BoxMode.isArmed()) {
+                p.setState(Parameter.State.ALARM);
             }
+            triggerState(1, c, m, p);
         } else {
-            Condition c = getConditionByAlias(alias);
             p.setState(Parameter.State.OK);
-            c.setState(0);
         }
+        if (!m.getBooleanValue()) {
+            triggerState(0, c, m, p);
+        }
+
     }
 
     public void parameterVAC_SENSORActions(Event e) { //AC Voltage
+
         int VACTimeout = 5; //минут
         Parameter p = (Parameter) e.data.get("parameter");
 
         //последние 5 минут нет электричества
-        String alias = "VAC_SENSOR_POWER_LOSS";
+        Condition c = getConditionByAlias("VAC_SENSOR_POWER_LOSS");
         Measurement mMax = measurementsCache.getMaxMeasurementFrom(p, System.currentTimeMillis() - 1000 * 60 * VACTimeout);
         Measurement mMin = measurementsCache.getMinMeasurementFrom(p, System.currentTimeMillis() - 1000 * 60 * VACTimeout);
         if (mMax != null && mMin != null) {
             if (mMax.getDoubleValue() < BoxSettingsAPI.getDouble("VACAlertMin")) {
-                Condition c = getConditionByAlias(alias);
-                if (c.state == 0) {
-                    p.setState(Parameter.State.ALARM);
-                    c.setState(1);
-                    runStandardActions(c, mMax, p);
-                    c = getConditionByAlias("VAC_SENSOR_POWER_RECOVERED");
-                    c.setState(0);
-                    
-                }
+                triggerState(1, c, mMax, p);
             } else {
-                Condition c = getConditionByAlias(alias);
-                if (c.state == 1) {
-                    c.setState(0);
-                    runStandardActions(c, mMax, p);
-                }
+                triggerState(0, c, mMax, p);
             }
         }
 
         //напряжение более 5 минут в норме после отказа
-        alias = "VAC_SENSOR_POWER_RECOVERED";
+        c = getConditionByAlias("VAC_SENSOR_POWER_RECOVERED");
         if (mMax != null && mMin != null) {
             if (mMax.getDoubleValue() < BoxSettingsAPI.getDouble("VACAlertMax") && mMin.getDoubleValue() > BoxSettingsAPI.getDouble("VACAlertMin")) {
-                Condition c = getConditionByAlias(alias);
-                if (c.state == 0) {
-                    p.setState(Parameter.State.OK);
-                    c.setState(1);
-                    runStandardActions(c, mMax, p);
-                    c = getConditionByAlias("VAC_SENSOR_POWER_LOSS");
-                    c.setState(0);
-                }
+                triggerState(1, c, mMax, p);
+            } else {
+                triggerState(0, c, mMax, p);
             }
         }
         //Опасный для электроприборов скачок напряжения электросети
         Measurement m = measurementsCache.getLastMeasurement(p);
-        alias = "VAC_SENSOR_UNSTABLE";
+        c = getConditionByAlias("VAC_SENSOR_UNSTABLE");
         if (m.getDoubleValue() > BoxSettingsAPI.getDouble("VACAlertMax") || m.getDoubleValue() < BoxSettingsAPI.getDouble("VACAlertMin")) {
-            Condition c = getConditionByAlias(alias);
-            if (c.state == 0) {
-                c.setState(1); //здесь отключать зарядку и ставить p.setState(Parameter.State.ALARM);
-                runStandardActions(c, m, p);
-            }
+            p.setState(Parameter.State.ALARM);
+            triggerState(1, c, m, p);
         } else {
-            Condition c = getConditionByAlias(alias);
-            if (c.state == 1) {
-                c.setState(0);//здесь включать зарядку и ставить p.setState(Parameter.State.OK);
-                runStandardActions(c, m, p);
-            }
+            p.setState(Parameter.State.OK);
+            triggerState(0, c, m, p);
         }
     }
 
-    public void runStandardActions(Condition c, Measurement m, Parameter p) {
-        if (c.state > 0) {
-            for (Action a : c.actions) {
-                if (a.boxMode != null && !a.boxMode.toString().equals(BoxMode.string())) {
-                    continue;
-                }
-                String message = a.data.replaceAll("%VALUE%", m.toStringValue());
-                switch (a.module) {
-                    case "DisplayModule":
-                        actionDisplay(a.severity, message, p, c, a);
-                        break;
-                    case "Logger":
-                        actionLog(a.severity, message, p.getAlias());
-                        break;
-                    case "ModemModule":
-                        actionSMS(a.severity, message);
-                        break;
-                    case "TunnelClientModule":
-                        actionEmail(a.severity, message);
-                        break;
-                    case "WebNotificationsModule":
-                        actionWebNotify(a.severity, message, p.getAlias());
-                        break;
-                }
+    public void triggerState(int newState, Condition c, Measurement m, Parameter p) {
+        if (c.state == newState) {
+            return;
+        }
+        c.setState(newState);
+        for (Action a : c.actions) {
+            if (a.boxMode != null && !a.boxMode.toString().equals(BoxMode.string())) {
+                continue;//только те actions, что актуальны для текщего режима, остальное пропускаем
             }
+            if (a.conditionState != null && (int) a.conditionState != newState) {
+                continue; //только те actions, что актуальны для текущего состояния, остальное пропускаем
+            }
+            HashMap data = new HashMap();
+            if (a.notificationText != null) {
+                String message = a.notificationText.replaceAll("%VALUE%", m.toStringValue());
+                Notification n = new Notification(a.severity, p.getAlias(), message, new Date(), null, c.alias, newState);
+                data.put("Notification", n);
+
+            }
+            Event reaction = new Event(a.eventName, data, Event.Type.BEHAVIOR_EVENT, a.module);
+            AppData.eventManager.newEvent(reaction);
         }
     }
 

@@ -37,7 +37,7 @@ import javax.imageio.ImageIO;
 import org.apache.log4j.Appender;
 import org.lobzik.home_sapiens.pi.BoxCommonData;
 import org.lobzik.home_sapiens.pi.ConnJDBCAppender;
-import org.lobzik.home_sapiens.pi.WebNotification;
+import org.lobzik.home_sapiens.pi.behavior.Notification;
 import org.lobzik.home_sapiens.pi.event.EventManager;
 import org.lobzik.tools.Tools;
 
@@ -57,7 +57,7 @@ public class DisplayModule implements Module {
     private static final String LN_COMMAND = "/bin/ln";
     private FbiRunner fbiRunner = null;
 
-    private static final Stack<WebNotification> notifications = new Stack();
+    private static final Stack<Notification> notifications = new Stack();
     private static final int MAX_STACK_SIZE = 10;
 
     private DisplayModule() { //singleton
@@ -84,7 +84,7 @@ public class DisplayModule implements Module {
             draw();
             EventManager.subscribeForEventType(this, Event.Type.TIMER_EVENT);
             EventManager.subscribeForEventType(this, Event.Type.SYSTEM_EVENT);
-            EventManager.subscribeForEventType(this, Event.Type.REACTION_EVENT);
+            EventManager.subscribeForEventType(this, Event.Type.BEHAVIOR_EVENT);
             fbiRunner = new FbiRunner();
             fbiRunner.start();
 
@@ -103,23 +103,40 @@ public class DisplayModule implements Module {
                 }
                 break;
 
-            case REACTION_EVENT:
+            case BEHAVIOR_EVENT:
                 if (e.name.equals("display_notification")) {
-                    WebNotification n = (WebNotification) e.data.get("DisplayNotification");
-                    if (n != null) {
+                    Notification n = (Notification) e.data.get("Notification");
+                    //String conditionAlias = (String) e.data.get("ConditionAlias");
+                    //Integer state = (Integer)e.data.get("ConditionState");
+                    if (n != null && n.conditionState != null && n.conditionState == 1) {
                         while (notifications.size() > MAX_STACK_SIZE) {
                             notifications.remove(notifications.size() - 1);
                         }
                         notifications.push(n);
                         draw();
+                    } else if (n != null) {
+                        int index = -1;
+
+                        for (int i = 0; i < notifications.size(); i++) {
+                            Notification d = notifications.get(i);
+                            if (d.conditionAlias.equals(n.conditionAlias)) {
+                                index = i;
+                                break;
+                            }
+                        }
+                        if (index >= 0) {
+                            notifications.remove(index);
+                        }
+                        draw();
                     }
-                } else if (e.name.equals("delete_display_notification")) {
+                    
+                } /*else if (e.name.equals("delete_display_notification")) {
                     String conditionAlias = (String) e.data.get("ConditionAlias");
                     if (conditionAlias != null) {
                         int index = -1;
 
                         for (int i = 0; i < notifications.size(); i++) {
-                            WebNotification n = notifications.get(i);
+                            Notification n = notifications.get(i);
                             if (n.conditionAlias.equals(conditionAlias)) {
                                 index = i;
                                 break;
@@ -130,7 +147,7 @@ public class DisplayModule implements Module {
                         }
                         draw();
                     }
-                }
+                }*/
                 break;
         }
 
@@ -183,7 +200,7 @@ public class DisplayModule implements Module {
                 */
                 
                 
-                WebNotification notif = null;
+                Notification notif = null;
 
                 if (!notifications.isEmpty()) {
                     notif = notifications.peek();
