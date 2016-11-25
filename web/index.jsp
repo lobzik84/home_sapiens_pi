@@ -92,7 +92,7 @@
                     data.put("mail_text", mail);
                     data.put("mail_to", recipient);
                     data.put("mail_subject", subject);
-                    Event e = new Event("send_email", data, Event.Type.REACTION_EVENT);
+                    Event e = new Event("send_email", data, Event.Type.BEHAVIOR_EVENT);
                     AppData.eventManager.newEvent(e);
                 }
                 if (sms != null && sms.length() > 0) {

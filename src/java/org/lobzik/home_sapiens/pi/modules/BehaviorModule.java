@@ -277,166 +277,103 @@ public class BehaviorModule implements Module {
         Condition c = getConditionByAlias("GAS_SENSOR_ALARM");
         Parameter p = (Parameter) e.data.get("parameter");
         Measurement m = (Measurement) e.data.get("measurement");
+        int GASTimeout = 30; //секунд
+        int transferTrueCount = measurementsCache.getTransferTrueCountFrom(p, System.currentTimeMillis() - 1000 * GASTimeout);
 
         if (m.getBooleanValue()) {
             p.setState(Parameter.State.ALARM);
             triggerState(1, c, m, p);
-        } else {
+        } else if (transferTrueCount == 0) { //иначе валится шквал
             p.setState(Parameter.State.OK);
             triggerState(0, c, m, p);
         }
     }
 
     public void parameterINTERNAL_HUMIDITYActions(Event e) { //Датчик влажности
-/*
-        String alias = null;
+
         Parameter p = (Parameter) e.data.get("parameter");
         Measurement m = (Measurement) e.data.get("measurement");
 
         //Вышла и более 5 минут подряд находится вне установленных пределов
-        alias = "INTERNAL_HUMIDITY_OUT_OF_BOUNDS";
-        int VACTimeout = 5; //минут
-        Measurement mMax = measurementsCache.getMaxMeasurementFrom(p, System.currentTimeMillis() - 1000 * 60 * VACTimeout);
-        Measurement mMin = measurementsCache.getMinMeasurementFrom(p, System.currentTimeMillis() - 1000 * 60 * VACTimeout);
+        Condition c = getConditionByAlias("INTERNAL_HUMIDITY_OUT_OF_BOUNDS");
+        int timeout = 5; //минут
+        Measurement mMax = measurementsCache.getMaxMeasurementFrom(p, System.currentTimeMillis() - 1000 * 60 * timeout);
+        Measurement mMin = measurementsCache.getMinMeasurementFrom(p, System.currentTimeMillis() - 1000 * 60 * timeout);
         if (mMax != null && mMin != null) {
             if ((mMax.getDoubleValue() < BoxSettingsAPI.getDouble("InHumAlertMin")) || (mMin.getDoubleValue() > BoxSettingsAPI.getDouble("InHumAlertMax"))) {
-                Condition c = getConditionByAlias(alias);
-                if (c.state == 0) {
-                    c.setState(1);
-                    runStandardActions(c, m, p);
-                }
-                c = getConditionByAlias("INTERNAL_HUMIDITY_BACK_TO_NORMAL");
-                c.setState(0);
+                triggerState(1, c, m, p);
             } else {
-                Condition c = getConditionByAlias(alias);
-                if (c.state == 1) {
-                    c.setState(0);
-                    c = getConditionByAlias("INTERNAL_HUMIDITY_BACK_TO_NORMAL");
-                    if (c.state == 0) {
-                        c.setState(1);
-                        runStandardActions(c, m, p);
-                    }
-                }
+                triggerState(0, c, m, p);
             }
         }
-         */
+        if ((m.getDoubleValue() > BoxSettingsAPI.getDouble("InHumAlertMin")) && m.getDoubleValue() < BoxSettingsAPI.getDouble("InHumAlertMax")) {
+            p.setState(Parameter.State.OK);
+        } else {
+            p.setState(Parameter.State.ALARM);
+        }
+
     }
 
     public void parameterINTERNAL_TEMPActions(Event e) { //Датчик температуры
-//явно всё плохо, надо внимательно разбираться
-        /*   String alias = null;
+
         Parameter p = (Parameter) e.data.get("parameter");
         Measurement m = (Measurement) e.data.get("measurement");
 
         //не работает 
-        int VACTimeout = 5; //минут
-        alias = "INTERNAL_TEMP_SENSOR_FAILURE";
-        Measurement mMin = measurementsCache.getMinMeasurementFrom(p, System.currentTimeMillis() - 1000 * 60 * VACTimeout);
+        int timeout = 5; //минут
+        Condition c = getConditionByAlias("INTERNAL_TEMP_SENSOR_FAILURE");
+        Measurement mMin = measurementsCache.getMinMeasurementFrom(p, System.currentTimeMillis() - 1000 * 60 * timeout);
         if (mMin == null) {
-            Condition c = getConditionByAlias(alias);
-            if (c.state == 0) {
-                c.setState(1);
-                runStandardActions(c, m, p);
-            }
-            c = getConditionByAlias("VAC_SENSOR_POWER_RECOVERED");
-            c.setState(0);
-        } else {
-            Condition c = getConditionByAlias(alias);
-            c.setState(0);
-        }
-        //очистка
-        if (mMin != null) {
-            if (getConditionByAlias(alias + "_ARMED").state == 1) {
-                getConditionByAlias(alias + "_ARMED").state = 0;
-            }
-            if (getConditionByAlias(alias + "_IDLE").state == 1) {
-                getConditionByAlias(alias + "_IDLE").state = 0;
-            }
-            Condition c = getConditionByAlias("VAC_SENSOR_POWER_RECOVERED");
-            if (c.state == 0) {
-                c.setState(1);
-                runStandardActions(c, m, p);
-            }
 
-            c = getConditionByAlias("VAC_SENSOR_POWER_RECOVERED" + (BoxMode.isArmed() ? "_IDLE" : "_ARMED"));
-            c.setState(1);
+            triggerState(1, c, m, p);
+        } else {
+            triggerState(0, c, m, p);
         }
 
         //Температура воздуха снижается быстрее, чем на 5 градусов в час
-        alias = "INTERNAL_TEMP_FAST_FALLING";
-        VACTimeout = 60; //минут
-        Measurement mMax = measurementsCache.getMaxMeasurementFrom(p, System.currentTimeMillis() - 1000 * 60 * VACTimeout);
-        mMin = measurementsCache.getMinMeasurementFrom(p, System.currentTimeMillis() - 1000 * 60 * VACTimeout);
+        c = getConditionByAlias("INTERNAL_TEMP_FAST_FALLING");
+        timeout = 60; //минут
+        Measurement mMax = measurementsCache.getMaxMeasurementFrom(p, System.currentTimeMillis() - 1000 * 60 * timeout);
+        mMin = measurementsCache.getMinMeasurementFrom(p, System.currentTimeMillis() - 1000 * 60 * timeout);
         if (mMax != null && mMin != null) {
             if ((mMax.getDoubleValue() - mMin.getDoubleValue() > 5) && (mMax.getTime() < mMin.getTime())) {
-                Condition c = getConditionByAlias(alias);
-                if (c.state == 0) {
-                    c.setState(1);
-                    runStandardActions(c, m, p);
-                }
+                triggerState(1, c, m, p);
             } else {
-                Condition c = getConditionByAlias(alias);
-                if (c.state == 1) {
-                    c.setState(0);
-                    c = getConditionByAlias("VAC_SENSOR_POWER_RECOVERED");
-                    if (c.state == 0) {
-                        c.setState(1);
-                        runStandardActions(c, m, p);
-                    }
-                }
+                triggerState(0, c, m, p);
             }
         }
 
         //Температура воздуха Растет быстрее чем на 5 градусов за 10 минут
-        alias = "INTERNAL_TEMP_FAST_RISING";
-        VACTimeout = 10; //минут
-        mMax = measurementsCache.getMaxMeasurementFrom(p, System.currentTimeMillis() - 1000 * 60 * VACTimeout);
-        mMin = measurementsCache.getMinMeasurementFrom(p, System.currentTimeMillis() - 1000 * 60 * VACTimeout);
+        c = getConditionByAlias("INTERNAL_TEMP_FAST_RISING");
+        timeout = 10; //минут
+        mMax = measurementsCache.getMaxMeasurementFrom(p, System.currentTimeMillis() - 1000 * 60 * timeout);
+        mMin = measurementsCache.getMinMeasurementFrom(p, System.currentTimeMillis() - 1000 * 60 * timeout);
         if (mMax != null && mMin != null) {
             if ((mMax.getDoubleValue() - mMin.getDoubleValue() > 5) && (mMax.getTime() > mMin.getTime())) {
-                Condition c = getConditionByAlias(alias);
-                if (c.state == 0) {
-                    c.setState(1);
-                    runStandardActions(c, m, p);
-                }
+                triggerState(1, c, m, p);
             } else {
-                Condition c = getConditionByAlias(alias);
-                if (c.state == 1) {
-                    c.setState(0);
-                    c = getConditionByAlias("VAC_SENSOR_POWER_RECOVERED");
-                    if (c.state == 0) {
-                        c.setState(1);
-                        runStandardActions(c, m, p);
-                    }
-                }
+                triggerState(0, c, m, p);
             }
         }
 
         //Вышла и более 5 минут подряд находится вне установленных пределов
-        alias = "INTERNAL_TEMP_OUT_OF_BOUNDS";
-        VACTimeout = 5; //минут
-        mMax = measurementsCache.getMaxMeasurementFrom(p, System.currentTimeMillis() - 1000 * 60 * VACTimeout);
-        mMin = measurementsCache.getMinMeasurementFrom(p, System.currentTimeMillis() - 1000 * 60 * VACTimeout);
+        c = getConditionByAlias("INTERNAL_TEMP_OUT_OF_BOUNDS");
+        timeout = 5; //минут
+        mMax = measurementsCache.getMaxMeasurementFrom(p, System.currentTimeMillis() - 1000 * 60 * timeout);
+        mMin = measurementsCache.getMinMeasurementFrom(p, System.currentTimeMillis() - 1000 * 60 * timeout);
         if (mMax != null && mMin != null) {
             if ((mMax.getDoubleValue() < BoxSettingsAPI.getDouble("InTempAlertMin")) || (mMin.getDoubleValue() > BoxSettingsAPI.getDouble("InTempAlertMax"))) {
-                Condition c = getConditionByAlias(alias);
-                if (c.state == 0) {
-                    c.setState(1);
-                    runStandardActions(c, m, p);
-                }
+                triggerState(1, c, m, p);
             } else {
-                Condition c = getConditionByAlias(alias);
-                if (c.state == 1) {
-                    c.setState(0);
-                    c = getConditionByAlias("VAC_SENSOR_POWER_RECOVERED");
-                    if (c.state == 0) {
-                        c.setState(1);
-                        runStandardActions(c, m, p);
-                    }
-                }
+                triggerState(0, c, m, p);
             }
         }
-         */
+
+        if ((m.getDoubleValue() > BoxSettingsAPI.getDouble("InTempAlertMax")) || m.getDoubleValue() < BoxSettingsAPI.getDouble("InTempAlertMin")) {
+            p.setState(Parameter.State.ALARM);
+        } else {
+            p.setState(Parameter.State.OK);
+        }
     }
 
     public void parameterBATT_TEMPActions(Event e) { //Перегрев аккумулятора
@@ -552,11 +489,25 @@ public class BehaviorModule implements Module {
         Measurement m = measurementsCache.getLastMeasurement(p);
         c = getConditionByAlias("VAC_SENSOR_UNSTABLE");
         if (m.getDoubleValue() > BoxSettingsAPI.getDouble("VACAlertMax") || m.getDoubleValue() < BoxSettingsAPI.getDouble("VACAlertMin")) {
-            p.setState(Parameter.State.ALARM);
+
             triggerState(1, c, m, p);
+            if (p.getState() != Parameter.State.ALARM) {
+                p.setState(Parameter.State.ALARM);
+                HashMap data = new HashMap();
+                data.put("uart_command", "charge=off"); //disable charging if power is NOT ok
+                Event reaction = new Event("internal_uart_command", data, Event.Type.USER_ACTION);
+                AppData.eventManager.newEvent(reaction);
+            }
+
         } else {
-            p.setState(Parameter.State.OK);
             triggerState(0, c, m, p);
+            if (p.getState() != Parameter.State.OK) {
+                p.setState(Parameter.State.OK);
+                HashMap data = new HashMap();
+                data.put("uart_command", "charge=on"); //enable charging if power is ok
+                Event reaction = new Event("internal_uart_command", data, Event.Type.USER_ACTION);
+                AppData.eventManager.newEvent(reaction);
+            }
         }
     }
 

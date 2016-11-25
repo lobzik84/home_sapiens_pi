@@ -268,31 +268,6 @@ public class InstinctsModule implements Module {
                             }
                             break;
 
-                        case "VAC_SENSOR":
-                            if (m.getDoubleValue() > BoxSettingsAPI.getDouble("VACAlertMax") || m.getDoubleValue() < BoxSettingsAPI.getDouble("VACAlertMin")) {
-                                if (p.getState() != Parameter.State.ALARM) {
-                                    p.setState(Parameter.State.ALARM); //ваще это надо перенести в behavior
-                                    log.error("ALIAS:" + alias + ": Напряжение сети вне пределов, отключаем зарядку");
-                                    HashMap data = new HashMap();
-                                    data.put("uart_command", "charge=off"); //disable charging if power is NOT ok
-                                    Event reaction = new Event("internal_uart_command", data, Event.Type.USER_ACTION);
-                                    AppData.eventManager.newEvent(reaction);
-                                }
-
-                            } else {
-                                if (p.getState() != Parameter.State.OK) {
-                                    p.setState(Parameter.State.OK);
-                                    log.info("ALIAS:" + alias + ": Включаем зарядку");
-                                    HashMap data = new HashMap();
-                                    data.put("uart_command", "charge=on"); //enable charging if power is ok
-                                    Event reaction = new Event("internal_uart_command", data, Event.Type.USER_ACTION);
-                                    AppData.eventManager.newEvent(reaction);
-
-                                }
-
-                            }
-
-                            break;
                     }
                     break;
                 }

@@ -13,6 +13,7 @@ import java.sql.Connection;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
+import org.lobzik.tools.Tools;
 import org.lobzik.tools.db.mysql.DBSelect;
 
 /**
@@ -38,7 +39,7 @@ public class UsersPublicKeysCache {
         if (key != null) {
             return key;
         } else {
-            return initUserPublicKey(userId);
+            return initUsersPublicKey();
         }
     }
 
@@ -47,7 +48,7 @@ public class UsersPublicKeysCache {
         if (usersLogins != null) {
             return login;
         } else {
-            initUserPublicKey(userId);
+            initUsersPublicKey();
             return usersLogins.get(userId);
         }
     }
@@ -61,19 +62,20 @@ public class UsersPublicKeysCache {
         return usersLogins.values();
     }
 
-    public RSAPublicKey initUserPublicKey(int userId) {
-        String sSQL = "select id, login, public_key from users where id=" + userId;
+    public RSAPublicKey initUsersPublicKey() {
+        String sSQL = "select id, login, public_key from users";// where id=" + userId;
 
         try (Connection conn = AppData.dataSource.getConnection()) {
             List<HashMap> resList = DBSelect.getRows(sSQL, conn);
-            if (resList.size() > 0) {
-                String publicKey = (String) resList.get(0).get("public_key");
+            for (HashMap h:resList) {
+                int userId = Tools.parseInt(h.get("id"), 0);
+                String publicKey = (String) h.get("public_key");
                 BigInteger modulus = new BigInteger(publicKey, 16);
                 RSAPublicKeySpec spec = new RSAPublicKeySpec(modulus, BoxCommonData.RSA_E);
                 KeyFactory factory = KeyFactory.getInstance("RSA");
                 RSAPublicKey usersPublicKey = (RSAPublicKey) factory.generatePublic(spec);
                 usersKeys.put(userId, usersPublicKey);
-                usersLogins.put(userId, (String) resList.get(0).get("login"));
+                usersLogins.put(userId, (String) h.get("login"));
                 return usersPublicKey;
             }
         } catch (Exception e) {

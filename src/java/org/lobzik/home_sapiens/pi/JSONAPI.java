@@ -15,7 +15,9 @@ import java.security.Signature;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.sql.Connection;
+import java.util.Calendar;
 import java.util.Date;
+import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -296,6 +298,9 @@ public class JSONAPI {
         historyJson.put("to", to);
         historyJson.put("quant", quant);
 
+        Calendar c = new GregorianCalendar();
+        int offset = c.getTimeZone().getOffset(System.currentTimeMillis());
+
         try (Connection conn = DBTools.openConnection(BoxCommonData.dataSourceName)) {
 
             List<JSONObject> historyList = new LinkedList();
@@ -333,7 +338,7 @@ public class JSONAPI {
                             HashMap h = history.get(i);
 
                             JSONObject point = new JSONObject();
-                            point.put("x", (long) Tools.parseInt(h.get("x"), 0) * 1000l);
+                            point.put("x", (long) Tools.parseInt(h.get("x"), 0) * 1000l + offset);
                             point.put("y", (Double) h.get("value_d"));
                             points[i] = point;
                         }

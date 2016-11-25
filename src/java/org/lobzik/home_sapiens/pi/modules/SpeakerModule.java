@@ -9,10 +9,14 @@ import java.io.File;
 import org.apache.log4j.Appender;
 import org.apache.log4j.Logger;
 import org.lobzik.home_sapiens.pi.AppData;
+import org.lobzik.home_sapiens.pi.BoxSettingsAPI;
 import org.lobzik.home_sapiens.pi.ConnJDBCAppender;
+import org.lobzik.home_sapiens.pi.UsersPublicKeysCache;
+import org.lobzik.home_sapiens.pi.behavior.Notification;
 import org.lobzik.home_sapiens.pi.event.Event;
 import org.lobzik.home_sapiens.pi.event.EventManager;
 import org.lobzik.tools.StreamGobbler;
+import org.lobzik.tools.Tools;
 
 /**
  *
@@ -49,6 +53,7 @@ public class SpeakerModule implements Module {
     public void start() {
         try {
             EventManager.subscribeForEventType(this, Event.Type.USER_ACTION);
+            EventManager.subscribeForEventType(this, Event.Type.BEHAVIOR_EVENT);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -82,9 +87,24 @@ public class SpeakerModule implements Module {
 
     @Override
     public void handleEvent(Event e) {
-        if (e.type == Event.Type.USER_ACTION && e.name.equals("play_sound")) {
-            play((String) e.data.get("sound_file"));
+        switch (e.type) {
+            case USER_ACTION:
+                if (e.name.equals("play_sound")) {
+                    play((String) e.data.get("sound_file"));
+                }
+                break;
+
+            case BEHAVIOR_EVENT:
+                if (e.name.equals("play_sound")) {
+                    boolean doPlaySounds = Tools.parseBoolean(BoxSettingsAPI.get("SpeakerNotifications"), false);
+                    Notification n = (Notification) e.data.get("Notification");
+                    if (n != null && doPlaySounds) {
+                        play(n.text);
+                    }
+                }
+                break;
         }
+
     }
 
     public static void finish() {
