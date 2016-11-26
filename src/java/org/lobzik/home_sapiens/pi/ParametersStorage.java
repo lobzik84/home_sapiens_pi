@@ -92,6 +92,10 @@ public class ParametersStorage {
     public Parameter getParameter(int id) {
         return storage.get(id);
     }
+    
+    public Parameter getParameterByAlias(String alias) {
+        return storage.get(resolveAlias(alias));
+    }
 
     public Parameter getParameter(String name) {
         return getParameter(resolve(name));

@@ -12,9 +12,7 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import org.apache.log4j.Appender;
 import org.apache.log4j.Logger;
 import org.lobzik.home_sapiens.entity.Measurement;
@@ -22,6 +20,7 @@ import org.lobzik.home_sapiens.entity.Parameter;
 import org.lobzik.home_sapiens.pi.AppData;
 import static org.lobzik.home_sapiens.pi.AppData.measurementsCache;
 import org.lobzik.home_sapiens.pi.BoxCommonData;
+import org.lobzik.home_sapiens.pi.BoxSettingsAPI;
 import org.lobzik.home_sapiens.pi.ConnJDBCAppender;
 import org.lobzik.home_sapiens.pi.event.Event;
 import org.lobzik.home_sapiens.pi.event.EventManager;
@@ -47,8 +46,8 @@ public class InternalSensorsModule extends Thread implements Module {
     private static final int STOPBITS = SerialPort.STOPBITS_1;
     private static final int PARITY = SerialPort.PARITY_NONE;
     private static final int PORT_TIMEOUT = 2000;
-    private static final int ONEWAY_PARAMETERS_TIMEOUT = 1000 * 60 * 5;
-    private static List<Integer> ONEWAY_PARAMETERS = new ArrayList();
+    private static final int ONEWAY_433_PARAMETERS_TIMEOUT = 1000 * 15;
+    //private static List<Integer> ONEWAY_PARAMETERS = new ArrayList();
 
     @Override
     public String getModuleName() {
@@ -95,8 +94,6 @@ public class InternalSensorsModule extends Thread implements Module {
 
     @Override
     public synchronized void run() {
-        ONEWAY_PARAMETERS.add(20);
-        ONEWAY_PARAMETERS.add(21);
 
         setName(this.getClass().getSimpleName() + "-Thread");
         log.info("Starting " + getName() + " on " + BoxCommonData.SERIAL_PORT);
@@ -143,42 +140,63 @@ public class InternalSensorsModule extends Thread implements Module {
                 val = val.trim();
                 String paramName = data.substring(0, data.indexOf(":"));
                 paramName = paramName.trim();
-                int paramId = AppData.parametersStorage.resolveAlias(paramName);
-
-                if (paramId > 0) {
-                    HashMap eventData = new HashMap();
-                    Parameter p = AppData.parametersStorage.getParameter(paramId);
+                Parameter doorP = AppData.parametersStorage.getParameterByAlias("DOOR_SENSOR");
+                Parameter wetP = AppData.parametersStorage.getParameterByAlias("WET_SENSOR");
+                if (paramName.equals("433_RX")) {
                     Measurement m = null;
-                    switch (p.getType()) {
-                        case BOOLEAN:
-                            m = new Measurement(p, Tools.parseBoolean(val, null));
-                            break;
-
-                        case DOUBLE:
-                            if (val.length() > 0 && !val.equalsIgnoreCase("nan") && !val.equalsIgnoreCase("error")) {
-                                double raw = Tools.parseDouble(val, null);
-                                if (raw == 1023) {
-                                    log.debug("Suspicious value " + p.getAlias() + "=" + raw + " ADC overloaded?");
-                                }
-                                m = new Measurement(p, raw * p.getCalibration());
-                            }
-                            break;
-
-                        case INTEGER:
-                            m = new Measurement(p, Tools.parseInt(val, null));
-                            break;
-
-                        default:
-                            m = new Measurement(p, val);
-                            break;
-
+                    HashMap eventData = new HashMap();
+                    if (val.equals(BoxSettingsAPI.get("DoorSensorAddress433"))) {
+                        m = new Measurement(doorP, true);
+                        eventData.put("parameter", doorP);
+                        
+                    } else if (val.equals(BoxSettingsAPI.get("WetSensorAddress433"))) {
+                        m = new Measurement(wetP, true);
+                        eventData.put("parameter", wetP);
                     }
+                    
                     if (m != null) {
-                        eventData.put("parameter", p);
                         eventData.put("measurement", m);
-                        Event e = new Event("internal sensors updated", eventData, Event.Type.PARAMETER_UPDATED);
-
+                        Event e = new Event("433 recieved", eventData, Event.Type.PARAMETER_UPDATED);
                         AppData.eventManager.newEvent(e);
+                    }
+                } else {
+                    int paramId = AppData.parametersStorage.resolveAlias(paramName);
+
+                    if (paramId > 0) {
+                        HashMap eventData = new HashMap();
+                        Parameter p = AppData.parametersStorage.getParameter(paramId);
+                        Measurement m = null;
+                        switch (p.getType()) {
+                            case BOOLEAN:
+                                m = new Measurement(p, Tools.parseBoolean(val, null));
+                                break;
+
+                            case DOUBLE:
+                                if (val.length() > 0 && !val.equalsIgnoreCase("nan") && !val.equalsIgnoreCase("error")) {
+                                    double raw = Tools.parseDouble(val, null);
+                                    if (raw == 1023) {
+                                        log.debug("Suspicious value " + p.getAlias() + "=" + raw + " ADC overloaded?");
+                                    }
+                                    m = new Measurement(p, raw * p.getCalibration());
+                                }
+                                break;
+
+                            case INTEGER:
+                                m = new Measurement(p, Tools.parseInt(val, null));
+                                break;
+
+                            default:
+                                m = new Measurement(p, val);
+                                break;
+
+                        }
+                        if (m != null) {
+                            eventData.put("parameter", p);
+                            eventData.put("measurement", m);
+                            Event e = new Event("internal sensors updated", eventData, Event.Type.PARAMETER_UPDATED);
+
+                            AppData.eventManager.newEvent(e);
+                        }
                     }
                 }
             }
@@ -286,16 +304,18 @@ public class InternalSensorsModule extends Thread implements Module {
         }
     }
 
-    public void clearOnewayParameters() {
-        for (int paramId : ONEWAY_PARAMETERS) {
-            Parameter p = AppData.parametersStorage.getParameter(paramId);
+    private void clearOnewayParameters() {
+        String[] aliases = {"DOOR_SENSOR", "WET_SENSOR"};
+        for (String alias : aliases) {
+            Parameter p = AppData.parametersStorage.getParameterByAlias(alias);
             Measurement m = measurementsCache.getLastMeasurement(p);
             if (m.getBooleanValue()) {
-                if (m.getTime() + ONEWAY_PARAMETERS_TIMEOUT < System.currentTimeMillis()) {
+                if (System.currentTimeMillis() > m.getTime() + ONEWAY_433_PARAMETERS_TIMEOUT) {
                     HashMap eventData = new HashMap();
                     eventData.put("parameter", p);
+                    m = new Measurement(p, false);
                     eventData.put("measurement", m);
-                    Event e = new Event("internal sensors updated", eventData, Event.Type.PARAMETER_UPDATED);
+                    Event e = new Event("433 cleared", eventData, Event.Type.PARAMETER_UPDATED);
                     AppData.eventManager.newEvent(e);
 
                 }
