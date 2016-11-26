@@ -5,11 +5,7 @@
  */
 package org.lobzik.home_sapiens.pi.modules;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.util.HashMap;
 import org.apache.log4j.Appender;
 import org.apache.log4j.Logger;
@@ -17,7 +13,6 @@ import org.lobzik.home_sapiens.pi.AppData;
 import org.lobzik.home_sapiens.pi.ConnJDBCAppender;
 import org.lobzik.home_sapiens.pi.event.Event;
 import org.lobzik.home_sapiens.pi.event.EventManager;
-import org.lobzik.tools.StreamGobbler;
 import org.lobzik.tools.Tools;
 
 /**
@@ -34,7 +29,7 @@ public class SystemModule implements Module {
     private static final String SHUTDOWN_COMMAND = "halt";
     private static final String SHUTDOWN_SUFFIX = "-p";
     private static final int SHUTDOWN_TIMEOUT = 30; //seconds for halt procedure
-    
+
     private SystemModule() { //singleton
     }
 
@@ -57,6 +52,7 @@ public class SystemModule implements Module {
     public void start() {
         try {
             EventManager.subscribeForEventType(this, Event.Type.SYSTEM_EVENT);
+            EventManager.subscribeForEventType(this, Event.Type.BEHAVIOR_EVENT);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -64,13 +60,16 @@ public class SystemModule implements Module {
 
     @Override
     public void handleEvent(Event e) {
-        if (e.type == Event.Type.SYSTEM_EVENT && e.name.equals("shutdown")) {
+        if (e.name.equals("shutdown")) {
             try {
 
                 new Thread() {
                     @Override
                     public void run() {
                         try {
+                            if (e.type == Event.Type.BEHAVIOR_EVENT) {
+                                Thread.sleep(30000);//чтобы успели разлететься смс-ки и остальное
+                            }
                             HashMap data = new HashMap();
                             data.put("uart_command", "poweroff=" + SHUTDOWN_TIMEOUT); //timer for SHUTDOWN_TIMEOUT secs
                             Event e = new Event("internal_uart_command", data, Event.Type.USER_ACTION);

@@ -161,6 +161,9 @@ public class BehaviorModule implements Module {
                             case "DOOR_SENSOR":
                                 parameterDOOR_SENSORActions(e);
                                 break;
+                            case "WET_SENSOR":
+                                parameterWET_SENSORActions(e);
+                                break;
                             case "BATT_CHARGE":
                                 parameterBATT_CHARGEActions(e);
                                 break;
@@ -181,6 +184,9 @@ public class BehaviorModule implements Module {
                                 break;
                             case "MIC_NOISE":
                                 parameterMIC_NOISEActions(e);
+                                break;
+                            case "LUMIOSITY":
+                                parameterLUMIOSITYActions(e);
                                 break;
                         }
                     }
@@ -227,7 +233,7 @@ public class BehaviorModule implements Module {
         return result;
     }
 
-    public void parameterMIC_NOISEActions(Event e) { //Датчик движения
+    private void parameterMIC_NOISEActions(Event e) { //Датчик движения
 
         Parameter p = (Parameter) e.data.get("parameter");
         Measurement m = (Measurement) e.data.get("measurement");
@@ -249,7 +255,7 @@ public class BehaviorModule implements Module {
         }
     }
 
-    public void parameterPIR_SENSORActions(Event e) { //Датчик движения
+    private void parameterPIR_SENSORActions(Event e) { //Датчик движения
 
         Parameter p = (Parameter) e.data.get("parameter");
         Measurement m = (Measurement) e.data.get("measurement");
@@ -272,7 +278,7 @@ public class BehaviorModule implements Module {
 
     }
 
-    public void parameterGAS_SENSORActions(Event e) { //Gas Sensor
+    private void parameterGAS_SENSORActions(Event e) { //Gas Sensor
         //Сработал датчик газа
         Condition c = getConditionByAlias("GAS_SENSOR_ALARM");
         Parameter p = (Parameter) e.data.get("parameter");
@@ -289,7 +295,7 @@ public class BehaviorModule implements Module {
         }
     }
 
-    public void parameterINTERNAL_HUMIDITYActions(Event e) { //Датчик влажности
+    private void parameterINTERNAL_HUMIDITYActions(Event e) { //Датчик влажности
 
         Parameter p = (Parameter) e.data.get("parameter");
         Measurement m = (Measurement) e.data.get("measurement");
@@ -314,7 +320,7 @@ public class BehaviorModule implements Module {
 
     }
 
-    public void parameterINTERNAL_TEMPActions(Event e) { //Датчик температуры
+    private void parameterINTERNAL_TEMPActions(Event e) { //Датчик температуры
 
         Parameter p = (Parameter) e.data.get("parameter");
         Measurement m = (Measurement) e.data.get("measurement");
@@ -376,70 +382,84 @@ public class BehaviorModule implements Module {
         }
     }
 
-    public void parameterBATT_TEMPActions(Event e) { //Перегрев аккумулятора
+    private void parameterBATT_TEMPActions(Event e) { //Перегрев аккумулятора
         //Перегрев аккумулятора
-        /*
-        String alias = "BATT_TEMP_OVERHEAT";
+        int timeout = 1; //Минута
+        Condition c = getConditionByAlias("BATT_TEMP_OVERHEAT");
+
         Parameter p = (Parameter) e.data.get("parameter");
         Measurement m = (Measurement) e.data.get("measurement");
+        Measurement mMax = measurementsCache.getMaxMeasurementFrom(p, System.currentTimeMillis() - 1000 * 60 * timeout);
+        Measurement mMin = measurementsCache.getMinMeasurementFrom(p, System.currentTimeMillis() - 1000 * 60 * timeout);
+
+        if (mMin.getDoubleValue() > BoxSettingsAPI.getDouble("VBatTempAlertMax")) {
+            triggerState(1, c, m, p);
+            if (p.getState() != Parameter.State.ALARM) {
+                p.setState(Parameter.State.ALARM);
+                HashMap data = new HashMap();
+                data.put("uart_command", "charge=off"); //disable charging if battery overheated
+                Event reaction = new Event("internal_uart_command", data, Event.Type.USER_ACTION);
+                AppData.eventManager.newEvent(reaction);
+            }
+        } else if (mMax.getDoubleValue() < BoxSettingsAPI.getDouble("VBatTempAlertMax")) {
+            triggerState(0, c, m, p);
+            if (p.getState() != Parameter.State.OK) {
+                p.setState(Parameter.State.OK);
+                HashMap data = new HashMap();
+                data.put("uart_command", "charge=on"); //enable if ok
+                Event reaction = new Event("internal_uart_command", data, Event.Type.USER_ACTION);
+                AppData.eventManager.newEvent(reaction);
+            }
+        }
+    }
+
+    private void parameterLUMIOSITYActions(Event e) { //Перегрев аккумулятора
+        //освещённость
+        int timeout = 1; //Минута
+        Condition c = getConditionByAlias("LUMIOSITY_DARK");
+
+        Parameter p = (Parameter) e.data.get("parameter");
+        Measurement m = (Measurement) e.data.get("measurement");
+        Measurement mMax = measurementsCache.getMaxMeasurementFrom(p, System.currentTimeMillis() - 1000 * 60 * timeout);
+        Measurement mMin = measurementsCache.getMinMeasurementFrom(p, System.currentTimeMillis() - 1000 * 60 * timeout);
+
+        if (mMin.getDoubleValue() > BoxSettingsAPI.getDouble("LumiosityDarkLevel")) {
+            triggerState(0, c, m, p);
+        } else if (mMax.getDoubleValue() < BoxSettingsAPI.getDouble("LumiosityDarkLevel")) {
+            triggerState(1, c, m, p);
+        }
+    }
+
+    private void parameterBATT_CHARGEActions(Event e) { //Door Sensor
+        //Заряд аккумуляторов меньше 30%
+
+        int timeout = 1; //Минута
+
+        Parameter p = (Parameter) e.data.get("parameter");
+        Measurement m = (Measurement) e.data.get("measurement");
+
+        Measurement mMax = measurementsCache.getMaxMeasurementFrom(p, System.currentTimeMillis() - 1000 * 60 * timeout);
+        Measurement mMin = measurementsCache.getMinMeasurementFrom(p, System.currentTimeMillis() - 1000 * 60 * timeout);
         //Parameter chargeEnabledP = AppData.parametersStorage.getParameter(AppData.parametersStorage.resolveAlias("CHARGE_ENABLED"));
-        //boolean chargeEnabled = measurementsCache.getLastMeasurement(chargeEnabledP).getBooleanValue();
+        // boolean chargeEnabled = measurementsCache.getLastMeasurement(chargeEnabledP).getBooleanValue();
+        Condition c = getConditionByAlias("BAT_CHARGE_LESS_30");
 
-        if (m.getDoubleValue() > BoxSettingsAPI.getDouble("VBatTempAlertMax")) {
-            Condition c = getConditionByAlias(alias);
-            if (c.state == 0) {
-                c.setState(1);
-                runStandardActions(c, m, p);
-            }
-        } else {
-            Condition c = getConditionByAlias(alias);
-            c.setState(0);
-        }*/
+        if (mMax.getIntegerValue() < BoxSettingsAPI.getDouble("ChargeAlertCritical")) {
+            triggerState(1, c, m, p);
+        } else if (mMin.getIntegerValue() > BoxSettingsAPI.getDouble("ChargeAlertCritical")) {
+            triggerState(0, c, m, p);
+        }
+        //между 30 и 50
+        c = getConditionByAlias("BAT_CHARGE_BETWEEN_30_50");
+
+        if (mMax.getIntegerValue() < BoxSettingsAPI.getDouble("ChargeAlertMinor") && mMin.getIntegerValue() > BoxSettingsAPI.getDouble("ChargeAlertCritical")) {
+            triggerState(1, c, m, p);
+        } else if (mMin.getIntegerValue() > BoxSettingsAPI.getDouble("ChargeAlertMinor") && mMax.getIntegerValue() < BoxSettingsAPI.getDouble("ChargeAlertCritical")) {
+            triggerState(0, c, m, p);
+        }
     }
 
-    public void parameterBATT_CHARGEActions(Event e) { //Door Sensor
-        /* //Заряд аккумуляторов меньше 30%
-        String alias = "BAT_CHARGE_LESS_30";
-        Parameter p = (Parameter) e.data.get("parameter");
-        Measurement m = (Measurement) e.data.get("measurement");
-        Parameter chargeEnabledP = AppData.parametersStorage.getParameter(AppData.parametersStorage.resolveAlias("CHARGE_ENABLED"));
-        boolean chargeEnabled = measurementsCache.getLastMeasurement(chargeEnabledP).getBooleanValue();
-
-        if (m.getIntegerValue() < BoxSettingsAPI.getDouble("VBatAlertCritical") && !chargeEnabled) {
-            Condition c = getConditionByAlias(alias);
-            if (c.state == 0) {
-                c.setState(1);
-                runStandardActions(c, m, p);
-            }
-            c = getConditionByAlias("BAT_CHARGE_NORMAL");
-            c.setState(0);
-
-        }
-
-        //Заряд аккумуляторов < 50% и > 30%
-        alias = "BAT_CHARGE_BETWEEN_30_50";
-        if (m.getIntegerValue() >= BoxSettingsAPI.getDouble("VBatAlertCritical") && m.getIntegerValue() < BoxSettingsAPI.getDouble("VBatAlertMinor") && !chargeEnabled) {
-            Condition c = getConditionByAlias(alias);
-            if (c.state == 0) {
-                c.setState(1);
-                runStandardActions(c, m, p);
-            }
-            c = getConditionByAlias("BAT_CHARGE_NORMAL");
-            c.setState(0);
-
-        }
-
-        if (chargeEnabled) {
-            Condition c = getConditionByAlias("BAT_CHARGE_LESS_30");
-            c.setState(0);
-            c = getConditionByAlias("BAT_CHARGE_BETWEEN_30_50");
-            c.setState(0);
-
-        }
-         */
-    }
-
-    public void parameterDOOR_SENSORActions(Event e) { //Door Sensor
+    private void parameterDOOR_SENSORActions(Event e) { //Door Sensor
         //Сработал датчик открывания двери
         Condition c = getConditionByAlias("DOOR_SENSOR_OPEN");
         Parameter p = (Parameter) e.data.get("parameter");
@@ -459,7 +479,25 @@ public class BehaviorModule implements Module {
 
     }
 
-    public void parameterVAC_SENSORActions(Event e) { //AC Voltage
+    private void parameterWET_SENSORActions(Event e) { //Door Sensor
+        //Сработал датчик открывания двери
+        Condition c = getConditionByAlias("WET_SENSOR_ALARM");
+        Parameter p = (Parameter) e.data.get("parameter");
+        Measurement m = (Measurement) e.data.get("measurement");
+
+        if (m.getBooleanValue()) {
+            p.setState(Parameter.State.ALARM);
+
+            triggerState(1, c, m, p);
+        } else {
+            p.setState(Parameter.State.OK);
+
+            triggerState(0, c, m, p);
+        }
+
+    }
+
+    private void parameterVAC_SENSORActions(Event e) { //AC Voltage
 
         int VACTimeout = 5; //минут
         Parameter p = (Parameter) e.data.get("parameter");
@@ -471,17 +509,7 @@ public class BehaviorModule implements Module {
         if (mMax != null && mMin != null) {
             if (mMax.getDoubleValue() < BoxSettingsAPI.getDouble("VACAlertMin")) {
                 triggerState(1, c, mMax, p);
-            } else {
-                triggerState(0, c, mMax, p);
-            }
-        }
-
-        //напряжение более 5 минут в норме после отказа
-        c = getConditionByAlias("VAC_SENSOR_POWER_RECOVERED");
-        if (mMax != null && mMin != null) {
-            if (mMax.getDoubleValue() < BoxSettingsAPI.getDouble("VACAlertMax") && mMin.getDoubleValue() > BoxSettingsAPI.getDouble("VACAlertMin")) {
-                triggerState(1, c, mMax, p);
-            } else {
+            } else if (mMax.getDoubleValue() < BoxSettingsAPI.getDouble("VACAlertMax") && mMin.getDoubleValue() > BoxSettingsAPI.getDouble("VACAlertMin")) {
                 triggerState(0, c, mMax, p);
             }
         }
@@ -511,7 +539,7 @@ public class BehaviorModule implements Module {
         }
     }
 
-    public void triggerState(int newState, Condition c, Measurement m, Parameter p) {
+    private void triggerState(int newState, Condition c, Measurement m, Parameter p) {
         if (c.state == newState) {
             return;
         }

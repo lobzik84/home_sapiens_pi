@@ -48,6 +48,12 @@ public class TimerModule implements Module {
     @Override
     public void start() {
         try {
+            Calendar c = new GregorianCalendar();
+            if (c.get(Calendar.YEAR) < 2016) {
+                //todo event?
+                throw new Exception("Invalid date! Timers not started");
+
+            }
             Connection conn = DBTools.openConnection(BoxCommonData.dataSourceName);
             List<HashMap> timerDBList = getDBTimers(conn);
             conn.close();
