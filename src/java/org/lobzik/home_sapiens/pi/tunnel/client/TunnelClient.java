@@ -5,6 +5,7 @@
  */
 package org.lobzik.home_sapiens.pi.tunnel.client;
 
+import java.net.InetAddress;
 import java.net.URI;
 import java.security.Signature;
 import java.security.interfaces.RSAPublicKey;
@@ -39,11 +40,32 @@ public class TunnelClient {
     private static Logger log = null;
 
     public TunnelClient(String endpointURI, Logger log) {
+        Session s = null;
         try {
+            URI uri = new URI(endpointURI);// УРИ, УРИ!! Как слышно? Где у Электроника интернет?
+            InetAddress address = null;
+            try {
+                address = InetAddress.getByName(uri.getHost());
+                if (address == null) {
+                    throw new Exception();
+                }
+                        } catch (Throwable t) {
+                throw new Exception("Failed to resolve host IP");
+            }
+            /*
+            if (!address.isReachable(15000)) {
+                throw new Exception("Host unreachable by ICMP"); //всё портит, к сожалению. часто пинг есть, а оно не возвращает true
+            }*/
+
             this.log = log;
             container = ContainerProvider.getWebSocketContainer();
-            container.connectToServer(this, new URI(endpointURI));
+            s = container.connectToServer(this, uri);
         } catch (Exception e) {
+            //e.printStackTrace();
+            try {
+                s.close();
+            } catch (Exception ee) {
+            }
             throw new RuntimeException(e);
         }
     }
@@ -75,13 +97,13 @@ public class TunnelClient {
 
     public void disconnect() {
         log.info("Disconnecting");
-        if (connected) {
-            try {
-                session.close();
-                connected = false;
-            } catch (Exception e) {
-            }
+        //if (connected) {
+        try {
+            session.close();
+            connected = false;
+        } catch (Exception e) {
         }
+        //}
     }
 
     /**
