@@ -6,11 +6,13 @@
 package org.lobzik.home_sapiens.pi.modules;
 
 import java.awt.AlphaComposite;
+import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Image;
+import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -20,7 +22,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.Calendar;
 import java.util.Date;
+import java.util.GregorianCalendar;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Stack;
@@ -163,42 +167,21 @@ public class DisplayModule implements Module {
                 g.drawString("TEST", 100, 180);
 
             } else {
-                int rssi = -75;//сигнал сети, дБ. <100 нет фишек, 100<rssi<90 одна фишка, 90<rssi<80 две фишки, 80<rssi<70 три фишки, >70 четыре фишки
-                boolean nightTime = false; //ночью true, при этом ночной фон и иконки погоды ночные!
-                Double outsideTempNow = null;//если null - не рисуем
-                Integer cloudsNow = null;//если null - не рисуем
+                int rssi = -101;//сигнал сети, дБ. <100 нет фишек, 100<rssi<90 одна фишка, 90<rssi<80 две фишки, 80<rssi<70 три фишки, >70 четыре фишки
+                boolean nightTime = true; //ночью true, при этом ночной фон и иконки погоды ночные!
+                Double outsideTempNow = -10D;//если null - не рисуем
+                Integer cloudsNow = 1;//если null - не рисуем
                 Double rainNow = null;
                 
-                Double outsideTempNext = null; //если null - не рисуем,это прогноз на +12 часов
-                Integer cloudsNext = null;//если null - не рисуем, это прогноз на +12 часов
+                Double outsideTempNext = -20D; //если null - не рисуем,это прогноз на +12 часов
+                Integer cloudsNext = 1;//если null - не рисуем, это прогноз на +12 часов
                 Double rainNext = null;
                 String modemMode = "4G";//Режим сети. приедет от модема
                 String[] nextForecastFor = {"вечером", "завтра"}; //если текущее время до 12.00 дня - пишем прогноз на "вечер", если после - на "завтра". для случая, когда рисуем прогноз на вечер - берём ночные иконки!
-                
+                String[] weekDays = {"воскресенье", "понедельник","вторник","среда","четверг","пятница","суббота"};
+                String[] yearMonths = {"января","февраля","марта","апреля","мая","июня","июля","августа","сентября","октября","ноября","декабря"};
+
                 //как выбрать иконку для погоды? всего 7 вариантов png
-                /*
-                    if ((dataJSON.NIGHTTIME && dataJSON.NIGHTTIME.last_value === 'true') || hour > 21 || hour < 8) {
-      weatherClass = 'weather-night';
-      title = `Ясно, температура на улице ${outsideTemperature}`;
-      if (medium) {
-        weatherClass = 'weather-night-cloudly';
-        title = `Ночь, слабо облачно, температура на улице ${outsideTemperature}`;
-      } else if (hard) {
-        weatherClass = 'weather-cloudly';
-        title = `Облачно, температура на улице ${outsideTemperature}`;
-      }
-    } else if (medium) {
-      weatherClass = 'weather-sun-cloudly';
-      title = `День, слабо облачно, температура на улице ${outsideTemperature}`;
-    } else if (hard) {
-      weatherClass = 'weather-cloudly';
-      title = `Облачно, температура на улице ${outsideTemperature}`;
-    }
-    if (rain) {
-      weatherClass = dataJSON.OUTSIDE_TEMP.last_value < 0 ? 'weather-snow' : 'weather-rain';
-    }
-                */
-                
                 
                 Notification notif = null;
 
@@ -238,11 +221,27 @@ public class DisplayModule implements Module {
                 } catch (IOException e) {
                 }
 
+
                 g = img.getGraphics();
 
+
+                Graphics2D g2d = (Graphics2D) g;
+                g2d.setRenderingHint(
+                    RenderingHints.KEY_ANTIALIASING,
+                    RenderingHints.VALUE_ANTIALIAS_ON);
+
+                // You can also enable antialiasing for text:
+
+                g2d.setRenderingHint(
+                    RenderingHints.KEY_TEXT_ANTIALIASING,
+                    RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+                
                 if (notif != null) {
                     //alert
                     switch (notif.severity) {
+                        case INFO:
+                            g.setColor(new Color(96, 125, 139));
+                            break;
                         case ALARM:
                             g.setColor(new Color(244, 67, 54));
                             break;
@@ -259,21 +258,123 @@ public class DisplayModule implements Module {
 
                     if (iconImg != null) {
 
-                        g.drawImage(iconImg, 25, 270, 21, 30, null);
-
+                        g.drawImage(iconImg, 25, 280, 14, 24, null);
                     }
 
                     g.setColor(new Color(255, 255, 255));
-                    g.setFont(new Font("Roboto Regular", Font.PLAIN, 18));
+                    g.setFont(new Font("Roboto Regular", Font.PLAIN, 12));
                     g.drawString(Tools.getFormatedDate(notif.startDate, "HH:mm"), 55, 290);
-                    g.drawString(notif.text, 125, 290);
+                    g.drawString(notif.text, 55, 306);
 
 
                 }
                 //TIME
                 g.setColor(new Color(255, 255, 255));
-                g.setFont(new Font("Roboto Regular", Font.PLAIN, 61));
-                g.drawString(Tools.getFormatedDate(new Date(), "HH:mm"), 15, 107);
+                g.setFont(new Font("Roboto Regular", Font.BOLD, 81));
+                g.drawString(Tools.getFormatedDate(new Date(), "HH:mm"), 15, 169);
+                
+                //Date
+                String dateString = weekDays[new GregorianCalendar( ).get( Calendar.DAY_OF_WEEK)-1];
+                dateString+=", " + Tools.getFormatedDate(new Date(), "dd") + " " + yearMonths[new GregorianCalendar( ).get( Calendar.MONTH )];
+                g.setColor(new Color(255, 255, 255));
+                g.setFont(new Font("Roboto Regular", Font.BOLD, 16));
+                g.drawString(dateString, 15, 205);               
+                
+                //Modem
+                g.setColor(new Color(255, 255, 255));
+                g.setFont(new Font("Roboto Regular", Font.BOLD, 16));
+                g.drawString(modemMode, 425, 40);    
+                
+                //rssi
+                g.setColor(new Color(255, 255, 255, 128));
+                g.fillRect(456, 36, 3, 4);
+                g.fillRect(460, 32, 3, 8);
+                g.fillRect(464, 28, 3, 12);
+                g.fillRect(468, 24, 3, 16);
+                
+                //int rssi = -75;//сигнал сети, дБ. <100 нет фишек, 100<rssi<90 одна фишка, 90<rssi<80 две фишки, 80<rssi<70 три фишки, >70 четыре фишки
+                if (rssi<=-100) {
+                    g2d.setColor(new Color(255, 0, 0));
+                    g2d.setStroke(new BasicStroke(2.0f)); 
+                    g2d.drawOval(456, 25, 14, 14);
+                    g2d.drawLine(458, 28, 468, 36);
+                }
+                g.setColor(new Color(255, 255, 255));
+                if(rssi>-100)
+                   g.fillRect(456, 36, 3, 4);
+                if(rssi>-90)
+                   g.fillRect(460, 32, 3, 8);
+                if(rssi>-80)
+                    g.fillRect(464, 28, 3, 12);
+                if(rssi>-70)
+                    g.fillRect(468, 24, 3, 16);
+
+                //nextForecastFor
+                //Double outsideTempNext = null; //если null - не рисуем,это прогноз на +12 часов
+                //Integer cloudsNext = null;//если null - не рисуем, это прогноз на +12 часов
+                //Double rainNext = null;
+                if (outsideTempNext!=null && cloudsNext!=null){
+                    g.setColor(new Color(255, 255, 255));
+                    g.setFont(new Font("Roboto Regular", Font.BOLD, 16));
+                    g.drawString(nextForecastFor[(new GregorianCalendar( ).get( Calendar.HOUR_OF_DAY ))<12?0:1], 306, 205);  
+
+                    g.setFont(new Font("Roboto Regular", Font.BOLD, 18));
+                    if(outsideTempNext<0)
+                        g.drawString("-", 431, 205); 
+                        
+                    g.drawString(Math.abs(outsideTempNext.intValue()) + "°", 437, 205); 
+
+                    String imgName = "weather-";
+                    if (rainNext==null || rainNext<=1){
+                        if(cloudsNext <= 20)
+                            imgName+= (new GregorianCalendar( ).get( Calendar.HOUR_OF_DAY ))<12?"night":"sun";
+                        if(cloudsNext > 20 && cloudsNext < 70)
+                            imgName+= ((new GregorianCalendar( ).get( Calendar.HOUR_OF_DAY ))<12?"night":"sun") + "-cloudly";
+                        if(cloudsNext >= 70)
+                            imgName+= "cloudly"; 
+                    }
+                    else
+                        imgName+= outsideTempNext>0?"rain":"snow";
+
+                    Image icn =  ImageIO.read(new File(AppData.getGraphicsWorkDir().getAbsolutePath() + File.separator + imgName + ".png"));
+                    if (icn != null) {
+                        int pHeight = 24;
+                        int w = icn.getWidth(null);
+                        int h = icn.getHeight(null);
+                        g.drawImage(icn, 406-(w*pHeight/h)/2, 188, w*pHeight/h, pHeight, null);
+                    }
+                }
+                
+                //Double outsideTempNow = null;//если null - не рисуем
+                //Integer cloudsNow = null;//если null - не рисуем
+                //Double rainNow = null;
+                if (outsideTempNow!=null && cloudsNow!=null){
+                    g.setFont(new Font("Roboto Regular", Font.BOLD, 42));
+                    if(outsideTempNow<0)
+                        g.drawString("-", 393, 136); 
+                        
+                    g.drawString(Math.abs(outsideTempNow.intValue()) + "°", 411, 136); 
+                    
+                    String imgName = "weather-";
+                    if (rainNow==null || rainNow<=1){
+                        if(cloudsNow <= 20)
+                            imgName+= (new GregorianCalendar( ).get( Calendar.HOUR_OF_DAY ))<12?"sun":"night";
+                        if(cloudsNow > 20 && cloudsNext < 70)
+                            imgName+= ((new GregorianCalendar( ).get( Calendar.HOUR_OF_DAY ))<12?"sun":"night") + "-cloudly";
+                        if(cloudsNow >= 70)
+                            imgName+= "cloudly"; 
+                    }
+                    else
+                        imgName+= outsideTempNow>0?"rain":"snow";
+                    
+                    Image icn =  ImageIO.read(new File(AppData.getGraphicsWorkDir().getAbsolutePath() + File.separator + imgName + ".png"));
+                    if (icn != null) {
+                        int pHeight = 60;
+                        int w = icn.getWidth(null);
+                        int h = icn.getHeight(null);
+                        g.drawImage(icn, 336-(w*pHeight/h)/2, 109, w*pHeight/h, pHeight, null);
+                    }
+                }                
             }
 
             File file = new File(AppData.getGraphicsWorkDir().getAbsolutePath() + File.separator + TMP_FILE);
@@ -338,9 +439,7 @@ public class DisplayModule implements Module {
     return img;
 }
      */
-    private static BufferedImage createResizedCopy(Image originalImage,
-            int scaledWidth, int scaledHeight,
-            boolean preserveAlpha) {
+    private static BufferedImage createResizedCopy(Image originalImage, int scaledWidth, int scaledHeight, boolean preserveAlpha) {
         System.out.println("resizing...");
         int imageType = preserveAlpha ? BufferedImage.TYPE_INT_RGB : BufferedImage.TYPE_INT_ARGB;
         BufferedImage scaledBI = new BufferedImage(scaledWidth, scaledHeight, imageType);
