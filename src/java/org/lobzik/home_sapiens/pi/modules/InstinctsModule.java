@@ -263,10 +263,10 @@ public class InstinctsModule implements Module {
                             AppData.eventManager.newEvent(newE);
 
                             if (AppData.measurementsCache.getAvgMeasurementFrom(p, System.currentTimeMillis() - 300000).getDoubleValue() < 5.8) {
-                                String message = "Заряда АКБ критически низок!";
+                                String message = "Заряд АКБ критически низок!";
                                 log.fatal(message);
                                 HashMap cause = new HashMap();
-                                cause.put("cause", cause);
+                                cause.put("cause", message);
                                 Event shutdown = new Event("shutdown", cause, Event.Type.SYSTEM_EVENT);
                                 AppData.eventManager.newEvent(shutdown);
                             }

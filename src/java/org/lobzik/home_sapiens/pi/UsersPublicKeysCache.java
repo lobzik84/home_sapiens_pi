@@ -67,17 +67,19 @@ public class UsersPublicKeysCache {
 
         try (Connection conn = AppData.dataSource.getConnection()) {
             List<HashMap> resList = DBSelect.getRows(sSQL, conn);
+            RSAPublicKey usersPublicKey = null;
             for (HashMap h:resList) {
                 int userId = Tools.parseInt(h.get("id"), 0);
                 String publicKey = (String) h.get("public_key");
                 BigInteger modulus = new BigInteger(publicKey, 16);
                 RSAPublicKeySpec spec = new RSAPublicKeySpec(modulus, BoxCommonData.RSA_E);
                 KeyFactory factory = KeyFactory.getInstance("RSA");
-                RSAPublicKey usersPublicKey = (RSAPublicKey) factory.generatePublic(spec);
+                usersPublicKey = (RSAPublicKey) factory.generatePublic(spec);
                 usersKeys.put(userId, usersPublicKey);
                 usersLogins.put(userId, (String) h.get("login"));
-                return usersPublicKey;
+                
             }
+            return usersPublicKey;
         } catch (Exception e) {
             e.printStackTrace();
         }

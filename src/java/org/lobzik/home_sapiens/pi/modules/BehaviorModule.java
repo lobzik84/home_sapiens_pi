@@ -628,7 +628,7 @@ public class BehaviorModule implements Module {
             if (a.boxMode != null && !a.boxMode.toString().equals(BoxMode.string())) {
                 continue;//только те actions, что актуальны для текщего режима, остальное пропускаем
             }
-            if (newState != null && a.conditionState != null && a.conditionState != newState) {
+            if (newState != null && a.conditionState != null && !a.conditionState.equals(newState)) {
                 continue; //только те actions, что актуальны для текущего состояния, остальное пропускаем
             }
 

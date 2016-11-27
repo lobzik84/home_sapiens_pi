@@ -13,6 +13,7 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
+import org.apache.log4j.Logger;
 import org.lobzik.home_sapiens.pi.modules.Module;
 
 /**
@@ -24,9 +25,10 @@ public class EventManager extends Thread {
     private static final Map<Event.Type, List> subscribers = new ConcurrentHashMap();
     private static final Queue<Event> eventList = new ConcurrentLinkedQueue();
     private static boolean run = true;
+    private static Logger log = null;
     private static EventManager instance = null;
     private Object sync = null;
-    
+
     private EventManager() {
 
     }
@@ -35,7 +37,7 @@ public class EventManager extends Thread {
     public static EventManager getInstance() {
         if (instance == null) {
             instance = new EventManager(); //lazy init
-
+            log = Logger.getLogger(instance.getClass().getSimpleName());
         }
         return instance;
     }
@@ -52,7 +54,11 @@ public class EventManager extends Thread {
                         //System.out.println("Event type " + e.type + ", notifying " + subscribersList.size() + " subscribers");
                         for (Module m : subscribersList) {
                             if (e.recipient == null || e.recipient.equals(m.getModuleName())) {
-                                m.handleEvent(e);
+                                try {
+                                    m.handleEvent(e);
+                                } catch (Exception ex) {
+                                   log.error("Error in " + m.getModuleName() + ": " + ex.getMessage());
+                                }
                             }
                             //System.out.println("Notifying " + m.getModuleName());
 
@@ -60,7 +66,7 @@ public class EventManager extends Thread {
                     }
                 }
                 if (sync != null) {
-                    synchronized(sync) {
+                    synchronized (sync) {
                         sync.notify();
                     }
                 }
