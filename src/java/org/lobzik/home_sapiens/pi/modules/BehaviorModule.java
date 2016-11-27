@@ -415,7 +415,8 @@ public class BehaviorModule implements Module {
 
     private void parameterLUMIOSITYActions(Event e) { //Перегрев аккумулятора
         //освещённость
-        int timeout = 1; //Минута
+        int timeout = 5; //Минут
+        double hysterezis = 1.2;
         Condition c = getConditionByAlias("LUMIOSITY_DARK");
 
         Parameter p = (Parameter) e.data.get("parameter");
@@ -423,7 +424,7 @@ public class BehaviorModule implements Module {
         Measurement mMax = measurementsCache.getMaxMeasurementFrom(p, System.currentTimeMillis() - 1000 * 60 * timeout);
         Measurement mMin = measurementsCache.getMinMeasurementFrom(p, System.currentTimeMillis() - 1000 * 60 * timeout);
 
-        if (mMin.getDoubleValue() > BoxSettingsAPI.getDouble("LumiosityDarkLevel")) {
+        if (mMin.getDoubleValue() > BoxSettingsAPI.getDouble("LumiosityDarkLevel") * hysterezis) {
             triggerState(0, c, m, p);
         } else if (mMax.getDoubleValue() < BoxSettingsAPI.getDouble("LumiosityDarkLevel")) {
             triggerState(1, c, m, p);
@@ -454,7 +455,7 @@ public class BehaviorModule implements Module {
 
         if (mMax.getIntegerValue() < BoxSettingsAPI.getDouble("ChargeAlertMinor") && mMin.getIntegerValue() > BoxSettingsAPI.getDouble("ChargeAlertCritical")) {
             triggerState(1, c, m, p);
-        } else if (mMin.getIntegerValue() > BoxSettingsAPI.getDouble("ChargeAlertMinor") && mMax.getIntegerValue() < BoxSettingsAPI.getDouble("ChargeAlertCritical")) {
+        } else if (mMin.getIntegerValue() > BoxSettingsAPI.getDouble("ChargeAlertMinor") || mMax.getIntegerValue() < BoxSettingsAPI.getDouble("ChargeAlertCritical")) {
             triggerState(0, c, m, p);
         }
     }

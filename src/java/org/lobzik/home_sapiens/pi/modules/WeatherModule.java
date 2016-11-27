@@ -93,6 +93,10 @@ public class WeatherModule extends Thread implements Module {
 
                     List<Forecast> forecast = WeatherGetter.getWeatherInfo(latitude, longitude).getList();
                     if (!forecast.isEmpty()) {
+                        HashMap eventData = new HashMap();
+                        eventData.put("forecast", forecast);
+                        Event ev = new Event("forecast_loaded", eventData, Event.Type.SYSTEM_EVENT);
+                        AppData.eventManager.newEvent(ev);
                         Forecast mostActual = null;
                         long diff = System.currentTimeMillis();
                         for (Forecast f : forecast) {
@@ -116,7 +120,7 @@ public class WeatherModule extends Thread implements Module {
                                 Parameter p = AppData.parametersStorage.getParameter(paramId);
                                 Measurement m = new Measurement(p, outTemp, mostActual.getTime().getTime());
                                 if (!test) {
-                                    HashMap eventData = new HashMap();
+                                    eventData = new HashMap();
                                     eventData.put("parameter", p);
                                     eventData.put("measurement", m);
                                     Event event = new Event("forecast updated", eventData, Event.Type.PARAMETER_UPDATED);
@@ -129,7 +133,7 @@ public class WeatherModule extends Thread implements Module {
                                 Parameter p = AppData.parametersStorage.getParameter(paramId);
                                 Measurement m = new Measurement(p, mostActual.getPrecipitation(), mostActual.getTime().getTime());
                                 if (!test) {
-                                    HashMap eventData = new HashMap();
+                                    eventData = new HashMap();
                                     eventData.put("parameter", p);
                                     eventData.put("measurement", m);
                                     Event event = new Event("forecast updated", eventData, Event.Type.PARAMETER_UPDATED);
@@ -142,7 +146,7 @@ public class WeatherModule extends Thread implements Module {
                                 Parameter p = AppData.parametersStorage.getParameter(paramId);
                                 Measurement m = new Measurement(p, (double) mostActual.getClouds(), mostActual.getTime().getTime());
                                 if (!test) {
-                                    HashMap eventData = new HashMap();
+                                    eventData = new HashMap();
                                     eventData.put("parameter", p);
                                     eventData.put("measurement", m);
                                     Event event = new Event("forecast updated", eventData, Event.Type.PARAMETER_UPDATED);

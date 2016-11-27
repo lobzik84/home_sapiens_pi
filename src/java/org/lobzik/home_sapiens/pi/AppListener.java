@@ -58,11 +58,15 @@ public class AppListener implements ServletContextListener {
             AppData.setSoundWorkDir(new File(sce.getServletContext().getRealPath("sounds")));
             AppData.setGraphicsWorkDir(new File(sce.getServletContext().getRealPath("img")));
             AppData.setCaptureWorkDir(new File(sce.getServletContext().getRealPath("capture")));
-            
+
             ActualDataStorageModule.getInstance().start();
-            InstinctsModule.getInstance().start();
+
             InternalSensorsModule.getInstance().start();
             DisplayModule.getInstance().start();
+            
+            InstinctsModule.getInstance().start();
+            WeatherModule.getInstance().start();
+            ModemModule.getInstance().start();
             
             if (!BoxCommonData.TEST_MODE) {
                 LogModule.getInstance().start();
@@ -73,16 +77,13 @@ public class AppListener implements ServletContextListener {
                 GraphModule.getInstance().start();
                 BehaviorModule.getInstance().start();
                 TunnelClientModule.getInstance().start();
-                WeatherModule.getInstance().start();
+
             }
             SpeakerModule.getInstance().start();
             VideoModule.getInstance().start();
             MicrophoneModule.getInstance().start();
             SystemModule.getInstance().start();
 
-            ModemModule.getInstance().start();
-            
-            
             if (BoxCommonData.TEST_MODE) {
                 TestModule.getInstance().start();
             }
