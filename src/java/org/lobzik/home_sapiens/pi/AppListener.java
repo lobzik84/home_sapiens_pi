@@ -25,6 +25,7 @@ import org.lobzik.home_sapiens.pi.modules.InstinctsModule;
 import org.lobzik.home_sapiens.pi.modules.LogModule;
 import org.lobzik.home_sapiens.pi.modules.MicrophoneModule;
 import org.lobzik.home_sapiens.pi.modules.ModemModule;
+import org.lobzik.home_sapiens.pi.modules.ScriptsModule;
 import org.lobzik.home_sapiens.pi.modules.SystemModule;
 import org.lobzik.home_sapiens.pi.modules.TestModule;
 import org.lobzik.home_sapiens.pi.modules.TimerModule;
@@ -75,6 +76,7 @@ public class AppListener implements ServletContextListener {
                 TimerModule.getInstance().start();
                 DBCleanerModule.getInstance().start();
                 GraphModule.getInstance().start();
+                ScriptsModule.getInstance().start();
                 BehaviorModule.getInstance().start();
                 TunnelClientModule.getInstance().start();
 
@@ -83,7 +85,7 @@ public class AppListener implements ServletContextListener {
             VideoModule.getInstance().start();
             MicrophoneModule.getInstance().start();
             SystemModule.getInstance().start();
-
+            
             if (BoxCommonData.TEST_MODE) {
                 TestModule.getInstance().start();
             }

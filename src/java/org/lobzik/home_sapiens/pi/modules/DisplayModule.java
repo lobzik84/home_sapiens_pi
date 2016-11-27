@@ -316,7 +316,7 @@ public class DisplayModule implements Module {
                             break;
                     }
 
-                    g.fillRect(0, 251, 480, 320);
+                    g.fillRect(0, 266, 480, 320);
                     g.setColor(new Color(0, 0, 0));
 
                     if (iconImg != null) {

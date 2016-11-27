@@ -126,23 +126,57 @@ public class BehaviorModule implements Module {
     @Override
     public void handleEvent(Event e) {
         switch (e.type) {
+            case SYSTEM_EVENT:
+                switch (e.name) {
+                    case "shutdown":
+
+                        String cause = "";
+                        if (e.data != null && e.data.get("cause") != null) {
+                            cause += ": " + (String) e.data.get("cause");
+                        }
+                        Condition c = getConditionByAlias("SHUTDOWN");
+                        runActions(c, cause, "");
+
+                        break;
+                    case "location_detected":
+                        c = getConditionByAlias("LOCATION_DETECTED");
+                        runActions(c, e.data.toString(), "");
+                        break;
+                    case "forecast_loaded":
+                        c = getConditionByAlias("FORECAST_LOADED");
+                        runActions(c, "", "");
+                        break;
+                    case "tunnel_connected":
+                        c = getConditionByAlias("TUNNEL_CONNECTED");
+                        runActions(c, "", "");
+                        break;
+                    case "tunnel_connection_lost":
+                        c = getConditionByAlias("TUNNEL_CONNECTION_LOST");
+                        runActions(c, "", "");
+                        break;
+                    case "user_logged_in":
+                        c = getConditionByAlias("USER_LOGGED_IN");
+                        runActions(c, "", "");
+                        break;
+                    case "user_registered":
+                        c = getConditionByAlias("USER_REGISTERED");
+                        runActions(c, "", "");
+                        break;
+                }
+
             case SYSTEM_MODE_CHANGED:
+                Condition c = getConditionByAlias("BOX_MODE_CHANGED");
                 if (BoxMode.isArmed()) {
-                    HashMap data = new HashMap();
+                    if (c.state != 1) {
+                        runActions(1, c, "", "");
+                        c.setState(1);
+                    }
 
-                    Notification n = new Notification(Notification.Severity.INFO, null, "Включен режим Охрана", new Date(), null);
-                    data.put("Notification", n);
-
-                    Event reaction = new Event("log_record", data, Event.Type.BEHAVIOR_EVENT, "LogModule");
-                    AppData.eventManager.newEvent(reaction);
                 } else if (BoxMode.isIdle()) {
-                    HashMap data = new HashMap();
-
-                    Notification n = new Notification(Notification.Severity.INFO, null, "Включен режим Хозяин Дома", new Date(), null);
-                    data.put("Notification", n);
-
-                    Event reaction = new Event("log_record", data, Event.Type.BEHAVIOR_EVENT, "LogModule");
-                    AppData.eventManager.newEvent(reaction);
+                                       if (c.state != 0) {
+                        runActions(0, c, "", "");
+                        c.setState(0);
+                    }
 
                 }
 
@@ -187,6 +221,9 @@ public class BehaviorModule implements Module {
                                 break;
                             case "LUMIOSITY":
                                 parameterLUMIOSITYActions(e);
+                                break;
+                            case "NIGHTTIME":
+                                parameterNIGHTTIMEActions(e);
                                 break;
                         }
                     }
@@ -460,6 +497,21 @@ public class BehaviorModule implements Module {
         }
     }
 
+    private void parameterNIGHTTIMEActions(Event e) {
+
+        Condition c = getConditionByAlias("NIGHTTIME_IS_NIGHT");
+        Parameter p = (Parameter) e.data.get("parameter");
+        Measurement m = (Measurement) e.data.get("measurement");
+
+        if (m.getBooleanValue()) {
+
+            triggerState(1, c, m, p);
+        } else {
+            triggerState(0, c, m, p);
+        }
+
+    }
+
     private void parameterDOOR_SENSORActions(Event e) { //Door Sensor
         //Сработал датчик открывания двери
         Condition c = getConditionByAlias("DOOR_SENSOR_OPEN");
@@ -480,7 +532,7 @@ public class BehaviorModule implements Module {
 
     }
 
-    private void parameterWET_SENSORActions(Event e) { //Door Sensor
+    private void parameterWET_SENSORActions(Event e) { //Wet Sensor
         //Сработал датчик открывания двери
         Condition c = getConditionByAlias("WET_SENSOR_ALARM");
         Parameter p = (Parameter) e.data.get("parameter");
@@ -545,7 +597,8 @@ public class BehaviorModule implements Module {
             return;
         }
         c.setState(newState);
-        for (Action a : c.actions) {
+        runActions(newState, c, m.toStringValue(), p.getAlias());         
+/*        for (Action a : c.actions) {
             if (a.boxMode != null && !a.boxMode.toString().equals(BoxMode.string())) {
                 continue;//только те actions, что актуальны для текщего режима, остальное пропускаем
             }
@@ -556,6 +609,33 @@ public class BehaviorModule implements Module {
             if (a.notificationText != null) {
                 String message = a.notificationText.replaceAll("%VALUE%", m.toStringValue());
                 Notification n = new Notification(a.severity, p.getAlias(), message, new Date(), null, c.alias, newState);
+                data.put("Notification", n);
+
+            }
+            Event reaction = new Event(a.eventName, data, Event.Type.BEHAVIOR_EVENT, a.module);
+            AppData.eventManager.newEvent(reaction);
+        }*/
+
+    }
+    
+    private void runActions(Condition c, String value, String parameterAlias) {
+        runActions(null, c, value, parameterAlias);                
+    }
+
+    private void runActions(Integer newState, Condition c, String value, String parameterAlias) {
+
+        for (Action a : c.actions) {
+            if (a.boxMode != null && !a.boxMode.toString().equals(BoxMode.string())) {
+                continue;//только те actions, что актуальны для текщего режима, остальное пропускаем
+            }
+            if (newState != null && a.conditionState != null && a.conditionState != newState) {
+                continue; //только те actions, что актуальны для текущего состояния, остальное пропускаем
+            }
+
+            HashMap data = new HashMap();
+            if (a.notificationText != null) {
+                String message = a.notificationText.replaceAll("%VALUE%", value);
+                Notification n = new Notification(a.severity, parameterAlias, message, new Date(), null, c.alias, c.state);
                 data.put("Notification", n);
 
             }

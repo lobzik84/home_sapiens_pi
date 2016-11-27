@@ -129,6 +129,7 @@ public class InstinctsModule implements Module {
                 switch (e.name) {
 
                     case "user_command": //реакция на команды, для управления 433 через параметры
+                    case "script_command":
                         Measurement m = (Measurement) e.data.get("measurement");
 
                         Parameter p = (Parameter) e.data.get("parameter");
@@ -262,8 +263,11 @@ public class InstinctsModule implements Module {
                             AppData.eventManager.newEvent(newE);
 
                             if (AppData.measurementsCache.getAvgMeasurementFrom(p, System.currentTimeMillis() - 300000).getDoubleValue() < 5.8) {
-                                log.fatal("ALIAS:" + alias + ": Уровень заряда АКБ критически низок! Отключаем систему");
-                                Event shutdown = new Event("shutdown", null, Event.Type.SYSTEM_EVENT);
+                                String message = "Заряда АКБ критически низок!";
+                                log.fatal(message);
+                                HashMap cause = new HashMap();
+                                cause.put("cause", cause);
+                                Event shutdown = new Event("shutdown", cause, Event.Type.SYSTEM_EVENT);
                                 AppData.eventManager.newEvent(shutdown);
                             }
                             break;

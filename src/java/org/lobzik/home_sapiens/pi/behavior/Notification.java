@@ -39,6 +39,16 @@ public class Notification {
         this.startDate = startDate;
         this.endDate = endDate;
     }
+    
+    public Notification(Severity severity, String parameterAlias, String text, Date startDate, Date endDate, String conditionAlias) {
+        id = (int) (Math.random() * 100000d);
+        this.severity = severity;
+        this.parameterAlias = parameterAlias;
+        this.text = text;
+        this.startDate = startDate;
+        this.endDate = endDate;
+        this.conditionAlias = conditionAlias;
+    }
 
     public Notification(Severity severity, String parameterAlias, String text, Date startDate, Date endDate, String conditionAlias, Integer conditionState) {
         id = (int) (Math.random() * 100000d);
