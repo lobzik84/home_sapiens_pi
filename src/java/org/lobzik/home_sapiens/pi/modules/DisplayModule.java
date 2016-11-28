@@ -374,7 +374,7 @@ public class DisplayModule implements Module {
                     g.drawString(Math.abs(outsideTempNext.intValue()) + "°", 437, 205);
 
                     String imgName = "weather-";
-                    if (rainNext == null || rainNext <= 1) {
+                    if (rainNext == null || rainNext <= 0.05) {
                         if (cloudsNext <= 20) {
                             imgName += (new GregorianCalendar().get(Calendar.HOUR_OF_DAY)) < 12 ? "night" : "sun";
                         } else if (cloudsNext > 20 && cloudsNext < 70) {
@@ -411,7 +411,7 @@ public class DisplayModule implements Module {
                     g.drawString(Math.abs(outsideTempNow.intValue()) + "°", 411, 136);
 
                     String imgName = "weather-";
-                    if (rainNow == null || rainNow <= 1) {
+                    if (rainNow == null || rainNow <= 0.05) {
                         if (cloudsNow <= 20) {
                             imgName += nightTime ? "night" : "sun";
                         } else if (cloudsNow > 20 && cloudsNext < 70) {
