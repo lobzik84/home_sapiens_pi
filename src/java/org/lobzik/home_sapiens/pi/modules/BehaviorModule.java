@@ -160,7 +160,7 @@ public class BehaviorModule implements Module {
                         break;
                     case "user_registered":
                         c = getConditionByAlias("USER_REGISTERED");
-                        runActions(c, "", "");
+                        runActions(c, BoxCommonData.BOX_ID + "", "");
                         break;
                 }
 

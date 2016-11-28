@@ -266,6 +266,7 @@ public class JSONServlet extends HttpServlet {
             json.put("box_public_key", hexModulus);
             json.put("box_id", BoxCommonData.BOX_ID);
             json.put("session_key", session_key);
+            AppData.usersPublicKeysCache.initUsersPublicKey();
             Event ev = new Event("user_registered", null, Event.Type.SYSTEM_EVENT);
             AppData.eventManager.newEvent(ev);
             response.getWriter().print(json.toString());
@@ -340,6 +341,7 @@ public class JSONServlet extends HttpServlet {
                 session.put("Login", (String) resList.get(0).get("login"));
                 json.put("user_id", userId);
                 json.put("result", "success");
+                AppData.usersPublicKeysCache.initUsersPublicKey();
                 Event ev = new Event("user_logged_in", null, Event.Type.SYSTEM_EVENT);
                 AppData.eventManager.newEvent(ev);
                 System.out.println("RSA LOGIN OK! UserId=" + userId);
