@@ -70,7 +70,7 @@ public class AppListener implements ServletContextListener {
             ModemModule.getInstance().start();
             
             if (!BoxCommonData.TEST_MODE) {
-                UsersPublicKeysCache.getInstance().initUsersPublicKey();
+                AppData.usersPublicKeysCache.initUsersPublicKey();
                 LogModule.getInstance().start();
                 WebNotificationsModule.getInstance().start();
                 DBDataWriterModule.getInstance().start();

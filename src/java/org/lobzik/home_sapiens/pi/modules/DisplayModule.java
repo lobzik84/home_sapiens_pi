@@ -67,7 +67,7 @@ public class DisplayModule implements Module {
     private static final long MAXTIMEDIFF = 12 * 3600 * 1000l; //forecast older then 12 h не катит
     private static final Stack<Notification> notifications = new Stack();
     private static final int MAX_STACK_SIZE = 10;
-    
+
     private static final long NEXTFORECASTTIMEDIFF = 12 * 3600 * 1000l; //прогноз на через 12 часов
     private static List<Forecast> forecasts = null;
 
@@ -145,24 +145,6 @@ public class DisplayModule implements Module {
                     }
 
                 }
-                /*else if (e.name.equals("delete_display_notification")) {
-                    String conditionAlias = (String) e.data.get("ConditionAlias");
-                    if (conditionAlias != null) {
-                        int index = -1;
-
-                        for (int i = 0; i < notifications.size(); i++) {
-                            Notification n = notifications.get(i);
-                            if (n.conditionAlias.equals(conditionAlias)) {
-                                index = i;
-                                break;
-                            }
-                        }
-                        if (index >= 0) {
-                            notifications.remove(index);
-                        }
-                        draw();
-                    }
-                }*/
                 break;
         }
 
@@ -235,13 +217,13 @@ public class DisplayModule implements Module {
                 Double outsideTempNext = null; //если null - не рисуем,это прогноз на +12 часов
                 Integer cloudsNext = null;//если null - не рисуем, это прогноз на +12 часов                
                 Double rainNext = null;
-                
+
                 if (next != null) {
                     outsideTempNext = next.getTemperature();
                     cloudsNext = next.getClouds();
                     rainNext = next.getPrecipitation();
                 }
-                
+
                 String modemMode = "4G";//Режим сети. приедет от модема
 
                 String[] nextForecastFor = {"вечером", "завтра"}; //если текущее время до 12.00 дня - пишем прогноз на "вечер", если после - на "завтра". для случая, когда рисуем прогноз на вечер - берём ночные иконки!
@@ -404,7 +386,11 @@ public class DisplayModule implements Module {
                         imgName += outsideTempNext > 0 ? "rain" : "snow";
                     }
 
-                    Image icn = ImageIO.read(new File(AppData.getGraphicsWorkDir().getAbsolutePath() + File.separator + imgName + ".png"));
+                    Image icn = null;
+                    try {
+                        icn = ImageIO.read(new File(AppData.getGraphicsWorkDir().getAbsolutePath() + File.separator + imgName + ".png"));
+                    } catch (Exception e) {
+                    }
                     if (icn != null) {
                         int pHeight = 24;
                         int w = icn.getWidth(null);
@@ -436,8 +422,12 @@ public class DisplayModule implements Module {
                     } else {
                         imgName += outsideTempNow > 0 ? "rain" : "snow";
                     }
+                    Image icn = null;
+                    try {
+                        icn = ImageIO.read(new File(AppData.getGraphicsWorkDir().getAbsolutePath() + File.separator + imgName + ".png"));
+                    } catch (Exception e) {
+                    }
 
-                    Image icn = ImageIO.read(new File(AppData.getGraphicsWorkDir().getAbsolutePath() + File.separator + imgName + ".png"));
                     if (icn != null) {
                         int pHeight = 60;
                         int w = icn.getWidth(null);

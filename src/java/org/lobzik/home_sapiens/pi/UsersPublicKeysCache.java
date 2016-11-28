@@ -57,7 +57,7 @@ public class UsersPublicKeysCache {
         usersKeys.put(userId, key);
         usersLogins.put(userId, login);
     }
-    
+
     public Collection<String> getLogins() {
         return usersLogins.values();
     }
@@ -68,7 +68,9 @@ public class UsersPublicKeysCache {
         try (Connection conn = AppData.dataSource.getConnection()) {
             List<HashMap> resList = DBSelect.getRows(sSQL, conn);
             RSAPublicKey usersPublicKey = null;
-            for (HashMap h:resList) {
+            usersKeys.clear();
+            usersLogins.clear();
+            for (HashMap h : resList) {
                 int userId = Tools.parseInt(h.get("id"), 0);
                 String publicKey = (String) h.get("public_key");
                 BigInteger modulus = new BigInteger(publicKey, 16);
@@ -77,7 +79,7 @@ public class UsersPublicKeysCache {
                 usersPublicKey = (RSAPublicKey) factory.generatePublic(spec);
                 usersKeys.put(userId, usersPublicKey);
                 usersLogins.put(userId, (String) h.get("login"));
-                
+
             }
             return usersPublicKey;
         } catch (Exception e) {

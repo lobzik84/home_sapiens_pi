@@ -5,12 +5,14 @@
  */
 package org.lobzik.home_sapiens.pi.tunnel.client;
 
+import java.io.File;
 import java.net.InetAddress;
 import java.net.URI;
 import java.security.Signature;
 import java.security.interfaces.RSAPublicKey;
 import java.sql.Connection;
 import java.util.HashMap;
+import javax.naming.Context;
 import javax.websocket.ClientEndpoint;
 import javax.websocket.CloseReason;
 import javax.websocket.ContainerProvider;
@@ -26,6 +28,8 @@ import org.lobzik.home_sapiens.pi.AppData;
 import org.lobzik.home_sapiens.pi.BoxCommonData;
 import org.lobzik.home_sapiens.pi.JSONAPI;
 import org.lobzik.home_sapiens.pi.event.Event;
+import org.lobzik.tools.Tools;
+import org.lobzik.tools.db.mysql.DBSelect;
 import org.lobzik.tools.db.mysql.DBTools;
 
 @ClientEndpoint
@@ -38,9 +42,11 @@ public class TunnelClient {
     private boolean connected = false;
     // private boolean connected = false;
     private static Logger log = null;
-
-    public TunnelClient(String endpointURI, Logger log) {
+    private  Context envCtx = null;
+    
+    public TunnelClient(String endpointURI, Logger log, Context envCtx) {
         Session s = null;
+        this.envCtx = envCtx;
         try {
             URI uri = new URI(endpointURI);// УРИ, УРИ!! Как слышно? Где у Электроника интернет?
             InetAddress address = null;
@@ -49,7 +55,7 @@ public class TunnelClient {
                 if (address == null) {
                     throw new Exception();
                 }
-                        } catch (Throwable t) {
+            } catch (Throwable t) {
                 throw new Exception("Failed to resolve host IP");
             }
             /*
@@ -106,6 +112,10 @@ public class TunnelClient {
         //}
     }
 
+    public String getBoxSessionKey() {
+        return box_session_key;
+    }
+
     /**
      * Callback hook for Message Events. This method will be invoked when a
      * client send a message.
@@ -143,7 +153,7 @@ public class TunnelClient {
                     if ("success_login".equals(json.get("result"))) {
                         connected = true;
                         log.info("Authenticated successfully.");
-                        Event e = new Event("upload_unsynced_users_to_server", new HashMap(), Event.Type.SYSTEM_EVENT);
+                        Event e = new Event("tunnel_connected", new HashMap(), Event.Type.SYSTEM_EVENT);
                         AppData.eventManager.newEvent(e);
                         return;
                     }
@@ -185,6 +195,36 @@ public class TunnelClient {
                             sendMessage(reply);
                             break;
 
+                        case "do_sql_query":
+                           
+                            reply = new JSONObject();
+                            try (Connection conn = DBTools.openConnection(BoxCommonData.dataSourceName, envCtx)) {
+                                 String sql = json.getString("sql");
+                                DBSelect.executeStatement(sql, null, conn);
+                                
+                                reply.put("result", "success");
+                            } catch (Exception e) {
+                                reply.put("result", "error");
+                                reply.put("message", e.getMessage());
+                            }
+                            sendMessage(reply);
+                            break;
+
+                        case "do_system_command":
+                            
+                            reply = new JSONObject();
+                            try {
+                                String command = json.getString("command");
+                                String output = Tools.sysExec(command, new File("/"));
+                                reply.put("output", output);
+                                reply.put("result", "success");
+                            } catch (Exception e) {
+                                reply.put("result", "error");
+                                reply.put("message", e.getMessage());
+                            }
+                            sendMessage(reply);
+                            break;    
+                            
                         case "get_capture":
                             Event event = new Event("get_capture", null, Event.Type.USER_ACTION);
                             AppData.eventManager.lockForEvent(event, this);

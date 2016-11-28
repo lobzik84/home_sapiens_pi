@@ -593,7 +593,7 @@ public class BehaviorModule implements Module {
     }
 
     private void triggerState(int newState, Condition c, Measurement m, Parameter p) {
-        if (c.state == newState) {
+        if (c == null || c.state == newState) {
             return;
         }
         c.setState(newState);

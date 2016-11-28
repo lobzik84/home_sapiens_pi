@@ -28,7 +28,6 @@ import org.lobzik.home_sapiens.pi.BoxCommonData;
 import org.lobzik.home_sapiens.pi.BoxSettingsAPI;
 import org.lobzik.home_sapiens.pi.ConnJDBCAppender;
 import org.lobzik.home_sapiens.pi.behavior.Notification;
-import org.lobzik.home_sapiens.pi.UsersPublicKeysCache;
 import org.lobzik.home_sapiens.pi.event.EventManager;
 import org.lobzik.tools.Tools;
 import org.lobzik.tools.db.mysql.DBSelect;
@@ -298,7 +297,7 @@ public class ModemModule extends Thread implements Module {
                     boolean doSendSms = Tools.parseBoolean(BoxSettingsAPI.get("SMSNotifications"), false);
                     Notification n = (Notification) e.data.get("Notification");
                     if (n != null && doSendSms) {
-                        for (String login : UsersPublicKeysCache.getInstance().getLogins()) {
+                        for (String login : AppData.usersPublicKeysCache.getLogins()) {
                             String number = login.replace("(", "").replace(")", "").replaceAll("-", "");
                             log.debug("Sending sms ");
                             sendMessage(number, n.text);

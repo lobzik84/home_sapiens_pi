@@ -9,6 +9,8 @@ import java.sql.Connection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
+import javax.naming.Context;
+import javax.naming.InitialContext;
 import org.apache.log4j.Appender;
 import org.apache.log4j.Logger;
 import org.json.JSONObject;
@@ -63,6 +65,10 @@ public class TunnelClientModule extends Thread implements Module {
         }
     }
 
+    public String getBoxSessionKey() {
+        return client.getBoxSessionKey();
+    }
+
     @Override
     public void run() {
         setName(this.getClass().getSimpleName() + "-Thread");
@@ -77,7 +83,9 @@ public class TunnelClientModule extends Thread implements Module {
                 }
                 log.info("Connecting to " + BoxCommonData.TUNNEL_SERVER_URL);
                 try {
-                    client = new TunnelClient(BoxCommonData.TUNNEL_SERVER_URL, log);
+                    Context initCtx = new InitialContext();
+                    Context envCtx = (Context) initCtx.lookup("java:comp/env");
+                    client = new TunnelClient(BoxCommonData.TUNNEL_SERVER_URL, log, envCtx);
                 } catch (Exception e) {
                     log.error("Error while ws connecting: " + e.getMessage());
                     if (client != null) {
@@ -95,6 +103,8 @@ public class TunnelClientModule extends Thread implements Module {
             }
             if (client != null && !client.isConnected()) {
                 log.info("WS Client Disconnected.");
+                Event ev = new Event("tunnel_connection_lost", null, Event.Type.SYSTEM_EVENT);
+                AppData.eventManager.newEvent(ev);
             }
             if (run) {
                 if (client != null && client.isConnected() && System.currentTimeMillis() - client.getLastDataRecieved() >= WS_CHECK_PERIOD) {
@@ -140,6 +150,7 @@ public class TunnelClientModule extends Thread implements Module {
                         break;
 
                     case "upload_unsynced_users_to_server":
+                    case "tunnel_connected":
                         try {
                             log.info("Users sync");
                             uploadUnsyncedUsers();
@@ -159,32 +170,32 @@ public class TunnelClientModule extends Thread implements Module {
                             json.put("mail_to", e.data.get("mail_to"));
                             json.put("mail_text", e.data.get("mail_text"));
                             json.put("mail_subject", e.data.get("mail_subject"));
-                            log.debug("Sending email to " +  e.data.get("mail_to"));
+                            log.debug("Sending email to " + e.data.get("mail_to"));
                             client.sendMessage(json);
                         } catch (Exception ee) {
                             log.debug("Error on send msg: " + ee.getMessage());
                         }
                     }
-                    
+
                 } else if (e.name.equals("send_email_notification")) {
                     String email = BoxSettingsAPI.get("NotificationsEmail");
                     if (client != null && client.isConnected() && email != null && email.indexOf("@") > 0) {
                         try {
-                            Notification n = (Notification)e.data.get("Notification");
+                            Notification n = (Notification) e.data.get("Notification");
                             JSONObject json = new JSONObject();
                             json.put("box_id", BoxCommonData.BOX_ID);
                             json.put("action", "send_email");
                             json.put("mail_to", email);
                             json.put("mail_text", n.text); //TODO render JSP template
-                            json.put("mail_subject", "Управдом "+ BoxSettingsAPI.get("BoxName") +": " + n.severity.toString());
-                            log.debug("Sending email to " +  email);
+                            json.put("mail_subject", "Управдом " + BoxSettingsAPI.get("BoxName") + ": " + n.severity.toString());
+                            log.debug("Sending email to " + email);
                             client.sendMessage(json);
                         } catch (Exception ee) {
                             log.debug("Error on send msg: " + ee.getMessage());
                         }
                     }
-                    
-                } 
+
+                }
                 break;
         }
 

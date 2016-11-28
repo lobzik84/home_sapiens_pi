@@ -266,6 +266,8 @@ public class JSONServlet extends HttpServlet {
             json.put("box_public_key", hexModulus);
             json.put("box_id", BoxCommonData.BOX_ID);
             json.put("session_key", session_key);
+            Event ev = new Event("user_registered", null, Event.Type.SYSTEM_EVENT);
+            AppData.eventManager.newEvent(ev);
             response.getWriter().print(json.toString());
 
         }
@@ -338,6 +340,8 @@ public class JSONServlet extends HttpServlet {
                 session.put("Login", (String) resList.get(0).get("login"));
                 json.put("user_id", userId);
                 json.put("result", "success");
+                Event ev = new Event("user_logged_in", null, Event.Type.SYSTEM_EVENT);
+                AppData.eventManager.newEvent(ev);
                 System.out.println("RSA LOGIN OK! UserId=" + userId);
             } else {
                 throw new Exception("Login using RSA digest check failed");
@@ -454,13 +458,15 @@ public class JSONServlet extends HttpServlet {
                     RSAPublicKeySpec spec = new RSAPublicKeySpec(modulus, BoxCommonData.RSA_E);
                     KeyFactory factory = KeyFactory.getInstance("RSA");
                     PublicKey usersPublicKey = factory.generatePublic(spec);
-                    AppData.usersPublicKeysCache.addKey(userId, (RSAPublicKey) usersPublicKey, username);
+                    AppData.usersPublicKeysCache.initUsersPublicKey();
                     session.put("UsersPublicKey", usersPublicKey);
                     session.put("UserId", userId);
                     json.put("user_id", userId);
                     json.put("box_id", BoxCommonData.BOX_ID);
                     json.put("result", "success");
                     json.put("srp_M", M.toString(16));
+                    Event ev = new Event("user_logged_in", null, Event.Type.SYSTEM_EVENT);
+                    AppData.eventManager.newEvent(ev);
                     System.out.println("SRP LOGIN OK! UserId=" + userId);
                 }
             }
@@ -526,7 +532,6 @@ public class JSONServlet extends HttpServlet {
                     RSAPublicKeySpec spec = new RSAPublicKeySpec(modulus, BoxCommonData.RSA_E);
                     KeyFactory factory = KeyFactory.getInstance("RSA");
                     PublicKey usersPublicKey = factory.generatePublic(spec);
-                    AppData.usersPublicKeysCache.addKey(userId, (RSAPublicKey) usersPublicKey, username);
                     session.put("UsersPublicKey", usersPublicKey);
                     session.put("UserId", userId);
                     json.put("user_id", userId);
@@ -542,6 +547,7 @@ public class JSONServlet extends HttpServlet {
                     userMap.put("keyfile", newKeyfile);
                     userMap.put("synced", 0);
                     DBTools.updateRow("users", userMap, conn);
+                    AppData.usersPublicKeysCache.initUsersPublicKey();
                     json.put("result", "success");
                     json.put("message", "User updated");
                     Event e = new Event("upload_unsynced_users_to_server", new HashMap(), Event.Type.SYSTEM_EVENT);
