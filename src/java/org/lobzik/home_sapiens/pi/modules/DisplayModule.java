@@ -365,7 +365,7 @@ public class DisplayModule implements Module {
                     g.drawString(modemMode, 425, 40);
 
                     //rssi
-                    g.setColor(new Color(255, 255, 255, 128));
+                    g.setColor(new Color(255, 255, 255, 80));
                     g.fillRect(456, 36, 3, 4);
                     g.fillRect(460, 32, 3, 8);
                     g.fillRect(464, 28, 3, 12);
