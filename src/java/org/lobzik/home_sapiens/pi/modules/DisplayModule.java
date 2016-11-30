@@ -77,8 +77,8 @@ public class DisplayModule implements Module {
     private static final Color DAY_FONT_COLOR = new Color(255, 255, 255);
     private static final Color NIGHT_FONT_COLOR = new Color(180, 180, 180);
 
-    private static final Font FONT_SMALL = new Font("Roboto Regular", Font.BOLD, 18);
-    private static final Font NOTIFICATION_FONT = new Font("Roboto Regular", Font.PLAIN, 14);
+    private static final Font FONT_SMALL = new Font("Roboto Regular", Font.BOLD, 20);
+    private static final Font NOTIFICATION_FONT = new Font("Roboto Regular", Font.PLAIN, 15);
     private static final int LUM_SENSOR_TIMEOUT = 1; // для датчика освещённости
     private static final double LUM_SENSOR_HYSTEREZIS = 1.2;// для датчика освещённости
 
