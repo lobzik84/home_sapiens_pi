@@ -162,7 +162,7 @@ public class JSONAPI {
             Measurement m = mc.getLastMeasurement(p);
             if (p.getType() == Parameter.Type.BOOLEAN) {
                 Integer transferCounts = AppData.measurementsCache.getTransferTrueCountFrom(p, lastParametersWriteTime);
-                parJson.put("transfer_counts", transferCounts);
+                //parJson.put("transfer_counts", transferCounts); //удобно для отладки, но пока отключили
             }
             parJson.put("last_value", m.toStringValue());
             //parJson.put("last_date", m.getTime());//нафиг не нужно

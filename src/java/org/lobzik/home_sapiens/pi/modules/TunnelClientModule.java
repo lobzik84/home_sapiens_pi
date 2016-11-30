@@ -5,6 +5,7 @@
  */
 package org.lobzik.home_sapiens.pi.modules;
 
+import java.net.URL;
 import java.sql.Connection;
 import java.util.HashMap;
 import java.util.List;
@@ -75,6 +76,7 @@ public class TunnelClientModule extends Thread implements Module {
         log.info("Starting " + getName());
         EventManager.subscribeForEventType(this, Event.Type.SYSTEM_EVENT);
         EventManager.subscribeForEventType(this, Event.Type.BEHAVIOR_EVENT);
+        EventManager.subscribeForEventType(this, Event.Type.TIMER_EVENT);
         while (run) {
             if (client == null || !client.isConnected() || System.currentTimeMillis() - client.getLastDataRecieved() > 3 * WS_CHECK_PERIOD) {
                 if (client != null && client.isConnected()) {
@@ -182,11 +184,18 @@ public class TunnelClientModule extends Thread implements Module {
                     if (client != null && client.isConnected() && email != null && email.indexOf("@") > 0) {
                         try {
                             Notification n = (Notification) e.data.get("Notification");
+                            AppData.emailNotification.put(n.id, n);
+                            //get HTML
+                            String html = n.text;
+                            try {
+                                html = Tools.getFromUrl(new URL(AppData.getLocalUrlContPath() + "/email/notification.jsp?id=" + n.id));
+                            } catch (Exception ee) {
+                            }
                             JSONObject json = new JSONObject();
                             json.put("box_id", BoxCommonData.BOX_ID);
                             json.put("action", "send_email");
                             json.put("mail_to", email);
-                            json.put("mail_text", n.text); //TODO render JSP template
+                            json.put("mail_text", html); //TODO render JSP template
                             json.put("mail_subject", "Управдом " + BoxSettingsAPI.get("BoxName") + ": " + n.severity.toString());
                             log.debug("Sending email to " + email);
                             client.sendMessage(json);
@@ -197,8 +206,30 @@ public class TunnelClientModule extends Thread implements Module {
 
                 }
                 break;
-        }
+            case TIMER_EVENT:
+                if (e.name.equals("send_statistics")) {
+                    String email = BoxSettingsAPI.get("NotificationsEmail");
+                    if (client != null && client.isConnected() && email != null && email.indexOf("@") > 0) {
+                        try {
+                            //get HTML
+                            String html = Tools.getFromUrl(new URL(AppData.getLocalUrlContPath() + "/email/statistics.jsp"));
 
+                            JSONObject json = new JSONObject();
+                            json.put("box_id", BoxCommonData.BOX_ID);
+                            json.put("action", "send_email");
+                            json.put("mail_to", email);
+                            json.put("mail_text", html); //TODO render JSP template
+                            json.put("mail_subject", "Управдом " + BoxSettingsAPI.get("BoxName") + ": Статистика");
+                            log.debug("Sending email to " + email);
+                            client.sendMessage(json);
+                        } catch (Exception ee) {
+                            log.debug("Error on send msg: " + ee.getMessage());
+                        }
+                    }
+                    break;
+                }
+
+        }
     }
 
     private void uploadUnsyncedUsers() throws Exception {
