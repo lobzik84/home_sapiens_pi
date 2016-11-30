@@ -334,7 +334,7 @@ public class DisplayModule implements Module {
 
                             //                        }
                             if (iconImg == null) {
-                                iconImg = ImageIO.read(new File(AppData.getGraphicsWorkDir().getAbsolutePath() + File.separator + "default_icon.png"));
+                                iconImg = ImageIO.read(new File(AppData.getGraphicsWorkDir().getAbsolutePath() + File.separator + "DEFAULT.png"));
                             }
                         }
                     } catch (IOException e) {
