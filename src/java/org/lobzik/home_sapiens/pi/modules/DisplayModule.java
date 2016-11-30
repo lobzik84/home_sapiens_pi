@@ -214,28 +214,7 @@ public class DisplayModule implements Module {
                             darkRoom = true;
                         }
                     }
-                    /*
-                    p = AppData.parametersStorage.getParameterByAlias("OUTSIDE_TEMP");
-                    m = AppData.measurementsCache.getLastMeasurement(p);
-                    Double outsideTempNow = null;//если null - не рисуем
-                    if (m != null) {
-                        outsideTempNow = m.getDoubleValue();
-                    }
 
-                    p = AppData.parametersStorage.getParameterByAlias("CLOUDS");
-                    m = AppData.measurementsCache.getLastMeasurement(p);
-                    Integer cloudsNow = null;//если null - не рисуем
-                    if (m != null) {
-                        cloudsNow = (int) (double) m.getDoubleValue();
-                    }
-
-                    p = AppData.parametersStorage.getParameterByAlias("RAIN");
-                    m = AppData.measurementsCache.getLastMeasurement(p);
-                    Double rainNow = null;//если null - не рисуем
-                    if (m != null) {
-                        rainNow = m.getDoubleValue();
-                    }
-                     */
                     long forecastForTime = System.currentTimeMillis() + NEXTFORECASTTIMEDIFF;
                     Forecast next = null;
                     Forecast actual = null;
@@ -313,26 +292,11 @@ public class DisplayModule implements Module {
                         }
 
                         if (notif != null) {
-                            /*switch (notif.parameterAlias) {
-
-                                case "BATT_CHARGE":
-                                case "BATT_TEMP":
-                                case "DOOR_SENSOR":
-                                case "GAS_SENSOR":
-                                case "INTERNAL_HUMIDITY":
-                                case "INTERNAL_TEMP":
-                                case ""    
-                                case "PIR_SENSOR":
-                                case "VAC_SENSOR":
-                                case "WET_SENSOR":
-                             */
                             try {
                                 iconImg = ImageIO.read(new File(AppData.getGraphicsWorkDir().getAbsolutePath() + File.separator + notif.parameterAlias + ".png"));
                             } catch (Exception e) {
                             }
-                            //                                  break;
 
-                            //                        }
                             if (iconImg == null) {
                                 iconImg = ImageIO.read(new File(AppData.getGraphicsWorkDir().getAbsolutePath() + File.separator + "DEFAULT.png"));
                             }
@@ -379,8 +343,8 @@ public class DisplayModule implements Module {
 
                         g.setColor(DAY_FONT_COLOR);
                         g.setFont(NOTIFICATION_FONT);
-                        g.drawString(Tools.getFormatedDate(notif.startDate, "HH:mm"), 55, 290);
-                        g.drawString(notif.text, 55, 306);
+                        g.drawString(Tools.getFormatedDate(notif.startDate, "HH:mm"), 45, 290);
+                        g.drawString(notif.text, 45, 306);
 
                     }
                     //TIME
