@@ -7,7 +7,7 @@
     int id = Tools.parseInt(request.getParameter("id"), 0);
     Notification n = AppData.emailNotification.get(id);
     if (n == null) return;
-    //AppData.emailNotification.remove(id);
+    AppData.emailNotification.remove(id);
 %>
 <!DOCTYPE html>
 <html>
