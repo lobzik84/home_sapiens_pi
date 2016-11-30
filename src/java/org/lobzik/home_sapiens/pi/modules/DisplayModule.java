@@ -81,7 +81,6 @@ public class DisplayModule implements Module {
     private static final Font NOTIFICATION_FONT = new Font("Roboto Regular", Font.PLAIN, 14);
     private static final int LUM_SENSOR_TIMEOUT = 1; // для датчика освещённости
     private static final double LUM_SENSOR_HYSTEREZIS = 1.2;// для датчика освещённости
-    
 
     private DisplayModule() { //singleton
     }
@@ -108,6 +107,8 @@ public class DisplayModule implements Module {
             EventManager.subscribeForEventType(this, Event.Type.TIMER_EVENT);
             EventManager.subscribeForEventType(this, Event.Type.SYSTEM_EVENT);
             EventManager.subscribeForEventType(this, Event.Type.BEHAVIOR_EVENT);
+            EventManager.subscribeForEventType(this, Event.Type.SYSTEM_MODE_CHANGED);
+
             fbiRunner = new FbiRunner();
             fbiRunner.start();
 
@@ -173,12 +174,12 @@ public class DisplayModule implements Module {
             BufferedImage img = null;
             Image iconImg = null;
             if (BoxMode.isArmed()) {
-                img = ImageIO.read(new File(AppData.getGraphicsWorkDir().getAbsolutePath() + File.separator + "background_night.jpg"));
+                img = ImageIO.read(new File(AppData.getGraphicsWorkDir().getAbsolutePath() + File.separator + "background_armed.jpg"));
                 // g = img.getGraphics();
 
             } else {
                 if (BoxCommonData.TEST_MODE) {
-                    img = ImageIO.read(new File(AppData.getGraphicsWorkDir().getAbsolutePath() + File.separator + "background_armed.jpg"));
+                    img = ImageIO.read(new File(AppData.getGraphicsWorkDir().getAbsolutePath() + File.separator + "background_night.jpg"));
                     g = img.getGraphics();
                     g.setColor(new Color(255, 255, 255));
                     g.setFont(new Font("Roboto Regular", Font.BOLD, 81));
@@ -195,24 +196,25 @@ public class DisplayModule implements Module {
 
                     boolean nightTime = false; //ночью true, при этом ночной фон и иконки погоды ночные!
 
-                    /*p = AppData.parametersStorage.getParameterByAlias("NIGHTTIME");
+                    p = AppData.parametersStorage.getParameterByAlias("NIGHTTIME");
                     m = AppData.measurementsCache.getLastMeasurement(p);
                     if (m != null) {
                         nightTime = m.getBooleanValue();
-                    }*/
+                    }
                     p = AppData.parametersStorage.getParameterByAlias("LUMIOSITY");
 
                     Measurement mMax = measurementsCache.getMaxMeasurementFrom(p, System.currentTimeMillis() - 1000 * 60 * LUM_SENSOR_TIMEOUT);
                     Measurement mMin = measurementsCache.getMinMeasurementFrom(p, System.currentTimeMillis() - 1000 * 60 * LUM_SENSOR_TIMEOUT);
 
+                    boolean darkRoom = false;
                     if (mMin != null && mMax != null) {
                         if (mMin.getDoubleValue() > BoxSettingsAPI.getDouble("LumiosityDarkLevel") * LUM_SENSOR_HYSTEREZIS) {
-                            nightTime = false;
+                            darkRoom = false;
                         } else if (mMax.getDoubleValue() < BoxSettingsAPI.getDouble("LumiosityDarkLevel")) {
-                            nightTime = true;
+                            darkRoom = true;
                         }
                     }
-
+                    /*
                     p = AppData.parametersStorage.getParameterByAlias("OUTSIDE_TEMP");
                     m = AppData.measurementsCache.getLastMeasurement(p);
                     Double outsideTempNow = null;//если null - не рисуем
@@ -233,9 +235,10 @@ public class DisplayModule implements Module {
                     if (m != null) {
                         rainNow = m.getDoubleValue();
                     }
-
+                     */
                     long forecastForTime = System.currentTimeMillis() + NEXTFORECASTTIMEDIFF;
                     Forecast next = null;
+                    Forecast actual = null;
                     if (forecasts != null) {
 
                         long diff = System.currentTimeMillis();
@@ -251,7 +254,31 @@ public class DisplayModule implements Module {
                                 next = f;
                             }
                         }
+
+                        diff = System.currentTimeMillis();
+                        for (Forecast f : forecasts) {
+                            //searching for closest forecast
+
+                            long timeDiff = f.getTime().getTime() - System.currentTimeMillis();
+                            if (timeDiff < 0) {
+                                timeDiff = timeDiff * -1;
+                            }
+                            if (timeDiff < MAXTIMEDIFF && timeDiff < diff) {
+                                diff = timeDiff;
+                                actual = f;
+                            }
+                        }
                     }
+                    Double outsideTempNow = null; //если null - не рисуем,это прогноз на +12 часов
+                    Integer cloudsNow = null;//если null - не рисуем, это прогноз на +12 часов                
+                    Double rainNow = null;
+                    
+                    if (actual != null) {
+                        outsideTempNow = actual.getTemperature();
+                        cloudsNow = actual.getClouds();
+                        rainNow = actual.getPrecipitation();
+                    }
+                    
                     Double outsideTempNext = null; //если null - не рисуем,это прогноз на +12 часов
                     Integer cloudsNext = null;//если null - не рисуем, это прогноз на +12 часов                
                     Double rainNext = null;
@@ -277,7 +304,7 @@ public class DisplayModule implements Module {
                     }
 
                     try {
-                        if (nightTime) {
+                        if (darkRoom) {
                             fontColor = NIGHT_FONT_COLOR;
                             img = ImageIO.read(new File(AppData.getGraphicsWorkDir().getAbsolutePath() + File.separator + "background_night.jpg"));
                         } else {
@@ -286,23 +313,26 @@ public class DisplayModule implements Module {
                         }
 
                         if (notif != null) {
-                            switch (notif.parameterAlias) {
+                            /*switch (notif.parameterAlias) {
 
-                                case "CHARGE":
+                                case "BATT_CHARGE":
+                                case "BATT_TEMP":
                                 case "DOOR_SENSOR":
                                 case "GAS_SENSOR":
                                 case "INTERNAL_HUMIDITY":
                                 case "INTERNAL_TEMP":
+                                case ""    
                                 case "PIR_SENSOR":
                                 case "VAC_SENSOR":
                                 case "WET_SENSOR":
-
-                                    iconImg = ImageIO.read(new File(AppData.getGraphicsWorkDir().getAbsolutePath() + File.separator + notif.parameterAlias + ".png"));
-
-                                    break;
-
+                             */
+                            try {
+                                iconImg = ImageIO.read(new File(AppData.getGraphicsWorkDir().getAbsolutePath() + File.separator + notif.parameterAlias + ".png"));
+                            } catch (Exception e) {
                             }
+                            //                                  break;
 
+                            //                        }
                             if (iconImg == null) {
                                 iconImg = ImageIO.read(new File(AppData.getGraphicsWorkDir().getAbsolutePath() + File.separator + "default_icon.png"));
                             }
@@ -344,7 +374,7 @@ public class DisplayModule implements Module {
 
                         if (iconImg != null) {
 
-                            g.drawImage(iconImg, 25, 280, 14, 24, null);
+                            g.drawImage(iconImg, 10, 280, 24, 24, null);
                         }
 
                         g.setColor(DAY_FONT_COLOR);
@@ -398,10 +428,6 @@ public class DisplayModule implements Module {
                         g.fillRect(468, 24, 3, 16);
                     }
 
-                    //nextForecastFor
-                    //Double outsideTempNext = null; //если null - не рисуем,это прогноз на +12 часов
-                    //Integer cloudsNext = null;//если null - не рисуем, это прогноз на +12 часов
-                    //Double rainNext = null;
                     if (outsideTempNext != null && cloudsNext != null) {
                         g.setColor(fontColor);
                         g.setFont(FONT_SMALL);
@@ -440,9 +466,6 @@ public class DisplayModule implements Module {
                         }
                     }
 
-                    //Double outsideTempNow = null;//если null - не рисуем
-                    //Integer cloudsNow = null;//если null - не рисуем
-                    //Double rainNow = null;
                     if (outsideTempNow != null && cloudsNow != null) {
                         g.setFont(new Font("Roboto Regular", Font.BOLD, 42));
                         if (outsideTempNow < 0) {
