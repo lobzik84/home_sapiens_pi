@@ -177,7 +177,7 @@ public class InternalSensorsModule extends Thread implements Module {
                                     if (raw == 1023) {
                                         log.debug("Suspicious value " + p.getAlias() + "=" + raw + " ADC overloaded?");
                                     }
-                                    m = new Measurement(p, raw * p.getCalibration());
+                                    m = new Measurement(p, raw * p.getCalibration() + p.getCorrection());
                                 }
                                 break;
 
