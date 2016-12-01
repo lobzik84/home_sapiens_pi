@@ -7,6 +7,7 @@ package org.lobzik.home_sapiens.pi.modules;
 
 import java.net.URL;
 import java.sql.Connection;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
@@ -187,6 +188,21 @@ public class TunnelClientModule extends Thread implements Module {
                             AppData.emailNotification.put(n.id, n);
                             //get HTML
                             String html = n.text;
+                            String severity = "";
+                            switch (n.severity) {
+                                case ALARM:
+                                    severity = "Тревога";
+                                    break;
+                                case ALERT:
+                                    severity = "Предупреждение";
+                                    break;
+                                case OK:
+                                    severity = "ОК";
+                                    break;
+                                case INFO:
+                                    severity = "Уведомление";
+                                    break;
+                            }
                             try {
                                 html = Tools.getFromUrl(new URL(AppData.getLocalUrlContPath() + "/email/notification.jsp?id=" + n.id));
                             } catch (Exception ee) {
@@ -196,7 +212,7 @@ public class TunnelClientModule extends Thread implements Module {
                             json.put("action", "send_email");
                             json.put("mail_to", email);
                             json.put("mail_text", html); //TODO render JSP template
-                            json.put("mail_subject", "Управдом " + BoxSettingsAPI.get("BoxName") + ": " + n.severity.toString());
+                            json.put("mail_subject", "Управдом " + BoxSettingsAPI.get("BoxName") + ". " + severity);
                             log.debug("Sending email to " + email);
                             client.sendMessage(json);
                         } catch (Exception ee) {
@@ -212,14 +228,22 @@ public class TunnelClientModule extends Thread implements Module {
                     if (client != null && client.isConnected() && email != null && email.indexOf("@") > 0) {
                         try {
                             //get HTML
-                            String html = Tools.getFromUrl(new URL(AppData.getLocalUrlContPath() + "/email/statistics.jsp"));
+                            long to = System.currentTimeMillis();
+                            long from = to - 7 * 24 * 3600 * 1000L;
+
+                            String dateFrom = Tools.getFormatedDate(new Date(from), "dd.MM.YYYY");
+                            String dateTo = Tools.getFormatedDate(new Date(to), "dd.MM.YYYY");
+                            String url = AppData.getLocalUrlContPath() + "/email/statistics.jsp?moduleName=LogModule";
+                            url += "&from=" + from;
+                            url += "&to=" + to;
+                            String html = Tools.getFromUrl(new URL(url));
 
                             JSONObject json = new JSONObject();
                             json.put("box_id", BoxCommonData.BOX_ID);
                             json.put("action", "send_email");
                             json.put("mail_to", email);
                             json.put("mail_text", html); //TODO render JSP template
-                            json.put("mail_subject", "Управдом " + BoxSettingsAPI.get("BoxName") + ": Статистика");
+                            json.put("mail_subject", "Управдом - " + BoxSettingsAPI.get("BoxName") + ". Отчет за период: " + dateFrom + " - " + dateTo);
                             log.debug("Sending email to " + email);
                             client.sendMessage(json);
                         } catch (Exception ee) {
