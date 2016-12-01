@@ -7,7 +7,9 @@ package org.lobzik.home_sapiens.pi.modules;
 
 import java.net.URL;
 import java.sql.Connection;
+import java.util.Calendar;
 import java.util.Date;
+import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
@@ -224,8 +226,11 @@ public class TunnelClientModule extends Thread implements Module {
                 break;
             case TIMER_EVENT:
                 if (e.name.equals("send_statistics")) {
+                    
+                    Calendar c = new GregorianCalendar();
+                    boolean doSendStat = (c.get(Calendar.DAY_OF_WEEK) == Calendar.MONDAY) && ("true".equals(BoxSettingsAPI.get("StatToEmailScript")));
                     String email = BoxSettingsAPI.get("NotificationsEmail");
-                    if (client != null && client.isConnected() && email != null && email.indexOf("@") > 0) {
+                    if (doSendStat && client != null && client.isConnected() && email != null && email.indexOf("@") > 0) {
                         try {
                             //get HTML
                             long to = System.currentTimeMillis();
