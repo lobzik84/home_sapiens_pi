@@ -60,7 +60,7 @@ public class ScriptsModule implements Module {
     public void handleEvent(Event e) {
         if (e.type == Event.Type.BEHAVIOR_EVENT) {
             switch (e.name) {
-                case "pir_action_on"://TODO где-то проверить на темноту?
+                /*case "pir_action_on"://TODO где-то проверить на темноту?
                     if ("true".equalsIgnoreCase(BoxSettingsAPI.get("Lamp1PIRSensorScript"))) {
                         Parameter p = AppData.parametersStorage.getParameterByAlias("LAMP_1");
                         Measurement m = new Measurement(p, true);
@@ -141,6 +141,45 @@ public class ScriptsModule implements Module {
                         Event newE = new Event("script_command", eventData, Event.Type.PARAMETER_UPDATED);
                         AppData.eventManager.newEvent(newE);
                     }
+                    break;*/
+                case "lamp1_on":
+                    Parameter p = AppData.parametersStorage.getParameterByAlias("LAMP_1");
+                    Measurement m = new Measurement(p, true);
+                    HashMap eventData = new HashMap();
+                    eventData.put("parameter", p);
+                    eventData.put("measurement", m);
+                    Event newE = new Event("script_command", eventData, Event.Type.PARAMETER_UPDATED);
+                    AppData.eventManager.newEvent(newE);
+                    break;
+
+                case "lamp1_off":
+                    p = AppData.parametersStorage.getParameterByAlias("LAMP_1");
+                    m = new Measurement(p, false);
+                    eventData = new HashMap();
+                    eventData.put("parameter", p);
+                    eventData.put("measurement", m);
+                    newE = new Event("script_command", eventData, Event.Type.PARAMETER_UPDATED);
+                    AppData.eventManager.newEvent(newE);
+                    break;
+                    
+                case "lamp2_on":
+                    p = AppData.parametersStorage.getParameterByAlias("LAMP_2");
+                    m = new Measurement(p, true);
+                    eventData = new HashMap();
+                    eventData.put("parameter", p);
+                    eventData.put("measurement", m);
+                    newE = new Event("script_command", eventData, Event.Type.PARAMETER_UPDATED);
+                    AppData.eventManager.newEvent(newE);
+                    break;
+
+                case "lamp2_off":
+                    p = AppData.parametersStorage.getParameterByAlias("LAMP_2");
+                    m = new Measurement(p, false);
+                    eventData = new HashMap();
+                    eventData.put("parameter", p);
+                    eventData.put("measurement", m);
+                    newE = new Event("script_command", eventData, Event.Type.PARAMETER_UPDATED);
+                    AppData.eventManager.newEvent(newE);
                     break;
             }
         }

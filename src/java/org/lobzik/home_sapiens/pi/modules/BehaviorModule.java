@@ -173,7 +173,7 @@ public class BehaviorModule implements Module {
                     }
 
                 } else if (BoxMode.isIdle()) {
-                                       if (c.state != 0) {
+                    if (c.state != 0) {
                         runActions(0, c, "", "");
                         c.setState(0);
                     }
@@ -311,6 +311,29 @@ public class BehaviorModule implements Module {
         }
         if (!m.getBooleanValue() && transferTrueCount == 0) {
             triggerState(0, c, m, p);
+        }
+        
+        c = getConditionByAlias("LUMIOSITY_DARK");
+        boolean dark = c.state == 1;
+        
+        boolean lampPIRSensorScript = "true".equalsIgnoreCase(BoxSettingsAPI.get("Lamp1PIRSensorScript"));
+        p = AppData.parametersStorage.getParameterByAlias("LAMP_1");
+        c = getConditionByAlias("LAMP1_PIR_SCRIPT");
+        if (dark && m.getBooleanValue() && transferTrueCount != 0) {
+            triggerState(1, c, m, p, lampPIRSensorScript);
+        }
+        if (!m.getBooleanValue() && transferTrueCount == 0) {
+            triggerState(0, c, m, p, lampPIRSensorScript);
+        }
+
+        lampPIRSensorScript = "true".equalsIgnoreCase(BoxSettingsAPI.get("Lamp2PIRSensorScript"));
+        p = AppData.parametersStorage.getParameterByAlias("LAMP_2");
+        c = getConditionByAlias("LAMP2_PIR_SCRIPT");
+        if (dark && m.getBooleanValue() && transferTrueCount != 0) {
+            triggerState(1, c, m, p, lampPIRSensorScript);
+        }
+        if (!m.getBooleanValue() && transferTrueCount == 0) {
+            triggerState(0, c, m, p, lampPIRSensorScript);
         }
 
     }
@@ -510,6 +533,21 @@ public class BehaviorModule implements Module {
             triggerState(0, c, m, p);
         }
 
+        boolean lampDarkSensorScript = "true".equalsIgnoreCase(BoxSettingsAPI.get("Lamp1DarkSensorScript"));
+        c = getConditionByAlias("LAMP1_NIGHT_SCRIPT");
+        if (m.getBooleanValue()) {
+            triggerState(1, c, m, p, lampDarkSensorScript);
+        } else {
+            triggerState(0, c, m, p, lampDarkSensorScript);
+        }
+
+        lampDarkSensorScript = "true".equalsIgnoreCase(BoxSettingsAPI.get("Lamp2DarkSensorScript"));
+        c = getConditionByAlias("LAMP2_NIGHT_SCRIPT");
+        if (m.getBooleanValue()) {
+            triggerState(1, c, m, p, lampDarkSensorScript);
+        } else {
+            triggerState(0, c, m, p, lampDarkSensorScript);
+        }
     }
 
     private void parameterDOOR_SENSORActions(Event e) { //Door Sensor
@@ -593,33 +631,21 @@ public class BehaviorModule implements Module {
     }
 
     private void triggerState(int newState, Condition c, Measurement m, Parameter p) {
+        triggerState(newState, c, m, p, true);
+    }
+
+    private void triggerState(int newState, Condition c, Measurement m, Parameter p, boolean doRunActions) {
         if (c == null || c.state == newState) {
             return;
         }
         c.setState(newState);
-        runActions(newState, c, m.toStringValue(), p.getAlias());         
-/*        for (Action a : c.actions) {
-            if (a.boxMode != null && !a.boxMode.toString().equals(BoxMode.string())) {
-                continue;//только те actions, что актуальны для текщего режима, остальное пропускаем
-            }
-            if (a.conditionState != null && (int) a.conditionState != newState) {
-                continue; //только те actions, что актуальны для текущего состояния, остальное пропускаем
-            }
-            HashMap data = new HashMap();
-            if (a.notificationText != null) {
-                String message = a.notificationText.replaceAll("%VALUE%", m.toStringValue());
-                Notification n = new Notification(a.severity, p.getAlias(), message, new Date(), null, c.alias, newState);
-                data.put("Notification", n);
-
-            }
-            Event reaction = new Event(a.eventName, data, Event.Type.BEHAVIOR_EVENT, a.module);
-            AppData.eventManager.newEvent(reaction);
-        }*/
-
+        if (doRunActions) {
+            runActions(newState, c, m.toStringValue(), p.getAlias());
+        }
     }
-    
+
     private void runActions(Condition c, String value, String parameterAlias) {
-        runActions(null, c, value, parameterAlias);                
+        runActions(null, c, value, parameterAlias);
     }
 
     private void runActions(Integer newState, Condition c, String value, String parameterAlias) {
