@@ -78,6 +78,7 @@ public class DisplayModule implements Module {
     private static final Color NIGHT_FONT_COLOR = new Color(180, 180, 180);
 
     private static final Font FONT_SMALL = new Font("Roboto Regular", Font.BOLD, 20);
+    private static final Font FONT_SMALL_FOR = new Font("Roboto Regular", Font.BOLD, 22);
     private static final Font NOTIFICATION_FONT = new Font("Roboto Regular", Font.PLAIN, 15);
     private static final int LUM_SENSOR_TIMEOUT = 1; // для датчика освещённости
     private static final double LUM_SENSOR_HYSTEREZIS = 1.2;// для датчика освещённости
@@ -270,7 +271,7 @@ public class DisplayModule implements Module {
 
                     String modemMode = "4G";//Режим сети. приедет от модема
 
-                    String[] nextForecastFor = {"вечером", "завтра"}; //если текущее время до 12.00 дня - пишем прогноз на "вечер", если после - на "завтра". для случая, когда рисуем прогноз на вечер - берём ночные иконки!
+                    String[] nextForecastFor = {"вечер", "завтра"}; //если текущее время до 12.00 дня - пишем прогноз на "вечер", если после - на "завтра". для случая, когда рисуем прогноз на вечер - берём ночные иконки!
                     String[] weekDays = {"воскресенье", "понедельник", "вторник", "среда", "четверг", "пятница", "суббота"};
                     String[] yearMonths = {"января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"};
 
@@ -357,7 +358,7 @@ public class DisplayModule implements Module {
                     dateString += ", " + Tools.getFormatedDate(new Date(), "dd") + " " + yearMonths[new GregorianCalendar().get(Calendar.MONTH)];
                     g.setColor(fontColor);
                     g.setFont(FONT_SMALL);
-                    g.drawString(dateString, 15, 205);
+                    g.drawString(dateString, 17, 205);
 
                     //Modem
                     g.setColor(fontColor);
@@ -394,15 +395,15 @@ public class DisplayModule implements Module {
 
                     if (outsideTempNext != null && cloudsNext != null) {
                         g.setColor(fontColor);
-                        g.setFont(FONT_SMALL);
+                        g.setFont(FONT_SMALL_FOR);
                         g.drawString(nextForecastFor[(new GregorianCalendar().get(Calendar.HOUR_OF_DAY)) < 12 ? 0 : 1], 306, 205);
 
-                        g.setFont(new Font("Roboto Regular", Font.BOLD, 18));
+                        g.setFont(FONT_SMALL_FOR);
                         if (outsideTempNext < 0) {
                             g.drawString("-", 431, 205);
                         }
 
-                        g.drawString(Math.abs(outsideTempNext.intValue()) + "°", 437, 205);
+                        g.drawString(Math.abs(outsideTempNext.intValue()) + "°", 440, 205);
 
                         String imgName = "weather-";
                         if (rainNext == null || rainNext <= 0.05) {
