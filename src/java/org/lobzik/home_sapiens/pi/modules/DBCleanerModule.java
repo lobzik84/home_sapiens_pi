@@ -29,8 +29,8 @@ public class DBCleanerModule extends Thread implements Module {
     private static Logger log = null;
     private static boolean run = true;
     private static boolean clearingInProgress = false;
-    private static final int DAYS_TO_STORE_RAW_SENSORS_DATA = 5;
-    private static final int DAYS_TO_STORE_LOG_MSG = 30;
+    private static final int DAYS_TO_STORE_RAW_SENSORS_DATA = 8;
+    private static final int DAYS_TO_STORE_LOG_MSG = 9;
 
     private DBCleanerModule() { //singleton
     }
@@ -91,7 +91,7 @@ public class DBCleanerModule extends Thread implements Module {
                     switch (p.getType()) {
                         //todo группировать значения с разрешением, скажем, час
                         case DOUBLE:
-                            String sSQL = "insert into sensors_data \n"
+                            /*String sSQL = "insert into sensors_data \n"
                                     + "(select \n"
                                     + "null,\n"
                                     + "gsd.parameter_id, \n"
@@ -118,13 +118,13 @@ public class DBCleanerModule extends Thread implements Module {
                                     + "inner join sensors_data sd1 on  concat(year(sd1.date), \"-\", month(sd1.date), \"-\", day(sd1.date), \" \", hour(sd1.date), \":00:00\") = gsd.date and sd1.parameter_id=gsd.parameter_id and sd1.value_min=gsd.value_min\n"
                                     + "inner join sensors_data sd2 on  concat(year(sd2.date), \"-\", month(sd2.date), \"-\", day(sd2.date), \" \", hour(sd2.date), \":00:00\") = gsd.date and sd2.parameter_id=gsd.parameter_id and sd2.value_max=gsd.value_max\n"
                                     + "group by gsd.date)";
-                            DBSelect.executeStatement(sSQL, null, conn);
+                            DBSelect.executeStatement(sSQL, null, conn);*/
                             DBSelect.executeStatement("delete from sensors_data where parameter_id = " + p.getId() + " and datediff(curdate(), date) > " + DAYS_TO_STORE_RAW_SENSORS_DATA, null, conn);
                             break;
 
                         case BOOLEAN:
                             //todo transfer counts sum
-                            sSQL = "insert into sensors_data \n"
+                            /*sSQL = "insert into sensors_data \n"
                                     + "(select \n"
                                     + "null,\n"
                                     + "sd.parameter_id, \n"
@@ -144,7 +144,7 @@ public class DBCleanerModule extends Thread implements Module {
                                     + "and datediff(curdate(), sd.date) > " + DAYS_TO_STORE_RAW_SENSORS_DATA + " \n"
                                     + "group by  concat(year(sd.date), \"-\", month(sd.date), \"-\", day(sd.date), \" \", hour(sd.date), \":00:00\")\n"
                                     + ")";
-                            DBSelect.executeStatement(sSQL, null, conn);
+                            DBSelect.executeStatement(sSQL, null, conn);*/
                             DBSelect.executeStatement("delete from sensors_data where parameter_id = " + p.getId() + " and datediff(curdate(), date) > " + DAYS_TO_STORE_RAW_SENSORS_DATA, null, conn);
                             break;
 
