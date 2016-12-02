@@ -298,10 +298,10 @@ public class BehaviorModule implements Module {
         Measurement m = (Measurement) e.data.get("measurement");
         //работает более 15 сек.
         Condition c = getConditionByAlias("PIR_SENSOR_ALARM");
-        int PIRTimeout = 15; //секунд
+        int PIRTimeout = 10; //секунд
         int transferTrueCount = measurementsCache.getTransferTrueCountFrom(p, System.currentTimeMillis() - 1000 * PIRTimeout);
 
-        if (m.getBooleanValue() && transferTrueCount != 0) {
+        if (m.getBooleanValue() && transferTrueCount == 0) {
             if (BoxMode.isArmed()) {
                 p.setState(Parameter.State.ALARM);
             }
@@ -319,7 +319,7 @@ public class BehaviorModule implements Module {
         boolean lampPIRSensorScript = "true".equalsIgnoreCase(BoxSettingsAPI.get("Lamp1PIRSensorScript"));
         p = AppData.parametersStorage.getParameterByAlias("LAMP_1");
         c = getConditionByAlias("LAMP1_PIR_SCRIPT");
-        if (dark && m.getBooleanValue() && transferTrueCount != 0) {
+        if (dark && m.getBooleanValue()) {
             triggerState(1, c, m, p, lampPIRSensorScript);
         }
         if (!m.getBooleanValue() && transferTrueCount == 0) {
@@ -329,7 +329,7 @@ public class BehaviorModule implements Module {
         lampPIRSensorScript = "true".equalsIgnoreCase(BoxSettingsAPI.get("Lamp2PIRSensorScript"));
         p = AppData.parametersStorage.getParameterByAlias("LAMP_2");
         c = getConditionByAlias("LAMP2_PIR_SCRIPT");
-        if (dark && m.getBooleanValue() && transferTrueCount != 0) {
+        if (dark && m.getBooleanValue()) {
             triggerState(1, c, m, p, lampPIRSensorScript);
         }
         if (!m.getBooleanValue() && transferTrueCount == 0) {
