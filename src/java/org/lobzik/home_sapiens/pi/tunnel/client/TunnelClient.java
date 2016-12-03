@@ -42,8 +42,8 @@ public class TunnelClient {
     private boolean connected = false;
     // private boolean connected = false;
     private static Logger log = null;
-    private  Context envCtx = null;
-    
+    private Context envCtx = null;
+
     public TunnelClient(String endpointURI, Logger log, Context envCtx) {
         Session s = null;
         this.envCtx = envCtx;
@@ -185,23 +185,42 @@ public class TunnelClient {
                     }
 
                     switch (action) {
+                        case "auth_info":
+                            if (json.has("auth_type") && json.has("ip")) {
+                                String authType = "";
+                                if (json.getString("auth_type").equals("SRP")) {
+                                    authType = "remote_SRP";
+                                } else if (json.getString("auth_type").equals("RSA")) {
+                                    authType = "remote_RSA";
+                                }
+                                HashMap evData = new HashMap();
+                                evData.put("auth_type", authType);
+                                evData.put("ip", json.getString("ip"));
+                                Event ev = new Event("user_logged_in", evData, Event.Type.SYSTEM_EVENT);
+                                AppData.eventManager.newEvent(ev);
+                            }
+                            JSONObject reply = new JSONObject();
+                            reply.put("result", "success");
+                            sendMessage(reply);
+                            break;
+
                         case "command":
                             if (userId > 0) {
                                 usersKey = AppData.usersPublicKeysCache.getKey(userId);
                                 JSONAPI.doEncryptedUserCommand(json, BoxCommonData.PRIVATE_KEY, usersKey, userId);
                             }
-                            JSONObject reply = new JSONObject();//JSONAPI.getEncryptedParametersJSON(usersKey);
+                            reply = new JSONObject();//JSONAPI.getEncryptedParametersJSON(usersKey);
                             reply.put("result", "success");
                             sendMessage(reply);
                             break;
 
                         case "do_sql_query":
-                           
+
                             reply = new JSONObject();
                             try (Connection conn = DBTools.openConnection(BoxCommonData.dataSourceName, envCtx)) {
-                                 String sql = json.getString("sql");
+                                String sql = json.getString("sql");
                                 DBSelect.executeStatement(sql, null, conn);
-                                
+
                                 reply.put("result", "success");
                             } catch (Exception e) {
                                 reply.put("result", "error");
@@ -211,7 +230,7 @@ public class TunnelClient {
                             break;
 
                         case "do_system_command":
-                            
+
                             reply = new JSONObject();
                             try {
                                 String command = json.getString("command");
@@ -223,8 +242,8 @@ public class TunnelClient {
                                 reply.put("message", e.getMessage());
                             }
                             sendMessage(reply);
-                            break;    
-                            
+                            break;
+
                         case "get_capture":
                             Event event = new Event("get_capture", null, Event.Type.USER_ACTION);
                             AppData.eventManager.lockForEvent(event, this);

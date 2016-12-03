@@ -156,7 +156,29 @@ public class BehaviorModule implements Module {
                         break;
                     case "user_logged_in":
                         c = getConditionByAlias("USER_LOGGED_IN");
-                        runActions(c, "", "");
+                        String msg = "";
+                        if (e.data != null) {
+                            String authType = (String) e.data.get("auth_type");
+                            String IP = Tools.getStringValue(e.data.get("ip"), "");
+                            if (authType != null) {
+                                switch (authType) {
+                                    case "local_RSA":
+                                        msg = "из локальной сети, IP " + IP;
+                                        break;
+                                    case "local_SRP":
+                                        msg = "из локальной сети по паролю, IP " + IP;
+                                        break;
+                                    case "remote_RSA":
+                                        msg = "через Интернет, IP " + IP;
+                                        break;
+                                    case "remote_SRP":
+                                        msg = "через Интернет по паролю, IP " + IP;
+                                        break;
+
+                                }
+                            }
+                        }
+                        runActions(c, msg, "");
                         break;
                     case "user_registered":
                         c = getConditionByAlias("USER_REGISTERED");
@@ -312,10 +334,10 @@ public class BehaviorModule implements Module {
         if (!m.getBooleanValue() && transferTrueCount == 0) {
             triggerState(0, c, m, p);
         }
-        
+
         c = getConditionByAlias("LUMIOSITY_DARK");
         boolean dark = c.state == 1;
-        
+
         boolean lampPIRSensorScript = "true".equalsIgnoreCase(BoxSettingsAPI.get("Lamp1PIRSensorScript"));
         p = AppData.parametersStorage.getParameterByAlias("LAMP_1");
         c = getConditionByAlias("LAMP1_PIR_SCRIPT");

@@ -342,7 +342,10 @@ public class JSONServlet extends HttpServlet {
                 json.put("user_id", userId);
                 json.put("result", "success");
                 AppData.usersPublicKeysCache.initUsersPublicKey();
-                Event ev = new Event("user_logged_in", null, Event.Type.SYSTEM_EVENT);
+                HashMap evData = new HashMap();
+                evData.put("auth_type", "local_RSA");
+                evData.put("ip", request.getRemoteAddr());
+                Event ev = new Event("user_logged_in", evData, Event.Type.SYSTEM_EVENT);
                 AppData.eventManager.newEvent(ev);
                 System.out.println("RSA LOGIN OK! UserId=" + userId);
             } else {
@@ -467,7 +470,10 @@ public class JSONServlet extends HttpServlet {
                     json.put("box_id", BoxCommonData.BOX_ID);
                     json.put("result", "success");
                     json.put("srp_M", M.toString(16));
-                    Event ev = new Event("user_logged_in", null, Event.Type.SYSTEM_EVENT);
+                    HashMap evData = new HashMap();
+                    evData.put("auth_type", "local_SRP");
+                    evData.put("ip", request.getRemoteAddr());
+                    Event ev = new Event("user_logged_in", evData, Event.Type.SYSTEM_EVENT);
                     AppData.eventManager.newEvent(ev);
                     System.out.println("SRP LOGIN OK! UserId=" + userId);
                 }
