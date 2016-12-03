@@ -560,6 +560,8 @@ public class JSONServlet extends HttpServlet {
                     json.put("message", "User updated");
                     Event e = new Event("upload_unsynced_users_to_server", new HashMap(), Event.Type.SYSTEM_EVENT);
                     AppData.eventManager.newEvent(e);
+                    Event ev = new Event("user_password_updated", null, Event.Type.SYSTEM_EVENT);
+                    AppData.eventManager.newEvent(ev);
                 }
 
             } catch (Exception e) {

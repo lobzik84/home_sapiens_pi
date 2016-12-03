@@ -226,7 +226,7 @@ public class TunnelClientModule extends Thread implements Module {
                 break;
             case TIMER_EVENT:
                 if (e.name.equals("send_statistics")) {
-                    
+
                     Calendar c = new GregorianCalendar();
                     boolean doSendStat = (c.get(Calendar.DAY_OF_WEEK) == Calendar.MONDAY) && ("true".equals(BoxSettingsAPI.get("StatToEmailScript")));
                     String email = BoxSettingsAPI.get("NotificationsEmail");
@@ -251,6 +251,8 @@ public class TunnelClientModule extends Thread implements Module {
                             json.put("mail_subject", "Управдом - " + BoxSettingsAPI.get("BoxName") + ". Отчет за период: " + dateFrom + " - " + dateTo);
                             log.debug("Sending email to " + email);
                             client.sendMessage(json);
+                            Event ev = new Event("statistics_sent", null, Event.Type.SYSTEM_EVENT);
+                            AppData.eventManager.newEvent(ev);
                         } catch (Exception ee) {
                             log.debug("Error on send msg: " + ee.getMessage());
                         }

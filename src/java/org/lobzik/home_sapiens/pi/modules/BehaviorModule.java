@@ -184,6 +184,16 @@ public class BehaviorModule implements Module {
                         c = getConditionByAlias("USER_REGISTERED");
                         runActions(c, BoxCommonData.BOX_ID + "", "");
                         break;
+                        
+                    case "user_password_updated":
+                        c = getConditionByAlias("USER_PASSWORD_UPDATED");
+                        runActions(c, "", "");
+                        break;
+                        
+                    case "statistics_sent":
+                        c = getConditionByAlias("STATISTICS_SENT");
+                        runActions(c, "", "");
+                        break;
                 }
 
             case SYSTEM_MODE_CHANGED:
