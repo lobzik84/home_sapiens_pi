@@ -625,6 +625,8 @@ public class JSONServlet extends HttpServlet {
         }
         JSONObject reply = JSONAPI.getSettingsJSON((RSAPublicKey) session.get("UsersPublicKey"), (String) session.get("Login"));
         reply.put("result", "success");
+        reply.put("connection_type", "local");
+        reply.put("server_link", TunnelClientModule.getInstance().tunnelIsUp() ? "up" : "down");
         reply.put("session_key", json.getString("session_key"));
         response.getWriter().write(reply.toString());
     }
@@ -642,6 +644,8 @@ public class JSONServlet extends HttpServlet {
 
         JSONObject reply = JSONAPI.getEncryptedHistoryJSON(json, (RSAPublicKey) session.get("UsersPublicKey"));
         reply.put("result", "success");
+        reply.put("connection_type", "local");
+        reply.put("server_link", TunnelClientModule.getInstance().tunnelIsUp() ? "up" : "down");
         reply.put("session_key", json.getString("session_key"));
         response.getWriter().write(reply.toString());
     }
@@ -659,6 +663,8 @@ public class JSONServlet extends HttpServlet {
 
         JSONObject reply = JSONAPI.getEncryptedLogJSON(json, (RSAPublicKey) session.get("UsersPublicKey"));
         reply.put("result", "success");
+        reply.put("connection_type", "local");
+        reply.put("server_link", TunnelClientModule.getInstance().tunnelIsUp() ? "up" : "down");
         reply.put("session_key", json.getString("session_key"));
         response.getWriter().write(reply.toString());
     }
@@ -679,6 +685,8 @@ public class JSONServlet extends HttpServlet {
 
         JSONObject reply = JSONAPI.getEncryptedCaptureJSON((RSAPublicKey) session.get("UsersPublicKey"));
         reply.put("result", "success");
+        reply.put("connection_type", "local");
+        reply.put("server_link", TunnelClientModule.getInstance().tunnelIsUp() ? "up" : "down");
         reply.put("session_key", json.getString("session_key"));
         response.getWriter().write(reply.toString());
     }
