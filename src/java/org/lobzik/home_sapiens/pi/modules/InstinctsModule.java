@@ -80,7 +80,7 @@ public class InstinctsModule implements Module {
             AppData.eventManager.newEvent(newE);
 
             p = AppData.parametersStorage.getParameter(AppData.parametersStorage.resolveAlias("LAMP_1"));
-            off = new Measurement(p, false);
+            off = new Measurement(p, true);
             eventData = new HashMap();
             eventData.put("parameter", p);
             eventData.put("measurement", off);
@@ -88,7 +88,7 @@ public class InstinctsModule implements Module {
             AppData.eventManager.newEvent(newE);
 
             p = AppData.parametersStorage.getParameter(AppData.parametersStorage.resolveAlias("LAMP_2"));
-            off = new Measurement(p, false);
+            off = new Measurement(p, true);
             eventData = new HashMap();
             eventData.put("parameter", p);
             eventData.put("measurement", off);

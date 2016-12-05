@@ -67,7 +67,11 @@ public class Notification {
         json.put("id", id);
         json.put("severity", severity.toString());
         json.put("text", text);
-        json.put("parameterAlias", parameterAlias);
+        if (parameterAlias != null && parameterAlias.length() > 0) {
+            json.put("parameterAlias", parameterAlias);
+        } else {
+            json.put("parameterAlias", "DEFAULT");
+        }
         if (startDate != null) {
             json.put("startDate", startDate.getTime());
         }
