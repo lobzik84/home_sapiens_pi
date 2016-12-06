@@ -11,5 +11,5 @@ case when (a.box_mode='ARMED') then 'охрана' when (a.box_mode='IDLE') then
  FROM conditions c
 left join parameters p on p.id = c.parameter_id
 inner join actions a on a.condition_id = c.id 
-where a.box_mode is null
+where a.box_mode ='IDLE'
 order by (CASE WHEN p.id IS NULL then 1 ELSE 0 END), p.id, c.alias, (case when a.condition_state=1 then 0  when a.condition_state=0 then 1 else 2 end)

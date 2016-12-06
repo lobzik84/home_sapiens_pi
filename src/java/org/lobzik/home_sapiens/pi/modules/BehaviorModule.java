@@ -507,8 +507,8 @@ public class BehaviorModule implements Module {
 
     private void parameterLUMIOSITYActions(Event e) { //Перегрев аккумулятора
         //освещённость
-        int timeout = 5; //Минут
-        double hysterezis = 1.2;
+        int timeout = 3; //Минут
+        double hysterezis = 1.5;
         Condition c = getConditionByAlias("LUMIOSITY_DARK");
 
         Parameter p = (Parameter) e.data.get("parameter");
