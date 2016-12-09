@@ -70,8 +70,35 @@ CREATE TABLE `conditions` (
 
 LOCK TABLES `conditions` WRITE;
 /*!40000 ALTER TABLE `conditions` DISABLE KEYS */;
-INSERT INTO `conditions` VALUES (1,5,'VAC_SENSOR_UNSTABLE','Опасный для электроприборов скачок напряжения электросети\n(в т.ч. отключение напряжения)',0),(2,5,'VAC_SENSOR_POWER_LOSS','более 5 минут отсутствует напряжение в сети ',0),(7,21,'DOOR_SENSOR_OPEN','Сработал датчик открывания двери',0),(10,19,'BAT_CHARGE_LESS_30','Заряд аккумуляторов меньше 30%',0),(12,19,'BAT_CHARGE_BETWEEN_30_50','Заряд аккумуляторов < 50% и > 30%',0),(16,9,'BATT_TEMP_OVERHEAT','Перегрев аккумулятора',0),(18,1,'INTERNAL_TEMP_SENSOR_FAILURE','Отказ датчика температуры',0),(20,1,'INTERNAL_TEMP_FAST_FALLING','Быстрое падение температуры воздуха',0),(22,1,'INTERNAL_TEMP_FAST_RISING','Быстрое повышение температуры воздуха ',0),(24,1,'INTERNAL_TEMP_OUT_OF_BOUNDS','Вышла и более 5 минут подряд находится вне установленных пределов',0),(28,2,'INTERNAL_HUMIDITY_OUT_OF_BOUNDS','Вышла и более 5 минут подряд находится вне установленных пределов',0),(34,7,'GAS_SENSOR_ALARM','Сработал датчик газа',0),(38,6,'PIR_SENSOR_ALARM','Сработал датчик движения',1),(42,12,'MIC_NOISE_ALARM','Сработал датчик шума',0),(45,20,'WET_SENSOR_ALARM','Сработал датчик протечки воды',0),(46,3,'LUMIOSITY_DARK','Освещённость недостаточна',0),(47,22,'NIGHTTIME_IS_NIGHT','Наступила ночь',1),(48,NULL,'SHUTDOWN','Система отключается',0),(49,NULL,'LOCATION_DETECTED','Определено местоположение',0),(50,NULL,'FORECAST_LOADED','Загружен прогноз погоды',0),(51,NULL,'TUNNEL_CONNECTED','Установлено соединение с сервером',0),(52,NULL,'USER_LOGGED_IN','Пользователь авторизовался',0),(53,NULL,'TUNNEL_CONNECTION_LOST','Потеряно соединение с сервером',0),(54,NULL,'USER_REGISTERED','Пользователь зарегистрировался',0),(55,NULL,'BOX_MODE_CHANGED','Переключен режим устройства',0),(56,NULL,'LAMP1_PIR_SCRIPT','Сценарий лампы 1 по датчику движения и темноты',0),(57,NULL,'LAMP2_PIR_SCRIPT','Сценарий лампы 2 по датчику движения и темноты',0),(58,NULL,'LAMP1_NIGHT_SCRIPT','Сценарий лампы 1 в ночи',1),(59,NULL,'LAMP2_NIGHT_SCRIPT','Сценарий лампы 2 в ночи',1),(60,NULL,'USER_PASSWORD_UPDATED','Изменён логин и/или пароль пользователя',0),(61,NULL,'STATISTICS_SENT','Отправлена статистика',0);
+INSERT INTO `conditions` VALUES (1,5,'VAC_SENSOR_UNSTABLE','Опасный для электроприборов скачок напряжения электросети\n(в т.ч. отключение напряжения)',0),(2,5,'VAC_SENSOR_POWER_LOSS','Более 5 минут напряжение в сети вне пределов',0),(7,21,'DOOR_SENSOR_OPEN','Сработал датчик открывания двери',0),(10,19,'BAT_CHARGE_LESS_30','Заряд аккумуляторов меньше 30% более 1 мин',0),(12,19,'BAT_CHARGE_BETWEEN_30_50','Заряд аккумуляторов < 50% и > 30% более 1 мин',0),(16,9,'BATT_TEMP_OVERHEAT','Перегрев аккумулятора в течение более 1 мин',0),(18,1,'INTERNAL_TEMP_SENSOR_FAILURE','Отказ датчика температуры (нет данных)',0),(20,1,'INTERNAL_TEMP_FAST_FALLING','Температура воздуха снижается быстрее, чем на 5 градусов в час',0),(22,1,'INTERNAL_TEMP_FAST_RISING','Температура воздуха Растет быстрее чем на 5 градусов за 10 минут',0),(24,1,'INTERNAL_TEMP_OUT_OF_BOUNDS','Вышла и более 5 минут подряд находится вне установленных пределов',0),(28,2,'INTERNAL_HUMIDITY_OUT_OF_BOUNDS','Вышла и более 5 минут подряд находится вне установленных пределов',0),(34,7,'GAS_SENSOR_ALARM','Сработал датчик газа',0),(38,6,'PIR_SENSOR_ALARM','сработал датчик движения и работает более 10 сек подряд',0),(42,12,'MIC_NOISE_ALARM','Сработал датчик шума (более 10 сек шум)',0),(45,20,'WET_SENSOR_ALARM','Сработал датчик протечки воды',0),(46,3,'LUMIOSITY_DARK','Освещённость недостаточна более 5 минут подряд',0),(47,22,'NIGHTTIME_IS_NIGHT','Наступила ночь',0),(48,NULL,'SHUTDOWN','Система отключается',0),(49,NULL,'LOCATION_DETECTED','Определено местоположение',0),(50,NULL,'FORECAST_LOADED','Загружен прогноз погоды',0),(51,NULL,'TUNNEL_CONNECTED','Установлено соединение с сервером',0),(52,NULL,'USER_LOGGED_IN','Пользователь авторизовался',0),(53,NULL,'TUNNEL_CONNECTION_LOST','Потеряно соединение с сервером',0),(54,NULL,'USER_REGISTERED','Пользователь зарегистрировался',0),(55,NULL,'BOX_MODE_CHANGED','Переключен режим устройства',0),(56,NULL,'LAMP1_PIR_SCRIPT','Сценарий лампы 1 по датчику движения и темноты',0),(57,NULL,'LAMP2_PIR_SCRIPT','Сценарий лампы 2 по датчику движения и темноты',0),(58,NULL,'LAMP1_NIGHT_SCRIPT','Сценарий лампы 1 в ночи',0),(59,NULL,'LAMP2_NIGHT_SCRIPT','Сценарий лампы 2 в ночи',0),(60,NULL,'USER_PASSWORD_UPDATED','Изменён логин и/или пароль пользователя',0),(61,NULL,'STATISTICS_SENT','Отправлена статистика на email',0);
 /*!40000 ALTER TABLE `conditions` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `logs`
+--
+
+DROP TABLE IF EXISTS `logs`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `logs` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `module_name` varchar(255) NOT NULL,
+  `dated` datetime NOT NULL,
+  `level` varchar(10) NOT NULL,
+  `message` varchar(1000) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=612993 DEFAULT CHARSET=utf8;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `logs`
+--
+
+LOCK TABLES `logs` WRITE;
+/*!40000 ALTER TABLE `logs` DISABLE KEYS */;
+INSERT INTO `logs` VALUES (612984,'TunnelClientModule','2016-12-07 10:15:29','INFO','Disconnecting'),(612985,'InternalSensorsModule','2016-12-07 10:15:30','INFO','Stopping SerialWriter'),(612986,'DBCleanerModule','2016-12-07 10:15:30','INFO','Stopping DBCleanerModule'),(612987,'LogModule','2016-12-07 10:15:30','ERROR','Потеряно соединение с сервером'),(612988,'TunnelClientModule','2016-12-07 10:15:30','INFO','closing websocket'),(612989,'DisplayModule','2016-12-07 10:15:30','INFO','Exiting process'),(612990,'TunnelClientModule','2016-12-07 10:15:30','INFO','WS Client Disconnected.'),(612991,'MicrophoneModule','2016-12-07 10:15:30','INFO','Exiting process'),(612992,'MicrophoneModule','2016-12-07 10:15:30','INFO','Exiting process');
+/*!40000 ALTER TABLE `logs` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -123,8 +150,42 @@ CREATE TABLE `parameters` (
 
 LOCK TABLES `parameters` WRITE;
 /*!40000 ALTER TABLE `parameters` DISABLE KEYS */;
-INSERT INTO `parameters` VALUES (1,'Internal Temperature','INTERNAL_TEMP','Температура в помещении','%2.1f','°C','DOUBLE',NULL,-2),(2,'Internal Humidity','INTERNAL_HUMIDITY','Влажность воздуха','%2.1f','%','DOUBLE',NULL,NULL),(3,'Lumiosity','LUMIOSITY','Освещённость','%2.1f','lx','DOUBLE',NULL,NULL),(4,'Battery Voltage','VBAT_SENSOR','Напряжение АКБ','%2.1f','V','DOUBLE',0.011612447,NULL),(5,'AC Voltage','VAC_SENSOR','Напряжение в сети','%3.1f','V','DOUBLE',0.358064516,NULL),(6,'PIR Sensor','PIR_SENSOR','Датчик движения',NULL,NULL,'BOOLEAN',NULL,NULL),(7,'Gas Sensor','GAS_SENSOR','Датчик горючих газов',NULL,NULL,'BOOLEAN',NULL,NULL),(8,'Gas Sensor Signal','GAS_SENSOR_ANALOG','Сигнал с датчика газов',NULL,'V','DOUBLE',0.001075269,NULL),(9,'Battery Temperature','BATT_TEMP','Температура АКБ',NULL,'°C','DOUBLE',NULL,NULL),(10,'Modem RSSI','MODEM_RSSI','Уровень сигнала сотовой сети','%2.1f','dBm','DOUBLE',NULL,NULL),(11,'Outside Temperature','OUTSIDE_TEMP','Температура на улице','%2.1f','°C','DOUBLE',NULL,NULL),(12,'MIC Noise','MIC_NOISE','Датчик шума',NULL,NULL,'BOOLEAN',NULL,NULL),(13,'Lamp1','LAMP_1','Лампа 1',NULL,NULL,'BOOLEAN',NULL,NULL),(14,'Lamp2','LAMP_2','Лампа 2',NULL,NULL,'BOOLEAN',NULL,NULL),(15,'Socket','SOCKET','Розетка',NULL,NULL,'BOOLEAN',NULL,NULL),(16,'Charge Enabled','CHARGE_ENABLED','Включена зарядка батареи',NULL,NULL,'BOOLEAN',NULL,NULL),(17,'Rain','RAIN','Осадки','%2.1f','mm','DOUBLE',NULL,NULL),(18,'Clouds','CLOUDS','Облачность','%2.1f','%','DOUBLE',NULL,NULL),(19,'Battery Charge','BATT_CHARGE','Заряд батареи','%2d','%','INTEGER',NULL,NULL),(20,'Wet Sensor','WET_SENSOR','Датчик затопления',NULL,NULL,'BOOLEAN',NULL,NULL),(21,'Door Sensor','DOOR_SENSOR','Датчик открытия двери',NULL,NULL,'BOOLEAN',NULL,NULL),(22,'Night Time','NIGHTTIME','Ночное время',NULL,NULL,'BOOLEAN',NULL,NULL);
+INSERT INTO `parameters` VALUES (1,'Internal Temperature','INTERNAL_TEMP','Температура в помещении','%2.1f','°C','DOUBLE',NULL,-2),(2,'Internal Humidity','INTERNAL_HUMIDITY','Влажность воздуха','%2.1f','%','DOUBLE',NULL,NULL),(3,'Lumiosity','LUMIOSITY','Освещённость','%2.1f','lx','DOUBLE',NULL,NULL),(4,'Battery Voltage','VBAT_SENSOR','Напряжение АКБ','%2.1f','V','DOUBLE',0.011308,NULL),(5,'AC Voltage','VAC_SENSOR','Напряжение в сети','%3.1f','V','DOUBLE',0.299727,NULL),(6,'PIR Sensor','PIR_SENSOR','Датчик движения',NULL,NULL,'BOOLEAN',NULL,NULL),(7,'Gas Sensor','GAS_SENSOR','Датчик горючих газов',NULL,NULL,'BOOLEAN',NULL,NULL),(8,'Gas Sensor Signal','GAS_SENSOR_ANALOG','Сигнал с датчика газов',NULL,'V','DOUBLE',0.001075269,NULL),(9,'Battery Temperature','BATT_TEMP','Температура АКБ',NULL,'°C','DOUBLE',NULL,NULL),(10,'Modem RSSI','MODEM_RSSI','Уровень сигнала сотовой сети','%2.1f','dBm','DOUBLE',NULL,NULL),(11,'Outside Temperature','OUTSIDE_TEMP','Температура на улице','%2.1f','°C','DOUBLE',NULL,NULL),(12,'MIC Noise','MIC_NOISE','Датчик шума',NULL,NULL,'BOOLEAN',NULL,NULL),(13,'Lamp1','LAMP_1','Лампа 1',NULL,NULL,'BOOLEAN',NULL,NULL),(14,'Lamp2','LAMP_2','Лампа 2',NULL,NULL,'BOOLEAN',NULL,NULL),(15,'Socket','SOCKET','Розетка',NULL,NULL,'BOOLEAN',NULL,NULL),(16,'Charge Enabled','CHARGE_ENABLED','Включена зарядка батареи',NULL,NULL,'BOOLEAN',NULL,NULL),(17,'Rain','RAIN','Осадки','%2.1f','mm','DOUBLE',NULL,NULL),(18,'Clouds','CLOUDS','Облачность','%2.1f','%','DOUBLE',NULL,NULL),(19,'Battery Charge','BATT_CHARGE','Заряд батареи','%2d','%','INTEGER',NULL,NULL),(20,'Wet Sensor','WET_SENSOR','Датчик затопления',NULL,NULL,'BOOLEAN',NULL,NULL),(21,'Door Sensor','DOOR_SENSOR','Датчик открытия двери',NULL,NULL,'BOOLEAN',NULL,NULL),(22,'Night Time','NIGHTTIME','Ночное время',NULL,NULL,'BOOLEAN',NULL,NULL);
 /*!40000 ALTER TABLE `parameters` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `sensors_data`
+--
+
+DROP TABLE IF EXISTS `sensors_data`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `sensors_data` (
+  `rec_id` int(11) NOT NULL AUTO_INCREMENT,
+  `parameter_id` int(11) NOT NULL,
+  `date` datetime NOT NULL,
+  `value_d` double DEFAULT NULL,
+  `value_s` varchar(255) DEFAULT NULL,
+  `value_b` int(11) DEFAULT NULL,
+  `value_i` int(11) DEFAULT NULL,
+  `value_min` double DEFAULT NULL,
+  `date_min` datetime DEFAULT NULL,
+  `value_max` double DEFAULT NULL,
+  `date_max` datetime DEFAULT NULL,
+  `transfer_count` int(11) DEFAULT NULL,
+  `grouped` int(11) NOT NULL DEFAULT '0',
+  PRIMARY KEY (`rec_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=147637 DEFAULT CHARSET=utf8;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `sensors_data`
+--
+
+LOCK TABLES `sensors_data` WRITE;
+/*!40000 ALTER TABLE `sensors_data` DISABLE KEYS */;
+/*!40000 ALTER TABLE `sensors_data` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -148,8 +209,85 @@ CREATE TABLE `settings` (
 
 LOCK TABLES `settings` WRITE;
 /*!40000 ALTER TABLE `settings` DISABLE KEYS */;
-INSERT INTO `settings` VALUES (1,'BoxName','Прототип #23'),(2,'VACAlertMin','100'),(3,'VACAlertMax','250'),(4,'InTempAlertMin','18'),(5,'InTempAlertMax','32'),(6,'Lamp2PIRSensorScript','true'),(7,'Lamp1PIRSensorScript','false'),(8,'Lamp2DarkSensorScript','false'),(9,'Lamp1DarkSensorScript','false'),(10,'Socket1OnCommand433','10044428,200'),(11,'Socket1OffCommand433','10044420,200'),(12,'Lamp1OnCommand433','1222003,370'),(13,'Lamp1OffCommand433','1222004,370'),(14,'Lamp2OnCommand433','2159715,370'),(15,'Lamp2OffCommand433','2159716,370'),(16,'WetSensorAddress433','3526992'),(17,'DoorSensorAddress433','13088038'),(18,'SpeakerNotifications','true'),(19,'StatToEmailScript','false'),(20,'NotificationsEmail','labozin@molnet.ru'),(21,'ChargeAlertCritical','30'),(22,'ChargeAlertMinor','50'),(23,'VBatTempAlertMax','50'),(24,'SMSNotifications','true'),(25,'InHumAlertMax','85'),(26,'InHumAlertMin','8'),(27,'LumiosityDarkLevel','60');
+INSERT INTO `settings` VALUES (1,'BoxName','Управдом'),(2,'VACAlertMin','170'),(3,'VACAlertMax','245'),(4,'InTempAlertMin','15'),(5,'InTempAlertMax','35'),(6,'Lamp2PIRSensorScript','false'),(7,'Lamp1PIRSensorScript','true'),(8,'Lamp2DarkSensorScript','true'),(9,'Lamp1DarkSensorScript','false'),(10,'Socket1OnCommand433','10044428,200'),(11,'Socket1OffCommand433','10044420,200'),(12,'Lamp1OnCommand433','1222003,370'),(13,'Lamp1OffCommand433','1222004,370'),(14,'Lamp2OnCommand433','2159715,370'),(15,'Lamp2OffCommand433','2159716,370'),(16,'WetSensorAddress433','3526992'),(17,'DoorSensorAddress433','13088038'),(18,'SpeakerNotifications','true'),(19,'StatToEmailScript','false'),(20,'NotificationsEmail',''),(21,'ChargeAlertCritical','30'),(22,'ChargeAlertMinor','50'),(23,'VBatTempAlertMax','50'),(24,'SMSNotifications','true'),(25,'InHumAlertMax','85'),(26,'InHumAlertMin','8'),(27,'LumiosityDarkLevel','15');
 /*!40000 ALTER TABLE `settings` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `sms_inbox`
+--
+
+DROP TABLE IF EXISTS `sms_inbox`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `sms_inbox` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `message` varchar(140) NOT NULL,
+  `sender` varchar(25) NOT NULL,
+  `date` datetime NOT NULL,
+  `status` int(11) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `sms_inbox`
+--
+
+LOCK TABLES `sms_inbox` WRITE;
+/*!40000 ALTER TABLE `sms_inbox` DISABLE KEYS */;
+/*!40000 ALTER TABLE `sms_inbox` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `sms_outbox`
+--
+
+DROP TABLE IF EXISTS `sms_outbox`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `sms_outbox` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `message` varchar(70) NOT NULL,
+  `recipient` varchar(25) NOT NULL,
+  `date` datetime NOT NULL,
+  `status` int(11) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=42 DEFAULT CHARSET=utf8;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `sms_outbox`
+--
+
+LOCK TABLES `sms_outbox` WRITE;
+/*!40000 ALTER TABLE `sms_outbox` DISABLE KEYS */;
+/*!40000 ALTER TABLE `sms_outbox` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `test_stages`
+--
+
+DROP TABLE IF EXISTS `test_stages`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `test_stages` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `stage` int(11) NOT NULL,
+  `message` varchar(2048) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `test_stages`
+--
+
+LOCK TABLES `test_stages` WRITE;
+/*!40000 ALTER TABLE `test_stages` DISABLE KEYS */;
+INSERT INTO `test_stages` VALUES (1,2,''),(2,3,''),(3,4,''),(4,5,'');
+/*!40000 ALTER TABLE `test_stages` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -178,6 +316,36 @@ LOCK TABLES `timer` WRITE;
 INSERT INTO `timer` VALUES (1,'internal_sensors_poll',NULL,10,1),(2,'write_db_data',NULL,300,1),(3,'db_clearing','2014-01-05 01:00:00',86400,1),(4,'get_forecast',NULL,10800,1),(5,'update_display','2014-01-05 01:00:01',60,1),(6,'send_statistics','2014-01-05 00:00:00',86400,1);
 /*!40000 ALTER TABLE `timer` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `users`
+--
+
+DROP TABLE IF EXISTS `users`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `users` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `login` varchar(50) NOT NULL,
+  `email` varchar(50) DEFAULT NULL,
+  `salt` varchar(32) NOT NULL,
+  `verifier` varchar(66) NOT NULL,
+  `status` int(2) NOT NULL,
+  `public_key` varchar(256) NOT NULL,
+  `keyfile` text,
+  `synced` int(11) NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `users`
+--
+
+LOCK TABLES `users` WRITE;
+/*!40000 ALTER TABLE `users` DISABLE KEYS */;
+/*!40000 ALTER TABLE `users` ENABLE KEYS */;
+UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
@@ -188,4 +356,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2016-12-05 16:14:44
+-- Dump completed on 2016-12-07 10:18:51
