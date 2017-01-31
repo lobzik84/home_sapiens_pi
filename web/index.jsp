@@ -163,6 +163,11 @@
             <input type="text" name="system_event" value="shutdown" /><input type="submit" value="OK" name="submit" />
         </form>
         <br>
+        <b>CompareImages: </b>
+        <form action="" method="post">
+            <input type="text" name="system_event" value="compare_images" /><input type="submit" value="OK" name="submit" />
+        </form>
+        <br>
         <form action="" method="post">
             SMS to:<input type="text" name="recipient" /><br>
             Text:<input type="text" name="sms" /><input type="submit" value="Send" name="submit" />
