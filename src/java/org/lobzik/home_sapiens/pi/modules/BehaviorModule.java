@@ -128,6 +128,9 @@ public class BehaviorModule implements Module {
         switch (e.type) {
             case SYSTEM_EVENT:
                 switch (e.name) {
+                    case "compare_images":
+                        VideoRecModule.compareImages();
+                        break;
                     case "shutdown":
 
                         String cause = "";
