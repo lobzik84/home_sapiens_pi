@@ -9,6 +9,7 @@ import gnu.io.CommPort;
 import gnu.io.CommPortIdentifier;
 import gnu.io.SerialPort;
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
@@ -65,6 +66,9 @@ public class ModemModule extends Thread implements Module {
     private static ModemSerialReader serialReader = null;
     private static final int REPLIES_BUFFER_SIZE = 100;
     private static final Queue<String> recievedLines = new ConcurrentLinkedQueue();
+
+    private static int modemOkRepliesCount = 0;
+    private static int modemWriteErrorCount = 0;
 
     private ModemModule() { //singleton
     }
@@ -256,9 +260,22 @@ public class ModemModule extends Thread implements Module {
     private void waitForCommand(String command, OutputStreamWriter outWriter, int timeout) throws Exception {
         log.debug("Sending " + command);
         if (command != null) {
-            outWriter.write(command);
-            outWriter.flush();
-
+            try {
+                outWriter.write(command);
+                outWriter.flush();
+            } catch (IOException ioe) {
+                modemWriteErrorCount++;
+                if (modemOkRepliesCount > 10 && modemWriteErrorCount > 3) { //если нормально работал и перестал - значит хана
+                    modemOkRepliesCount = 0;
+                    String message = "Modem port lost!";
+                    log.fatal (message);
+                    HashMap cause = new HashMap();
+                    cause.put("cause", message);
+                    Event reboot = new Event("modem_and_system_reboot", cause, Event.Type.SYSTEM_EVENT);
+                    AppData.eventManager.newEvent(reboot);
+                }
+                throw ioe;
+            }
         }
         long waitStart = System.currentTimeMillis();
         synchronized (this) {
@@ -291,7 +308,7 @@ public class ModemModule extends Thread implements Module {
 
                 }
                 break;
-                
+
             case BEHAVIOR_EVENT:
                 if (e.name.equals("send_sms")) {
                     boolean doSendSms = Tools.parseBoolean(BoxSettingsAPI.get("SMSNotifications"), false);
@@ -324,7 +341,10 @@ public class ModemModule extends Thread implements Module {
         }
 
         if (line.equals("OK") || line.contains("ERROR") || line.equals(">") || line.contains("+CMTI:") || line.contains("+CUSD:")) {
-
+            if (modemOkRepliesCount < Integer.MAX_VALUE) {
+                modemOkRepliesCount++;
+                modemWriteErrorCount = 0;
+            }
             synchronized (this) {
                 notify();
             }

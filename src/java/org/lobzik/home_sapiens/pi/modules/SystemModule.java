@@ -84,6 +84,35 @@ public class SystemModule implements Module {
             } catch (Exception ee) {
                 log.error("Error " + ee.getMessage());
             }
+        } else if (e.name.equals("modem_and_system_reboot")) {
+            try {
+
+                new Thread() {
+                    @Override
+                    public void run() {
+                        try {                     
+                            log.info("Turning modem power off");                           
+                            HashMap data = new HashMap();
+                            data.put("uart_command", "modem=off"); 
+                            Event e = new Event("internal_uart_command", data, Event.Type.USER_ACTION);
+                            AppData.eventManager.lockForEvent(e, this);
+                            Thread.sleep(5000);                      
+                            log.info("Turning modem power on!");                           
+                            data = new HashMap();
+                            data.put("uart_command", "modem=on"); 
+                            e = new Event("internal_uart_command", data, Event.Type.USER_ACTION);
+                            AppData.eventManager.lockForEvent(e, this);
+                            Thread.sleep(5000);
+                            log.info("Now rebooting");
+                            Tools.sysExec("sudo reboot", new File("/"));
+                        } catch (Exception e) {
+                            log.error(e.getMessage());
+                        }
+                    }
+                }.start();
+            } catch (Exception ee) {
+                log.error("Error " + ee.getMessage());
+            }
         }
     }
 
