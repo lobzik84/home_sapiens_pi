@@ -145,15 +145,27 @@ public class InternalSensorsModule extends Thread implements Module {
                 if (paramName.equals("433_RX")) {
                     Measurement m = null;
                     HashMap eventData = new HashMap();
-                    if (val.equals(BoxSettingsAPI.get("DoorSensorAddress433"))) {
-                        m = new Measurement(doorP, true);
-                        eventData.put("parameter", doorP);
-                        
-                    } else if (val.equals(BoxSettingsAPI.get("WetSensorAddress433"))) {
-                        m = new Measurement(wetP, true);
-                        eventData.put("parameter", wetP);
+                    String door433Addresses = BoxSettingsAPI.get("DoorSensorAddress433");
+                    if (door433Addresses != null && door433Addresses.length() > 0) {
+                        for (String address : door433Addresses.split(",")) {
+                            if (val.equals(address)) {
+                                m = new Measurement(doorP, true);
+                                eventData.put("parameter", doorP);
+
+                            }
+                        }
                     }
-                    
+
+                    String wet433Addresses = BoxSettingsAPI.get("WetSensorAddress433");
+                    if (wet433Addresses != null && wet433Addresses.length() > 0) {
+                        for (String address : wet433Addresses.split(",")) {
+                            if (val.equals(address)) {
+                                m = new Measurement(wetP, true);
+                                eventData.put("parameter", wetP);
+                            }
+                        }
+                    }
+
                     if (m != null) {
                         eventData.put("measurement", m);
                         Event e = new Event("433 recieved", eventData, Event.Type.PARAMETER_UPDATED);
