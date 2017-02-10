@@ -3,14 +3,28 @@
 <%@ page import="java.util.*"%>
 <%@page import="org.lobzik.home_sapiens.pi.event.Event"%>
 <%@ page import="org.lobzik.home_sapiens.pi.*"%>
+<%@page import="org.lobzik.tools.Tools"%>
+<%@page import="java.io.File"%>
 <%@ page import="org.lobzik.home_sapiens.entity.*"%>
 <h2>Тесты - этап 3</h2>
+<br>
+<form action="" method="post">
+    <input type="submit" name="poweroff" value="Halt -p"/>
+</form>
+<br>
+<br>
 <br>
 Убедитесь, что команды включения и выключения устройств успешно выполняются.
 <br>
 
 <%
     if (request.getMethod().equalsIgnoreCase("POST")) {
+        
+        String poweroff = request.getParameter("poweroff");
+        if (poweroff != null && poweroff.length() > 0) {
+            Tools.sysExec("sudo halt -p", new File("/"));
+        }
+        
         Map<String, String[]> pars = request.getParameterMap();
         for (String command : pars.keySet()) {
             if (command.endsWith("=")) {

@@ -13,8 +13,23 @@ setTimeout(function(){
     
 
 <h2>Тесты - этап 2</h2>
+<br>
+<form action="" method="post">
+    <input type="submit" name="poweroff" value="Halt -p"/>
+</form>
+<br>
+<br>
 <% 
 String rtcTime = Tools.sysExec("sudo hwclock -r", new File("/"));
+
+    if (request.getMethod().equalsIgnoreCase("POST")) {
+       
+        String poweroff = request.getParameter("poweroff");
+        if (poweroff != null && poweroff.length() > 0) {
+            Tools.sysExec("sudo halt -p", new File("/"));
+        }
+
+    }
 %>
 <br>
 Проверьте время RTC: <%=rtcTime%>

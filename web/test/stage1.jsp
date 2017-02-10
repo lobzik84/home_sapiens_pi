@@ -7,13 +7,28 @@
 <%@page import="java.util.*"%>
 <%@page import="org.lobzik.home_sapiens.pi.*"%>
 <%@page import="org.lobzik.home_sapiens.entity.*"%>
+<%@page import="org.lobzik.home_sapiens.pi.event.Event"%>
 <h2>Тесты - этап 1</h2>
+
+<br>
+<form action="" method="post">
+    <input type="submit" name="poweroff" value="Halt -p"/>
+</form>
+<br>
+<br>
 Чтобы проверить raspberry в целом, получение даты, взаимодействие с arduino, датчики влажности, температуры, напряжения и температуры АКБ, сетевого напряжения, горючих газов, модем, камеры - <br>
 убедитесь в адекватности отображаемых параметров!
 <br>
 Затем проведите калибровку датчиков.
 <br>
 <br>
+<form action="" method="post">
+   433_tx: <input type="text" name="tx433" /> <input type="submit" name="transmit" value="Transmit"/>
+</form>
+<br>
+<br>
+
+
 <%
     String hwclockOutput = "";
     if (request.getMethod().equalsIgnoreCase("POST")) {
@@ -26,6 +41,19 @@
                 String rtc_write = request.getParameter("rtc_write");
         if (rtc_write != null && rtc_write.length() > 0) {
             hwclockOutput = Tools.sysExec("sudo hwclock -w", new File("/"));
+        }
+        
+        String tx433 = request.getParameter("tx433");
+        if (tx433 != null && tx433.length() > 0) {
+                HashMap data = new HashMap();
+                data.put("uart_command", "433_tx=" + tx433);
+                Event e = new Event("internal_uart_command", data, Event.Type.USER_ACTION);
+                AppData.eventManager.newEvent(e);
+        }
+        
+        String poweroff = request.getParameter("poweroff");
+        if (poweroff != null && poweroff.length() > 0) {
+            Tools.sysExec("sudo halt -p", new File("/"));
         }
 
     }
