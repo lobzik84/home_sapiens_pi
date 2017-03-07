@@ -93,7 +93,11 @@ public class TimerModule implements Module {
         }
 
         Calendar cal = Calendar.getInstance();
+        int yearNow = cal.get(Calendar.YEAR);
         cal.setTime(startDate);
+        cal.set(Calendar.YEAR, yearNow);
+        cal.set(Calendar.MONTH, Calendar.JANUARY);
+        
         if (cal.getTimeInMillis() <= System.currentTimeMillis() && period > 0) {
             while (cal.getTimeInMillis() <= System.currentTimeMillis()) {
                 cal.add(Calendar.SECOND, period);
