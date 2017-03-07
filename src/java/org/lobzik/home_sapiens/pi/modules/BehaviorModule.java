@@ -331,12 +331,12 @@ public class BehaviorModule implements Module {
 
         Parameter p = (Parameter) e.data.get("parameter");
         Measurement m = (Measurement) e.data.get("measurement");
-        //работает более 15 сек.
+        //работает более 12 сек.
         Condition c = getConditionByAlias("PIR_SENSOR_ALARM");
-        int PIRTimeout = 10; //секунд
+        int PIRTimeout = 12; //секунд
         int transferTrueCount = measurementsCache.getTransferTrueCountFrom(p, System.currentTimeMillis() - 1000 * PIRTimeout);
 
-        if (m.getBooleanValue() && transferTrueCount == 0) {
+        if (m.getBooleanValue() && (transferTrueCount == 0 || transferTrueCount > 2)) {
             if (BoxMode.isArmed()) {
                 p.setState(Parameter.State.ALARM);
             }
