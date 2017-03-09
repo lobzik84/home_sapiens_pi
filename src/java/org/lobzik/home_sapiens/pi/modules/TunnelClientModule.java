@@ -42,6 +42,9 @@ public class TunnelClientModule extends Thread implements Module {
     private static final long WS_CHECK_PERIOD = 20 * 1000l;
     private static Logger log = null;
     private static boolean run = true;
+    private static int errorCount = 0;
+    private static final int ERRORS_TO_REBOOT = 50;
+    private static boolean wasConnected = false;
 
     private TunnelClientModule() { //singleton
     }
@@ -91,7 +94,23 @@ public class TunnelClientModule extends Thread implements Module {
                     Context initCtx = new InitialContext();
                     Context envCtx = (Context) initCtx.lookup("java:comp/env");
                     client = new TunnelClient(BoxCommonData.TUNNEL_SERVER_URL, log, envCtx);
+                    if (client != null && client.isConnected()) {
+                        wasConnected = true;
+                        errorCount = 0;
+                    }
                 } catch (Exception e) {
+                    errorCount++;
+                    if (wasConnected && errorCount >= ERRORS_TO_REBOOT) {
+                        wasConnected = false;
+                        String message = "Too many errors while connecting! Reboot";
+                        log.fatal(message);
+                        HashMap cause = new HashMap();
+                        cause.put("cause", message);
+                        Event reboot = new Event("modem_and_system_reboot", cause, Event.Type.SYSTEM_EVENT);
+                        AppData.eventManager.newEvent(reboot);
+                        errorCount = 0;
+                    }
+
                     log.error("Error while ws connecting: " + e.getMessage());
                     if (client != null) {
                         client.disconnect();
@@ -125,6 +144,12 @@ public class TunnelClientModule extends Thread implements Module {
         }
 
     }
+    
+    public void setWasConnected() {
+        wasConnected = true;
+    }
+    
+    
 
     @Override
     public void handleEvent(Event e) {

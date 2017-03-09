@@ -4,3 +4,7 @@
 0 -> 1
 added modem failover (reset and reboot)
 
+1 -> 2
+multiple 433 sensors, timers fix, connection lost failover (modem reset and reboot)
+
+

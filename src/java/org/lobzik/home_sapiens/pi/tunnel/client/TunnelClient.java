@@ -28,6 +28,7 @@ import org.lobzik.home_sapiens.pi.AppData;
 import org.lobzik.home_sapiens.pi.BoxCommonData;
 import org.lobzik.home_sapiens.pi.JSONAPI;
 import org.lobzik.home_sapiens.pi.event.Event;
+import org.lobzik.home_sapiens.pi.modules.TunnelClientModule;
 import org.lobzik.tools.Tools;
 import org.lobzik.tools.db.mysql.DBSelect;
 import org.lobzik.tools.db.mysql.DBTools;
@@ -86,6 +87,7 @@ public class TunnelClient {
         log.info("Websocket connected");
         // connected = true;
         this.session = session;
+        TunnelClientModule.getInstance().setWasConnected();
     }
 
     /**
