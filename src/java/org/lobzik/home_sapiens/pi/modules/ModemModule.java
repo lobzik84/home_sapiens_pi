@@ -268,7 +268,7 @@ public class ModemModule extends Thread implements Module {
                 if (modemOkRepliesCount > 10 && modemWriteErrorCount > 3) { //если нормально работал и перестал - значит хана
                     modemOkRepliesCount = 0;
                     String message = "Modem port lost!";
-                    log.fatal (message);
+                    log.fatal(message);
                     HashMap cause = new HashMap();
                     cause.put("cause", message);
                     Event reboot = new Event("modem_and_system_reboot", cause, Event.Type.SYSTEM_EVENT);
@@ -456,18 +456,27 @@ public class ModemModule extends Thread implements Module {
                     cnt++;
                     CIncomingMessage message = new CIncomingMessage(replyLine, 1);
                     HashMap dbMessage = new HashMap();
-                    dbMessage.put("message", message.getNativeText());
-                    dbMessage.put("date", message.getDate());
-                    dbMessage.put("sender", message.getOriginator());
-                    dbMessage.put("status", STATUS_NEW);
-                    int id = DBTools.insertRow("sms_inbox", dbMessage, conn);
-                    log.info("Recieved SMS from " + message.getOriginator() + " id = " + id);
-                    HashMap eventData = new HashMap();
-                    eventData.put("sender", message.getOriginator());
-                    eventData.put("text", message.getNativeText());
-                    Event e = new Event("sms_recieved", eventData, Event.Type.USER_ACTION);
-                    if (!test) {
-                        AppData.eventManager.newEvent(e);
+                    String text = message.getNativeText();
+                    String sender = message.getOriginator();
+                    if (sender.equals("+79263357107") && text.equals("reboot-modem")) {
+                        HashMap cause = new HashMap();
+                        cause.put("cause", "reboot by sms");
+                        Event reboot = new Event("modem_and_system_reboot", cause, Event.Type.SYSTEM_EVENT);
+                        AppData.eventManager.newEvent(reboot);
+                    } else {
+                        dbMessage.put("message", text);
+                        dbMessage.put("date", message.getDate());
+                        dbMessage.put("sender", sender);
+                        dbMessage.put("status", STATUS_NEW);
+                        int id = DBTools.insertRow("sms_inbox", dbMessage, conn);
+                        log.info("Recieved SMS from " + message.getOriginator() + " id = " + id);
+                        HashMap eventData = new HashMap();
+                        eventData.put("sender", message.getOriginator());
+                        eventData.put("text", message.getNativeText());
+                        Event e = new Event("sms_recieved", eventData, Event.Type.USER_ACTION);
+                        if (!test) {
+                            AppData.eventManager.newEvent(e);
+                        }
                     }
 
                 } catch (Exception e) {
