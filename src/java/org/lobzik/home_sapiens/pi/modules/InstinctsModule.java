@@ -261,9 +261,10 @@ public class InstinctsModule implements Module {
                             Event newE = new Event("calculated", eventData, Event.Type.PARAMETER_UPDATED);
 
                             AppData.eventManager.newEvent(newE);
-
-                            if (AppData.measurementsCache.getAvgMeasurementFrom(p, System.currentTimeMillis() - 300000).getDoubleValue() < 5.8) {
-                                String message = "Заряд АКБ критически низок!";
+                            Parameter VACp = AppData.parametersStorage.getParameter(AppData.parametersStorage.resolveAlias("VAC_SENSOR"));
+                            
+                            if (counts > 5 && VACp.getState() != Parameter.State.OK && AppData.measurementsCache.getAvgMeasurementFrom(p, System.currentTimeMillis() - 300000).getDoubleValue() < 5.8) {
+                                String message = "Заряд аккумуляторов критически низок!";
                                 log.fatal(message);
                                 HashMap cause = new HashMap();
                                 cause.put("cause", message);
