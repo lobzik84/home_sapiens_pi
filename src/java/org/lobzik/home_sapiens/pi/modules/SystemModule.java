@@ -25,9 +25,7 @@ public class SystemModule implements Module {
     private static SystemModule instance = null;
     private Process process = null;
     private static Logger log = null;
-    private static final String PREFIX = "/usr/bin/sudo";
-    private static final String SHUTDOWN_COMMAND = "halt";
-    private static final String SHUTDOWN_SUFFIX = "-p";
+
     private static final int SHUTDOWN_TIMEOUT = 30; //seconds for halt procedure
 
     private SystemModule() { //singleton
@@ -51,6 +49,8 @@ public class SystemModule implements Module {
     @Override
     public void start() {
         try {
+            createRunFile();
+            removeRebootFile();
             EventManager.subscribeForEventType(this, Event.Type.SYSTEM_EVENT);
             EventManager.subscribeForEventType(this, Event.Type.BEHAVIOR_EVENT);
         } catch (Exception e) {
@@ -69,6 +69,8 @@ public class SystemModule implements Module {
                         try {
                             if (e.type == Event.Type.BEHAVIOR_EVENT) {
                                 Thread.sleep(30000);//чтобы успели разлететься смс-ки и остальное
+                            } else {
+                                Thread.sleep(3000);
                             }
                             HashMap data = new HashMap();
                             data.put("uart_command", "poweroff=" + SHUTDOWN_TIMEOUT); //timer for SHUTDOWN_TIMEOUT secs
@@ -86,20 +88,21 @@ public class SystemModule implements Module {
             }
         } else if (e.name.equals("modem_and_system_reboot")) {
             try {
-
+                log.warn("Got reboot modem and system event!");
+                createRebootFile();
                 new Thread() {
                     @Override
                     public void run() {
-                        try {                     
-                            log.info("Turning modem power off");                           
+                        try {
+                            log.info("Turning modem power off");
                             HashMap data = new HashMap();
-                            data.put("uart_command", "modem=off"); 
+                            data.put("uart_command", "modem=off");
                             Event e = new Event("internal_uart_command", data, Event.Type.USER_ACTION);
                             AppData.eventManager.lockForEvent(e, this);
-                            Thread.sleep(5000);                      
-                            log.info("Turning modem power on!");                           
+                            Thread.sleep(5000);
+                            log.info("Turning modem power on!");
                             data = new HashMap();
-                            data.put("uart_command", "modem=on"); 
+                            data.put("uart_command", "modem=on");
                             e = new Event("internal_uart_command", data, Event.Type.USER_ACTION);
                             AppData.eventManager.lockForEvent(e, this);
                             Thread.sleep(5000);
@@ -117,7 +120,44 @@ public class SystemModule implements Module {
     }
 
     public static void finish() {
-
+        removeRunFile();
     }
 
+    private static void removeRunFile() {
+        try {
+            Tools.sysExec("sudo rm " + AppData.RUN_FILE, new File("/"));
+            log.info("Run file removed");
+        } catch (Exception e) {
+            log.error("Error while removing run file: " + e.getMessage());
+        }
+    }
+
+    private static void createRunFile() {
+        try {
+            Tools.sysExec("sudo touch " + AppData.RUN_FILE, new File("/"));
+            log.info("Run file created");
+        } catch (Exception e) {
+            log.error("Error while creating run file: " + e.getMessage());
+        }
+    }
+
+    private static void removeRebootFile() {
+        try {
+            Tools.sysExec("sudo rm " + AppData.REBOOT_FILE, new File("/"));
+            log.info("Reboot file removed");
+        } catch (Exception e) {
+            log.error("Error while removing reboot file: " + e.getMessage());
+        }
+    }
+
+    private static void createRebootFile() {
+        try {
+            Tools.sysExec("sudo touch " + AppData.REBOOT_FILE, new File("/"));
+            log.info("Reboot file created");
+        } catch (Exception e) {
+            log.error("Error while creating reboot file: " + e.getMessage());
+        }
+    }
+    
+    
 }

@@ -46,7 +46,13 @@ public class LogModule implements Module {
     @Override
     public void start() {
         try {
-            actionLog(Notification.Severity.INFO, "Система запущена", null);
+            String msg = "Система запущена";
+            if (AppData.runsAfterReboot()) {
+                msg += " после перезагрузки";
+            } else if (AppData.runsAfterFailure()) {
+                msg += " после горячего отключения";
+            }
+            actionLog(Notification.Severity.INFO, msg, null);
             EventManager.subscribeForEventType(this, Event.Type.BEHAVIOR_EVENT);
         } catch (Exception e) {
             e.printStackTrace();

@@ -100,7 +100,7 @@ public class TunnelClientModule extends Thread implements Module {
                     }
                 } catch (Exception e) {
                     errorCount++;
-                    if (wasConnected && errorCount >= ERRORS_TO_REBOOT) {
+                    if ((wasConnected || (AppData.runsAfterFailure() && !AppData.runsAfterReboot())) && errorCount >= ERRORS_TO_REBOOT) {
                         wasConnected = false;
                         String message = "Too many errors while connecting! Reboot";
                         log.fatal(message);
@@ -144,12 +144,10 @@ public class TunnelClientModule extends Thread implements Module {
         }
 
     }
-    
+
     public void setWasConnected() {
         wasConnected = true;
     }
-    
-    
 
     @Override
     public void handleEvent(Event e) {
@@ -328,10 +326,14 @@ public class TunnelClientModule extends Thread implements Module {
     }
 
     public static void finish() {
-        run = false;
-        client.disconnect();
-        synchronized (instance) {
-            instance.notify();
+        try {
+            run = false;
+            client.disconnect();
+            synchronized (instance) {
+                instance.notify();
+            }
+        } catch (Throwable t) {
+            t.printStackTrace();
         }
     }
 }
