@@ -252,13 +252,13 @@ public class DisplayModule implements Module {
                     Double outsideTempNow = null; //если null - не рисуем,это прогноз на +12 часов
                     Integer cloudsNow = null;//если null - не рисуем, это прогноз на +12 часов                
                     Double rainNow = null;
-                    
+
                     if (actual != null) {
                         outsideTempNow = actual.getTemperature();
                         cloudsNow = actual.getClouds();
                         rainNow = actual.getPrecipitation();
                     }
-                    
+
                     Double outsideTempNext = null; //если null - не рисуем,это прогноз на +12 часов
                     Integer cloudsNext = null;//если null - не рисуем, это прогноз на +12 часов                
                     Double rainNext = null;
@@ -489,7 +489,12 @@ public class DisplayModule implements Module {
     }
 
     public static void finish() {
-        instance.fbiRunner.finish();
+        try {
+            instance.fbiRunner.finish();
+            Tools.sysExec("sudo killall -9 fbi", new File("/"));
+        } catch (Throwable t) {
+            t.printStackTrace();
+        }
     }
 
     /*
