@@ -48,6 +48,7 @@ public class InternalSensorsModule extends Thread implements Module {
     private static final int PORT_TIMEOUT = 2000;
     private static final int ONEWAY_433_PARAMETERS_TIMEOUT = 1000 * 15;
     //private static List<Integer> ONEWAY_PARAMETERS = new ArrayList();
+    private static boolean firstPoll = true;
 
     @Override
     public String getModuleName() {
@@ -61,6 +62,10 @@ public class InternalSensorsModule extends Thread implements Module {
             case TIMER_EVENT:
                 if (e.name.equals("internal_sensors_poll")) {
                     if (serialWriter != null) {
+                        if (firstPoll) { //TODO only if arduino firmware version >= 3
+                            serialWriter.doCommand("swd=on");// enable serial watchdog
+                            firstPoll = false;
+                        }
                         serialWriter.poll();
                     }
                     this.clearOnewayParameters();
@@ -108,6 +113,12 @@ public class InternalSensorsModule extends Thread implements Module {
     }
 
     public static void finish() {
+        log.info("Disabling serial watchdog");
+        if (serialWriter != null) {
+            serialWriter.doCommand("swd=off");// disable serial watchdog
+
+        }
+
         log.info("Stopping SerialWriter");
         if (serialWriter != null) {
             serialWriter.finish();
@@ -170,6 +181,17 @@ public class InternalSensorsModule extends Thread implements Module {
                         eventData.put("measurement", m);
                         Event e = new Event("433 recieved", eventData, Event.Type.PARAMETER_UPDATED);
                         AppData.eventManager.newEvent(e);
+                    }
+                } else if (paramName.equals("POWER_SWITCH")) {
+                    boolean switchState = Tools.parseBoolean(val, null);
+                    if (!switchState) {
+                        //switch was turned off
+                        String message = "Произведено отключение тумблером";
+                        log.info(message);
+                        HashMap cause = new HashMap();
+                        cause.put("cause", message);
+                        Event shutdown = new Event("shutdown", cause, Event.Type.SYSTEM_EVENT);
+                        AppData.eventManager.newEvent(shutdown);
                     }
                 } else {
                     int paramId = AppData.parametersStorage.resolveAlias(paramName);
