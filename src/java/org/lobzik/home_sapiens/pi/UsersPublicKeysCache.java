@@ -62,6 +62,14 @@ public class UsersPublicKeysCache {
         return usersLogins.values();
     }
 
+    public Collection<RSAPublicKey> getKeys() {
+        return usersKeys.values();
+    }
+
+    public RSAPublicKey getMainKey() {
+        return (RSAPublicKey) usersKeys.values().toArray()[0];
+    }
+
     public RSAPublicKey initUsersPublicKey() {
         String sSQL = "select id, login, public_key from users";// where id=" + userId;
 

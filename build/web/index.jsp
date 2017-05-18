@@ -146,7 +146,7 @@
         </form> <br> <br>
         <b>Generate timer event: </b>
         <form action="" method="post">
-            <input type="text" name="event" value="db_clearing" /><input type="submit" value="OK" name="submit" />
+            <input type="text" name="event" value="do_backup" /><input type="submit" value="OK" name="submit" />
         </form><br> <br>
         <b>Play sound: </b>
         <form action="" method="post">

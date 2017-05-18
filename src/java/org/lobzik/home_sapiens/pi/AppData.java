@@ -29,6 +29,8 @@ import org.lobzik.home_sapiens.pi.event.EventManager;
  */
 public class AppData {
 
+
+
     public static final HashMap<String, Object> settings = new HashMap();
     public static final BasicDataSource dataSource;
     public static final EventManager eventManager = EventManager.getInstance(); //launches BEFORE AppListener called
@@ -43,7 +45,7 @@ public class AppData {
 
     private static File soundWorkDir = null;
     private static File graphicsWorkDir = null;
-
+    private static File backupWorkDir = null;
     private static File captureWorkDir = null;
 
     private static String localUrlContPath = null;
@@ -101,7 +103,8 @@ public class AppData {
             localUrlContPath = "http://localhost/" + sce.getServletContext().getContextPath();
         }
     }
-
+    
+    
     public static final boolean runsAfterFailure() {
         return runsAfterFailure;
     }
@@ -112,6 +115,20 @@ public class AppData {
 
     public static String getLocalUrlContPath() {
         return localUrlContPath;
+    }
+
+    /**
+     * @return the backupWorkDir
+     */
+    public static File getBackupWorkDir() {
+        return backupWorkDir;
+    }
+
+    /**
+     * @param aBackupWorkDir the backupWorkDir to set
+     */
+    public static void setBackupWorkDir(File aBackupWorkDir) {
+        backupWorkDir = aBackupWorkDir;
     }
 
     /**
