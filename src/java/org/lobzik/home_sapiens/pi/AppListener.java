@@ -21,7 +21,6 @@ import org.lobzik.home_sapiens.pi.modules.DBDataWriterModule;
 import org.lobzik.home_sapiens.pi.modules.DisplayModule;
 import org.lobzik.home_sapiens.pi.modules.InternalSensorsModule;
 import org.lobzik.home_sapiens.pi.modules.SpeakerModule;
-import org.lobzik.home_sapiens.pi.modules.GraphModule;
 import org.lobzik.home_sapiens.pi.modules.InstinctsModule;
 import org.lobzik.home_sapiens.pi.modules.LogModule;
 import org.lobzik.home_sapiens.pi.modules.MicrophoneModule;
@@ -32,6 +31,7 @@ import org.lobzik.home_sapiens.pi.modules.TestModule;
 import org.lobzik.home_sapiens.pi.modules.TimerModule;
 import org.lobzik.home_sapiens.pi.modules.TunnelClientModule;
 import org.lobzik.home_sapiens.pi.modules.VideoModule;
+import org.lobzik.home_sapiens.pi.modules.VideoRecModule;
 import org.lobzik.home_sapiens.pi.modules.WeatherModule;
 import org.lobzik.home_sapiens.pi.modules.WebNotificationsModule;
 
@@ -65,7 +65,7 @@ public class AppListener implements ServletContextListener {
             ActualDataStorageModule.getInstance().start();
 
             InternalSensorsModule.getInstance().start();
-            //DisplayModule.getInstance().start();
+            DisplayModule.getInstance().start();
             
             InstinctsModule.getInstance().start();
             WeatherModule.getInstance().start();
@@ -76,18 +76,18 @@ public class AppListener implements ServletContextListener {
                 LogModule.getInstance().start();
                 WebNotificationsModule.getInstance().start();
                 DBDataWriterModule.getInstance().start();
-                //TimerModule.getInstance().start();
+                TimerModule.getInstance().start();
                 DBCleanerModule.getInstance().start();
-                GraphModule.getInstance().start();
-                //ScriptsModule.getInstance().start();
+                ScriptsModule.getInstance().start();
                 BehaviorModule.getInstance().start();
                 TunnelClientModule.getInstance().start();
+                VideoRecModule.getInstance().start();
                 BackupModule.getInstance().start();
             }
-            //SpeakerModule.getInstance().start();
+            SpeakerModule.getInstance().start();
             VideoModule.getInstance().start();
-            //MicrophoneModule.getInstance().start();
-            //SystemModule.getInstance().start();
+             MicrophoneModule.getInstance().start();
+            SystemModule.getInstance().start();
            
             if (BoxCommonData.TEST_MODE) {
                 TestModule.getInstance().start();
@@ -110,7 +110,6 @@ public class AppListener implements ServletContextListener {
                 DBDataWriterModule.finish();
                 DBCleanerModule.finish();
                 SpeakerModule.finish();
-                GraphModule.finish();
                 VideoModule.finish();
                 MicrophoneModule.finish();
                 SystemModule.finish();

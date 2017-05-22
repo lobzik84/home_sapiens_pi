@@ -5,8 +5,18 @@
  */
 package org.lobzik.home_sapiens.pi.modules;
 
-import java.awt.Color;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.security.SecureRandom;
+import javax.crypto.Cipher;
+import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
+import javax.xml.bind.DatatypeConverter;
 import org.apache.log4j.Appender;
 import org.apache.log4j.Logger;
 import org.lobzik.home_sapiens.pi.AppData;
@@ -15,30 +25,23 @@ import org.lobzik.home_sapiens.pi.event.Event;
 import org.lobzik.home_sapiens.pi.event.EventManager;
 import org.lobzik.tools.StreamGobbler;
 import org.lobzik.tools.Tools;
-import javax.imageio.ImageIO;
-import java.awt.image.BufferedImage;
-import java.io.OutputStreamWriter;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
+import org.lobzik.home_sapiens.pi.BoxCommonData;
+import org.lobzik.home_sapiens.pi.UsersPublicKeysCache;
+import static org.lobzik.home_sapiens.pi.modules.BackupModule.AES_CHUNK_SIZE;
+
 /**
  *
  * @author lobzik
  */
 public class VideoRecModule implements Module {
-
+    
     public final String MODULE_NAME = this.getClass().getSimpleName();
     private static VideoRecModule instance = null;
     private static Logger log = null;
-    private static final String TMP_FILE = "-out.mp4";
+    private static String VIDEO_UPLOAD_URL = null;
+    
+    private static final File WORKDIR = new File(AppData.getCaptureWorkDir().getAbsolutePath() + File.separator + "video");
 
-    private static final String PREFIX = "/usr/bin/sudo";
-    private static final String COMMAND = AppData.getSoundWorkDir().getAbsolutePath() + File.separator +"video"+ File.separator + "videoCapture.sh";
-    
-    
-    private static final int sqS = 20;
-    private static final double minDiff = 0.25;
-    
     //для записи лога по reaction_events
     public static VideoRecModule getInstance() {
         if (instance == null) {
@@ -46,52 +49,55 @@ public class VideoRecModule implements Module {
             log = Logger.getLogger(instance.MODULE_NAME);
             Appender appender = ConnJDBCAppender.getAppenderInstance(AppData.dataSource, instance.MODULE_NAME);
             log.addAppender(appender);
+            VIDEO_UPLOAD_URL = BoxCommonData.TUNNEL_SERVER_URL.replace("wss:", "https:");
+            VIDEO_UPLOAD_URL = VIDEO_UPLOAD_URL.replace("ws:", "http:");
+            VIDEO_UPLOAD_URL = VIDEO_UPLOAD_URL.replace("/wss", "/video");
         }
         return instance;
     }
-
+    
     private VideoRecModule() {
-
+        
     }
-
+    
     @Override
     public String getModuleName() {
         return MODULE_NAME;
     }
-
+    
     @Override
     public void start() {
         try {
             EventManager.subscribeForEventType(this, Event.Type.BEHAVIOR_EVENT);
+            EventManager.subscribeForEventType(this, Event.Type.SYSTEM_EVENT);
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
-
+    
     @Override
     public void handleEvent(Event e) {
-        if (e.type == Event.Type.BEHAVIOR_EVENT && e.name.equals("upload_video_recs")) {
+        if (e.name.equals("upload_video_recs")) {
             try {
                 log.info("Creating video record");
                 if (!TunnelClientModule.getInstance().tunnelIsUp()) {
-                    throw new Exception ("No server link");
+                    throw new Exception("No server link");
                 }
                 String boxSessionKey = TunnelClientModule.getInstance().getBoxSessionKey();
-
+                String captureFileName = WORKDIR + "/capture_boxId_" + BoxCommonData.BOX_ID + "_" + System.currentTimeMillis() + ".mp4";
+                
                 new Thread() {
                     @Override
                     public void run() {
                         try {
- 
-                           Process process = null;
-                            String[] env = {"aaa=bbb", "ccc=ddd"};
-
-                            String[] args = {PREFIX, COMMAND, "2", "50", "2"};
-                            File workdir = AppData.getCaptureWorkDir();
+                            
+                            Process process = null;
+                            
                             Runtime runtime = Runtime.getRuntime();
-                            log.debug("Capturing monitorId = " + 1);
-                            process = runtime.exec(args, env, workdir);
-
+                            int monitorId = 2;
+                            log.debug("Capturing monitorId = " + monitorId);
+                            process = runtime.exec("sudo /bin/bash " + WORKDIR.getAbsolutePath() + "/videoCapture.sh " + monitorId + " 50 2 " + captureFileName);
+                            
                             StringBuilder output = new StringBuilder();
                             StreamGobbler errorGobbler = new StreamGobbler(process.getErrorStream(), output);
                             StreamGobbler outputGobbler = new StreamGobbler(process.getInputStream(), output);
@@ -100,15 +106,21 @@ public class VideoRecModule implements Module {
                             process.waitFor();
                             int exitValue = process.exitValue();
                             log.debug(output);
-
+                            
                             if (exitValue != 0) {
                                 log.error("Error executing, exit status: " + exitValue);
-                            }                            
-            
-                            Tools.sysExec("zmu", AppData.getCaptureWorkDir()); //todo
-                            //ffmpeg?
+                            }
+
                             // encrypt and upload to server
-                            log.info("Video saved");
+                            File capture = new File(captureFileName);
+                            if (capture.exists()) {
+                                log.info("Video saved");
+                                encryptAndUploadFile(capture, boxSessionKey);
+                                log.info("Video uploaded");
+                                Tools.sysExec("sudo rm " + captureFileName, WORKDIR);
+                            } else {
+                                log.error("Error saving video - no file generated");
+                            }
                         } catch (Exception e) {
                             log.error(e.getMessage());
                         }
@@ -120,129 +132,78 @@ public class VideoRecModule implements Module {
         }
     }
     
-    
-  public static HashMap compareImages() {
-      HashMap newImageHash = new HashMap();
-
-      try{
-        String basePath = AppData.getSoundWorkDir().getAbsolutePath() + File.separator +"video"+ File.separator;
-        basePath = "C:\\tmp"+ File.separator;
-        File firstI= new File( basePath + "image1.jpg");
-        File secondI= new File(basePath + "image2.jpg");
-        BufferedImage image1 = ImageIO.read(firstI);
-        BufferedImage image2 = ImageIO.read(secondI);
-        int differentParts= 0;
-
+    private static void encryptAndUploadFile(File file, String boxSessionKey) throws Exception {
         
-        for (int x = 0; x < image1.getWidth()-sqS; x=x+sqS) {
-            for (int y = 0; y < image1.getHeight()-sqS; y=y+sqS) {
-                
-                long gs1=0;
-                long gs2=0;
-                /*
-                long r1 =0;
-                long g1 =0;
-                long b1 =0;
-                long r2 =0;
-                long g2 =0;
-                long b2 =0;
-                double diffR =  ((double)r1)  / (double)r2;
-                double diffG =  ((double)g1)  / (double)g2;
-                double diffB =  ((double)b1)  / (double)b2;
-                */
-                for (int x1 = 0; x1 < sqS; x1++) {
-                    for (int y1 = 0; y1 < sqS; y1++) {
-                       Color c1 =  new Color(image1.getRGB(x+x1, y+y1));
-                       Color c2 =  new Color(image2.getRGB(x+x1, y+y1));
-                       gs1+= (c1.getRed() + c1.getGreen() + c1.getBlue())/3;
-                       gs2+= (c2.getRed() + c2.getGreen() + c2.getBlue())/3;
-                       /*
-                       r1 += c1.getRed();
-                       g1 += c1.getGreen();
-                       b1 += c1.getBlue();
-                       
-                       r2 += c2.getRed();
-                       g2 += c2.getGreen();
-                       b2 += c2.getBlue();
-                               */
-                               
-                    }
-                }
-
-                double diffGS =  ((double)gs1)  / (double)gs2;
-                newImageHash.put("x"+x+"y"+y, (double)gs2);
-                
-                //if (diffR <1-minDiff || diffR >1+minDiff || diffG <1-minDiff || diffG >1+minDiff || diffB <1-minDiff || diffB >1+minDiff)
-                if (diffGS <1-minDiff || diffGS >1+minDiff)
-                {
-                    for (int x1 = 0; x1 < sqS; x1++) {
-                        for (int y1 = 0; y1 < sqS; y1++) {
-                           if(x1==0 || y1==0 || x1==sqS-1 || y1==sqS-1)
-                           {
-                                image2.setRGB(x+x1, y+y1, 0);
-                           }
-                        }
-                    }
-                differentParts++;
-
-                }
-                       
-//colors[x][y] = new Color(image1.getRGB(x, y));
+        long fileSize = file.length();
+        
+        KeyGenerator kgen = KeyGenerator.getInstance("AES");
+        SecureRandom sr = SecureRandom.getInstance("SHA1PRNG");
+        sr.nextBytes(new byte[8]);
+        sr.setSeed(1232);//add entropy
+        kgen.init(128, sr);
+        SecretKey skey = kgen.generateKey();
+        byte[] rawKey = skey.getEncoded();
+        String keyString = DatatypeConverter.printHexBinary(rawKey);
+        
+        byte[] iv = new byte[]{0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0};
+        
+        IvParameterSpec ivSpec = new IvParameterSpec(iv);
+        
+        SecretKeySpec skeySpec = new SecretKeySpec(rawKey, "AES");
+        
+        byte[] plainBytes = new byte[AES_CHUNK_SIZE];
+        String noPadding = "AES/CFB/NoPadding";
+        int read = 0;
+        long pos = 0;
+        FileInputStream fis = new FileInputStream(file);
+        
+        Cipher cipherRSA = Cipher.getInstance("RSA");
+        // encrypt the plain text using the public key
+        cipherRSA.init(Cipher.ENCRYPT_MODE, UsersPublicKeysCache.getInstance().getMainKey());
+        byte[] keyCipherRaw = cipherRSA.doFinal(keyString.getBytes());
+        
+        String keyCipher = DatatypeConverter.printHexBinary(keyCipherRaw);
+        
+        while ((read = fis.read(plainBytes)) > 0) {
+            
+            String addr = VIDEO_UPLOAD_URL + file.getName() + "?f=" + pos + "&s=" + boxSessionKey;
+            if ((pos + AES_CHUNK_SIZE) >= fileSize) {
+                addr += "&done=true";
             }
-        }
-                    File outputfile = new File(basePath + "image3.jpg");
-                    ImageIO.write(image2, "jpg", outputfile);        
-      }
-      catch (Exception ee) 
-      {
-          System.out.printf(ee.toString());
-      }
-      return newImageHash;
-  }
-      
-
-    public static class smuFfmpegRunner extends Thread {
-
-        private Process process = null;
-        private boolean run = true;
-        private String camId = "1";
-
-        public void finish() {
-            log.info("Exiting process");
-            try {
-                run = false;
-                process.destroyForcibly();
-            } catch (Exception e) {
+            if (pos == 0) {
+                addr += "&kc=" + keyCipher;
             }
-        }
-
-        @Override
-        public void run() {
-            try {
-                String[] env = {"aaa=bbb", "ccc=ddd"};
-                String[] args = {PREFIX, COMMAND, "-m", camId, "-i", "-v"};
-                File workdir = AppData.getCaptureWorkDir();
-                Runtime runtime = Runtime.getRuntime();
-                long before = System.currentTimeMillis();
-                log.debug("Capturing monitorId = " + camId);
-                process = runtime.exec(args, env, workdir);
-
-                StringBuilder output = new StringBuilder();
-                StreamGobbler errorGobbler = new StreamGobbler(process.getErrorStream(), output);
-                StreamGobbler outputGobbler = new StreamGobbler(process.getInputStream(), output);
-                errorGobbler.start();
-                outputGobbler.start();
-                process.waitFor();
-                int exitValue = process.exitValue();
-                log.debug(output);
-
-                if (exitValue != 0) {
-                    log.error("Error executing, exit status: " + exitValue);
-                }
-            } catch (Exception e) {
-                log.error("Error " + e.getMessage());
+            URL url = new URL(addr);
+            
+            Cipher cipher = Cipher.getInstance(noPadding);
+            
+            cipher.init(Cipher.ENCRYPT_MODE, skeySpec, ivSpec);
+            byte[] encrypted = cipher.doFinal(plainBytes, 0, read);
+            
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("User-Agent", "Mozilla/5.0");
+            conn.setRequestProperty("Content-Length", "0");
+            conn.setRequestProperty("Accept", "*/*");
+            
+            conn.setRequestProperty("Content-Type", "application/octet-stream");
+            conn.setUseCaches(false);
+            conn.setDoInput(true);
+            conn.setDoOutput(true);
+            OutputStream os = conn.getOutputStream();
+            
+            os.write(encrypted);
+            os.flush();
+            os.close();
+            int responseCode = conn.getResponseCode();
+            if (responseCode != 200) {
+                log.error("Error while upolading to " + addr);
+                log.error("Response code " + responseCode);
+                break;
             }
-               
+            
+            pos = pos + read;
         }
     }
+    
 }

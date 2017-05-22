@@ -100,11 +100,13 @@ public class BackupModule implements Module {
                             errorGobbler.start();
                             outputGobbler.start();*/
                             process.waitFor();
-                            if (process.exitValue() == 0) {
+                            File backupFile = new File(backupFileName);
+                            if (process.exitValue() == 0 && backupFile.exists()) {
                                 // encrypt and upload to server
                                 log.info("Backup created");
-                                encryptAndUploadFile(new File(backupFileName), boxSessionKey);
+                                encryptAndUploadFile(backupFile, boxSessionKey);
                                 log.info("Backup uploaded");
+                                Tools.sysExec("sudo rm " + backupFileName, AppData.getBackupWorkDir());
                             } else {
                                 log.error("Error creating backup: " + process.exitValue());
                                 //System.err.println(output);
