@@ -49,7 +49,7 @@ public class BackupModule implements Module {
             log = Logger.getLogger(instance.MODULE_NAME);
             Appender appender = ConnJDBCAppender.getAppenderInstance(AppData.dataSource, instance.MODULE_NAME);
             log.addAppender(appender);
-            BKP_UPLOAD_URL = BoxCommonData.TUNNEL_SERVER_URL.replace("wss:", "https:");
+            BKP_UPLOAD_URL = BoxCommonData.TUNNEL_SERVER_URL.replace("wss:", "http:");
             BKP_UPLOAD_URL = BKP_UPLOAD_URL.replace("ws:", "http:");
             BKP_UPLOAD_URL = BKP_UPLOAD_URL.replace("/wss", "/bkp");
         }

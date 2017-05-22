@@ -49,7 +49,7 @@ public class VideoRecModule implements Module {
             log = Logger.getLogger(instance.MODULE_NAME);
             Appender appender = ConnJDBCAppender.getAppenderInstance(AppData.dataSource, instance.MODULE_NAME);
             log.addAppender(appender);
-            VIDEO_UPLOAD_URL = BoxCommonData.TUNNEL_SERVER_URL.replace("wss:", "https:");
+            VIDEO_UPLOAD_URL = BoxCommonData.TUNNEL_SERVER_URL.replace("wss:", "http:");
             VIDEO_UPLOAD_URL = VIDEO_UPLOAD_URL.replace("ws:", "http:");
             VIDEO_UPLOAD_URL = VIDEO_UPLOAD_URL.replace("/wss", "/video");
         }
